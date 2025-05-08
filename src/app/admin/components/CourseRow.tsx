@@ -23,7 +23,7 @@ const CourseRow: React.FC<CourseRowProps> = ({ course, index, onEdit, onDelete, 
   
   return (
     <tr key={course.id} className="hover:bg-gray-50 transition">
-      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{index + 1}</td>
+      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{index}</td>
       <td className="px-6 py-4 whitespace-nowrap">
         <div className="w-16 h-10 relative rounded overflow-hidden border border-gray-200 flex items-center justify-center bg-gray-50">
           {course.image_url ? (
@@ -57,14 +57,26 @@ const CourseRow: React.FC<CourseRowProps> = ({ course, index, onEdit, onDelete, 
           className="text-blue-600 hover:text-blue-800 mr-3 transition"
           aria-label="Delete course"
         >
-          <FiTrash2 size={18} />
+          <Image 
+            src="/delete.svg" 
+            alt="Edit" 
+            width={18} 
+            height={18} 
+            className="inline-block"
+          />
         </button>
         <button
           onClick={() => onEdit(course.id)}
           className="text-blue-600 hover:text-blue-800  transition"
           aria-label="Edit course"
         >
-          <FiEdit2 size={18} />
+          <Image 
+            src="/edit.svg" 
+            alt="Edit" 
+            width={18} 
+            height={18} 
+            className="inline-block"
+          />
         </button>
    
       </td>
