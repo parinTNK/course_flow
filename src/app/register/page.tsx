@@ -12,7 +12,30 @@ export default function RegisterPage() {
     []
   );
 
-  // Function to get error message for a specific field
+  const [formData, setFormData] = useState({
+    name: "",
+    dob: "",
+    education: "",
+    email: "",
+    password: "",
+  });
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+
+    if (name === "email") {
+      setValidationErrors((prev) =>
+        prev.filter((err) => err.field !== "email")
+      );
+      setError("");
+    }
+  };
+
+  // check email validation error
   const getFieldError = (fieldName: string) => {
     const error = validationErrors.find((err) => err.field === fieldName);
     return error ? error.message : null;
@@ -20,17 +43,19 @@ export default function RegisterPage() {
 
   // UI
   return (
-    <div className="min-h-screen mx-auto  bg-white ">
+    <div className="min-h-screen mx-auto bg-white">
       <NavBar />
 
-      <div className="absolute  top-70 -left-102 w-125 h-125 rounded-full bg-orange-400"></div>
+      <div className="absolute top-70 -left-102 w-125 h-125 rounded-full !bg-[var(--orange-100)]"></div>
       <div>
         <img
-          src="/public/Group 5.svg"
-          alt="loding"
+          src="/Group 5.svg"
+          alt="loading"
           className="absolute top-70 left-70"
         />
       </div>
+      <div className="absolute top-46 left-45 w-15 h-15 rounded-full bg-[var(--blue-200)]"></div>
+      <div className="absolute right-32 bottom-100 w-10 h-10 rounded-full border-amber-500 border-4"></div>
       <div className="max-w-md mx-auto px-4 py-8 mt-40">
         <h2 className="text-[#2d3ecb] text-h2 font-bold mb-10 w-[453px] h-[45px]">
           Register to start learning!
@@ -38,29 +63,65 @@ export default function RegisterPage() {
 
         {success && (
           <div className="mb-4 p-3 bg-green-50 text-green-700 rounded-lg">
-            {success}
+            {success}{" "}
+            <a href="/login" className="underline text-blue-600">
+              Log in now
+            </a>
           </div>
         )}
 
         <form
-          action={async (formData) => {
+          onSubmit={async (e) => {
+            e.preventDefault();
             setLoading(true);
             setError("");
             setSuccess("");
             setValidationErrors([]);
 
             try {
-              const result = await register(formData);
+              const submitFormData = new FormData();
+              Object.entries(formData).forEach(([key, value]) => {
+                submitFormData.append(key, value);
+              });
+
+              const result = await register(submitFormData);
 
               if (result.success) {
-                setSuccess("ลงทะเบียนสำเร็จ!");
+                setSuccess("successfully registered, please verify your email");
+
+                setFormData({
+                  name: "",
+                  dob: "",
+                  education: "",
+                  email: "",
+                  password: "",
+                });
               } else if (result.errors) {
                 setValidationErrors(result.errors);
               } else if (result.error) {
-                setError(result.error);
+                if (
+                  result.error.includes("User already registered") ||
+                  result.error.includes("already exists") ||
+                  result.error.includes("already registered") ||
+                  (result.error.toLowerCase().includes("email") &&
+                    result.error.toLowerCase().includes("already"))
+                ) {
+                  setError(
+                    "email already registered, please try another email"
+                  );
+
+                  setValidationErrors([
+                    {
+                      field: "email",
+                      message: "email already registered",
+                    },
+                  ]);
+                } else {
+                  setError(result.error);
+                }
               }
             } catch (err) {
-              setError("เกิดข้อผิดพลาดที่ไม่คาดคิด กรุณาลองอีกครั้ง");
+              setError("An error occurred. Please try again later.");
             } finally {
               setLoading(false);
             }
@@ -74,6 +135,8 @@ export default function RegisterPage() {
               type="text"
               placeholder="Enter Name and Lastname"
               required
+              value={formData.name}
+              onChange={handleChange}
               className={`w-full px-4 py-2 border ${
                 getFieldError("name") ? "border-red-500" : ""
               }`}
@@ -92,6 +155,8 @@ export default function RegisterPage() {
               type="date"
               placeholder="DD/MM/YY"
               required
+              value={formData.dob}
+              onChange={handleChange}
               className={`w-full px-4 py-2 border ${
                 getFieldError("dob") ? "border-red-500" : ""
               }`}
@@ -110,6 +175,8 @@ export default function RegisterPage() {
               type="text"
               placeholder="Enter Educational Background"
               required
+              value={formData.education}
+              onChange={handleChange}
               className={`w-full px-4 py-2 border ${
                 getFieldError("education") ? "border-red-500" : ""
               }`}
@@ -128,6 +195,8 @@ export default function RegisterPage() {
               type="email"
               placeholder="Enter Email"
               required
+              value={formData.email}
+              onChange={handleChange}
               className={`w-full px-4 py-2 border ${
                 getFieldError("email") ? "border-red-500" : ""
               }`}
@@ -146,6 +215,8 @@ export default function RegisterPage() {
               type="password"
               placeholder="Enter password"
               required
+              value={formData.password}
+              onChange={handleChange}
               className={`w-full px-4 py-2 border ${
                 getFieldError("password") ? "border-red-500" : ""
               }`}
@@ -170,7 +241,7 @@ export default function RegisterPage() {
           )}
         </form>
 
-        <p className="mt-4  text-gray-600">
+        <p className="mt-4 text-gray-600">
           Already have an account?{" "}
           <a
             href="/login"

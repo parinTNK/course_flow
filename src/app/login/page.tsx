@@ -43,7 +43,16 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen bg-white">
       <NavBar />
-      <div className="absolute top-70 -left-102 w-125 h-125 rounded-full bg-orange-400"></div>
+      <div className="absolute top-70 -left-102 w-125 h-125 rounded-full !bg-[var(--orange-100)]"></div>
+      <div>
+        <img
+          src="/Group 5.svg"
+          alt="loading"
+          className="absolute top-70 left-70"
+        />
+      </div>
+      <div className="absolute top-46 left-45 w-15 h-15 rounded-full bg-[var(--blue-200)]"></div>
+      <div className="absolute right-32 bottom-100 w-10 h-10 rounded-full border-amber-500 border-4"></div>
       <div className="max-w-md mx-auto px-4 py-8 mt-40">
         <h2 className="text-[#2d3ecb] text-h2 font-bold mb-10">
           Welcome back!

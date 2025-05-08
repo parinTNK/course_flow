@@ -1,6 +1,6 @@
 "use server";
 
-import { validateRegisterForm, ValidationError } from "./validation";
+import { validateRegisterForm } from "./validation";
 import { supabase } from "@/lib/supabaseClient";
 
 export async function register(formData: FormData) {
@@ -10,7 +10,7 @@ export async function register(formData: FormData) {
     const email = formData.get("email") as string;
     const password = formData.get("password") as string;
     
-    // ตรวจสอบข้อมูล
+    // check data validations
     const errors = validateRegisterForm({
         name,
         dob,
@@ -26,9 +26,6 @@ export async function register(formData: FormData) {
         };
     }
     
-    console.log({ name, dob, education, email, password });
-    
-    // คำนวณอายุจากวันเกิด
     const birthDate = new Date(dob);
     const today = new Date();
     let age = today.getFullYear() - birthDate.getFullYear();
@@ -37,33 +34,73 @@ export async function register(formData: FormData) {
         age--;
     }
     
+    
+  
     try {
+        const { data: authData, error: authError } = await supabase.auth.signUp({
+            email,
+            password,
+        });
         
-        const { data, error } = await supabase
+        if (authError) {
+            console.error("Auth error:", authError);
+            
+            if (authError.message && (
+                authError.message.includes("User already registered") ||
+                authError.message.includes("already exists") ||
+                authError.message.includes("already registered") ||
+                authError.message.toLowerCase().includes("email") && 
+                authError.message.toLowerCase().includes("already")
+            )) {
+                return { 
+                    success: false, 
+                    error: "email already registered"
+                };
+            }
+            
+            return { 
+                success: false, 
+                error: authError.message || "please try again"
+            };
+        }
+
+        if (!authData.user) {
+            return {
+                success: false,
+                error: "not able to create user",
+            };
+        }
+
+        const { data: profileData, error: profileError } = await supabase
             .from('profiles')
             .insert([{ 
-                // user_id: authData?.user?.id, // ถ้าใช้ระบบ Auth
+                user_id: authData.user.id, 
                 full_name: name,
                 age: age,
                 educational_background: education,
-                profile_picture: "" // เพิ่มหากต้องการ
             }])
             .select();
             
-        if (error) {
-            console.error("Supabase error:", error);
+        if (profileError) {
+            console.error("Profile error:", profileError);
             return { 
                 success: false, 
-                error: "การลงทะเบียนล้มเหลว กรุณาลองอีกครั้ง" 
+                error: "profile creation failed" 
             };
         }
         
-        return { success: true, data };
+        return { 
+            success: true, 
+            data: {
+                user: authData.user,
+                profile: profileData[0]
+            } 
+        };
     } catch (error) {
         console.error("Registration error:", error);
         return { 
             success: false, 
-            error: "การลงทะเบียนล้มเหลว กรุณาลองอีกครั้ง" 
+            error: "please try again" 
         };
     }
 }
