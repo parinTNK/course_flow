@@ -11,7 +11,7 @@ interface CoursesTableProps {
 }
 
 const CoursesTable: React.FC<CoursesTableProps> = ({ courses, onEditCourse, onDeleteCourse, formatDate, isLoading }) => {
-  if (courses.length === 0 && !isLoading) {
+  if (!isLoading && courses.length === 0) {
     return (
       <div className="px-6 py-10 text-center text-gray-500 bg-white shadow-md rounded-lg">
         No courses found.
@@ -19,19 +19,31 @@ const CoursesTable: React.FC<CoursesTableProps> = ({ courses, onEditCourse, onDe
     );
   }
 
+  const tableHeaderClasses = "px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider";
+
   return (
     <div className="bg-white shadow-md rounded-lg overflow-x-auto">
       <table className="min-w-full divide-y divide-gray-200">
         <thead className="bg-gray-100">
           <tr>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">#</th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Image</th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Course name</th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Lesson</th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Price</th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created date</th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Updated date</th>
-            <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
+            {[
+              '',
+              'Image',
+              'Course name',
+              'Lesson',
+              'Price',
+              'Created date',
+              'Updated date',
+              'Status',
+              'Action',
+            ].map((header, idx) => (
+              <th
+                key={idx}
+                className={`${tableHeaderClasses} ${header === 'Action' ? 'text-center' : ''}`}
+              >
+                {header}
+              </th>
+            ))}
           </tr>
         </thead>
         <tbody className="bg-white divide-y divide-gray-200">

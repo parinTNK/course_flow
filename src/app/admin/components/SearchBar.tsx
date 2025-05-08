@@ -8,6 +8,7 @@ interface SearchBarProps {
   className?: string;
 }
 
+// TODO - Add debounce to the search input
 const SearchBar: React.FC<SearchBarProps> = ({
   value,
   onChange,

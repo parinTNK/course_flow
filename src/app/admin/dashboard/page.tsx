@@ -1,86 +1,42 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
-import { Course } from '../types';
-import { FiPlus } from 'react-icons/fi'; 
+import React, { useCallback } from 'react';
+import { FiPlus } from 'react-icons/fi';
 import { useRouter } from 'next/navigation';
 import SearchBar from '../components/SearchBar';
-import CoursesTable from '../components/CoursesTable'; 
+import CoursesTable from '../components/CoursesTable';
+import { useCoursesContext } from '../constext/CoursesContext';
+import LoadingSpinner from '../components/LoadingSpinner';
 
 export default function DashboardPage() {
-  const [courses, setCourses] = useState<Course[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [searchTerm, setSearchTerm] = useState('');
   const router = useRouter();
+  const {
+    courses,
+    isLoading,
+    error,
+    searchTerm,
+    setSearchTerm,
+    handleDeleteCourse,
+  } = useCoursesContext();
 
-  useEffect(() => {
-    const fetchCourses = async () => {
-      setIsLoading(true);
-      setError(null);
-      try {
-        const response = await fetch('/api/courses-list');
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || `Failed to fetch courses: ${response.statusText}`);
-        }
-        const data: Course[] = await response.json();
-        setCourses(data);
-      } catch (err) {
-        setError((err as Error).message);
-        console.error("Error fetching courses:", err);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchCourses();
-  }, []);
-
-  const handleAddCourse = () => {
-  
+  const handleAddCourse = useCallback(() => {
     alert('Add course functionality to be implemented');
-  };
+  }, [router]);
 
-  const handleEditCourse = (id: string) => {
-
+  const handleEditCourse = useCallback((id: string) => {
     alert(`Edit course ${id} functionality to be implemented`);
-  };
+  }, [router]);
 
-  const handleDeleteCourse = async (id: string) => {
-    if (window.confirm('Are you sure you want to delete this course?')) {
-      try {
-        const response = await fetch(`/api/admin/courses-delete/${id}`, {
-          method: 'DELETE',
-        });
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || 'Failed to delete course');
-        }
-        setCourses(prevCourses => prevCourses.filter(course => course.id !== id));
-        alert('Course deleted successfully');
-      } catch (err) {
-        alert(`Error deleting course: ${(err as Error).message}`);
-        console.error("Error deleting course:", err);
-      }
-    }
-  };
-
-  const filteredCourses = courses.filter(course =>
-    (course.name || course.course_name || '').toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  const formatDate = (dateString: string): string => {
+  const formatDate = useCallback((dateString: string): string => {
     if (!dateString) return 'N/A';
     try {
       const date = new Date(dateString);
-    
       return `${date.toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' })} ${date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}`;
     } catch (e) {
       console.error("Error formatting date:", dateString, e);
       return dateString;
     }
-  };
+  }, []);
 
   return (
     <div className="p-6 bg-gray-50 flex-1">
@@ -103,12 +59,12 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {isLoading && <div className="text-center py-10 text-gray-600">Loading courses...</div>}
+      {isLoading && <LoadingSpinner text="Loading courses..." size="md" />}
       {error && <div className="text-center py-10 text-red-600 bg-red-100 p-4 rounded-md">Error: {error}</div>}
 
       {!isLoading && !error && (
         <CoursesTable
-          courses={filteredCourses}
+          courses={courses}
           onEditCourse={handleEditCourse}
           onDeleteCourse={handleDeleteCourse}
           formatDate={formatDate}
