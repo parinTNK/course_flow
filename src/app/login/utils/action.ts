@@ -1,76 +1,108 @@
 "use server";
 
 import { supabase } from "@/lib/supabaseClient";
-import { cookies } from "next/headers";
+import { LoginResult } from "../types";
 
-interface LoginValidationError {
-  field: string;
-  message: string;
-}
-
-export async function login(email: string, password: string) {
-  if (!email || !password) {
+export async function login(formData: FormData): Promise<LoginResult> {
+  const email = formData.get("email") as string;
+  const password = formData.get("password") as string;
+  
+  // ตรวจสอบว่ามีการกรอกอีเมลและรหัสผ่าน
+  if (!email?.trim()) {
     return {
       success: false,
-      error: "กรุณากรอกอีเมลและรหัสผ่าน"
+      error: "กรุณากรอกอีเมลของคุณ"
+    };
+  }
+  
+  if (!password) {
+    return {
+      success: false,
+      error: "กรุณากรอกรหัสผ่านของคุณ"
     };
   }
   
   try {
+    // ตรวจสอบก่อนว่าอีเมลนี้มีในระบบหรือไม่
+    const { data: emailExists } = await supabase
+      .from('profiles')
+      .select('user_id')
+      .eq('email', email)
+      .maybeSingle();
     
+    // ถ้าอีเมลไม่มีในระบบ ให้แจ้งเตือนเกี่ยวกับอีเมล
+    if (!emailExists) {
+      return {
+        success: false,
+        error: "ไม่พบอีเมลนี้ในระบบ กรุณาตรวจสอบอีเมลหรือสมัครบัญชีใหม่"
+      };
+    }
+    
+    // ถ้าอีเมลมีในระบบ ให้ลองเข้าสู่ระบบ
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
     
+    // ถ้ามีข้อผิดพลาด
     if (error) {
-      console.error("Auth error:", error);
-      return { 
-        success: false, 
-        error: "อีเมลหรือรหัสผ่านไม่ถูกต้อง" 
+      console.error("Login error:", error);
+      
+      // ถ้าเป็นรหัสผ่านไม่ถูกต้อง
+      if (error.message.includes("Invalid login credentials")) {
+        return {
+          success: false,
+          error: "รหัสผ่านไม่ถูกต้อง กรุณาตรวจสอบรหัสผ่านของคุณ"
+        };
+      }
+      
+      // ถ้ายังไม่ได้ยืนยันอีเมล
+      if (error.message.includes("Email not confirmed")) {
+        return {
+          success: false,
+          error: "กรุณายืนยันอีเมลของคุณก่อนเข้าสู่ระบบ"
+        };
+      }
+      
+      // ข้อผิดพลาดอื่นๆ
+      return {
+        success: false,
+        error: error.message || "เกิดข้อผิดพลาดระหว่างการเข้าสู่ระบบ กรุณาลองอีกครั้ง"
       };
     }
     
-    // เก็บ session ใน cookie
-    const cookieStore = await cookies();
-    
-    // แก้ไขการใช้ cookies API ใน Next.js
-    cookieStore.set({
-      name: "supabase-auth",
-      value: JSON.stringify({
-        access_token: data.session?.access_token,
-        refresh_token: data.session?.refresh_token
-      }),
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
-      maxAge: 60 * 60 * 24 
-    });
-    
-    // ดึงข้อมูลผู้ใช้จากตาราง profiles
-    const { data: profileData, error: profileError } = await supabase
-      .from('profiles')
-      .select('full_name')
-      .eq('user_id', data.user.id)
-      .single();
-      
-    if (profileError) {
-      console.error("Profile error:", profileError);
+    if (!data.user) {
+      return {
+        success: false,
+        error: "ไม่สามารถเข้าสู่ระบบได้ กรุณาลองอีกครั้ง",
+      };
     }
     
-    return { 
+    // ดึงข้อมูลโปรไฟล์ผู้ใช้
+    const { data: profileData, error: profileError } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('user_id', data.user.id)
+      .single();
+    
+    if (profileError) {
+      console.error("Profile fetch error:", profileError);
+      // สามารถเข้าสู่ระบบได้แม้จะไม่สามารถดึงข้อมูลโปรไฟล์ได้
+    }
+    
+    return {
       success: true,
-      user: {
-        id: data.user.id,
-        name: profileData?.full_name || data.user.email,
-        email: data.user.email
+      data: {
+        user: data.user,
+        profile: profileData || null,
+        session: data.session
       }
     };
   } catch (error) {
     console.error("Login error:", error);
-    return { 
-      success: false, 
-      error: "เกิดข้อผิดพลาดในการล็อกอิน กรุณาลองอีกครั้ง" 
+    return {
+      success: false,
+      error: "เกิดข้อผิดพลาดระหว่างการเข้าสู่ระบบ กรุณาลองอีกครั้ง",
     };
   }
 }
