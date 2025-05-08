@@ -3,8 +3,9 @@
 import React, { useState, useEffect } from "react";
 import NavBar from "@/components/nav";
 import Footer from "@/components/footer";
+import CourseCard from "@/components/CourseCard";
 import axios from "axios";
-import { BookOpen, Clock } from "lucide-react";
+
 
 type Lesson = {
   id: string;
@@ -59,9 +60,7 @@ const MyCourses: React.FC = () => {
       setLoading(true);
       setError(null);
       try {
-        const res = await axios.get(
-          `http://localhost:3000/api/my-course/${mockUser.id}`
-        );
+        const res = await axios.get(`/api/users/${mockUser.id}/courses`);
         setCourses(res.data);
       } catch (err: any) {
         setError(err.message || "Failed to fetch courses");
@@ -121,34 +120,13 @@ const MyCourses: React.FC = () => {
             {/* Main Content: Sidebar + Grid */}
             <div className="flex flex-col md:flex-row gap-8 w-full">
               {/* Sidebar */}
-              <aside className="hidden md:flex w-full md:w-1/4 flex-col items-center">
-                <div className="bg-white rounded-xl shadow p-6 w-full flex flex-col items-center sticky top-24">
-                  <img
-                    src={mockUser.avatarUrl}
-                    alt="Profile"
-                    width={80}
-                    height={80}
-                    className="rounded-full"
-                  />
-                  <h2 className="mt-4 text-xl text-gray-800">
-                    {mockUser.name}
-                  </h2>
-                  <div className="flex justify-between w-full mt-6 gap-2">
-                    <div className="flex flex-col bg-gray-200 gap-4 p-4 rounded-[8px] w-1/2">
-                      <div className="text-sm text-gray-700">
-                        Course Inprogress
-                      </div>
-                      <div className="text-xl font-bold">{inprogressCount}</div>
-                    </div>
-                    <div className="flex flex-col bg-gray-200 gap-4 p-4 rounded-[8px] w-1/2">
-                      <div className="text-sm text-gray-700">
-                        Course Complete
-                      </div>
-                      <div className="text-xl font-bold">{completedCount}</div>
-                    </div>
-                  </div>
-                </div>
-              </aside>
+              <Sidebar
+                name={mockUser.name}
+                avatarUrl={mockUser.avatarUrl}
+                inprogressCount={inprogressCount}
+                completedCount={completedCount}
+                variant="desktop"
+              />
               {/* Courses Grid */}
               <section className="w-full md:w-3/4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -166,43 +144,7 @@ const MyCourses: React.FC = () => {
                     </div>
                   ) : (
                     filteredCourses.map((course) => (
-                      <div
-                        key={course.id}
-                        className="bg-white rounded-xl shadow flex flex-col h-full"
-                      >
-                        <div className="w-full h-[180px] rounded-t-xl overflow-hidden">
-                          <img
-                            src={course.cover_image_url}
-                            alt={course.name}
-                            className="w-full h-full object-cover"
-                          />
-                        </div>
-                        <div className="p-4 flex flex-col gap-2 flex-1">
-                          <span className="text-[14px] text-orange-500 font-semibold">
-                            Course
-                          </span>
-                          <h3 className="font-semibold text-lg">
-                            {course.name}
-                          </h3>
-                          <p className="text-gray-500 text-[15px] line-clamp-2">
-                            {course.summary}
-                          </p>
-                        </div>
-                        <div className="flex items-center space-x-6 text-sm p-4 border-t">
-                          <span className="flex items-center space-x-1">
-                            <BookOpen className="w-5 h-5 text-[#5483D0]" />
-                            <span className="text-gray-600">
-                              {course.lessons.length} Lessons
-                            </span>
-                          </span>
-                          <span className="flex items-center space-x-1">
-                            <Clock className="w-5 h-5 text-[#5483D0]" />
-                            <span className="text-gray-600">
-                              {course.total_learning_time} Hours
-                            </span>
-                          </span>
-                        </div>
-                      </div>
+                      <CourseCard key={course.id} course={course} />
                     ))
                   )}
                 </div>
@@ -213,39 +155,83 @@ const MyCourses: React.FC = () => {
       </main>
       <Footer />
       <div className="block md:hidden">
-        <aside className="w-full flex flex-col items-center">
-          <div className="bg-white shadow p-4 w-full">
-            <div className="flex items-center gap-3 mb-4">
-              <img
-                src={mockUser.avatarUrl}
-                alt="Profile"
-                width={36}
-                height={36}
-                className="rounded-full"
-              />
-              <span className="text-[17px] font-medium text-[#444]">
-                {mockUser.name}
-              </span>
-            </div>
-            <div className="flex gap-3">
-              <div className="flex items-center justify-between bg-gray-100 rounded-lg px-3 py-2 flex-1">
-                <span className="text-xs text-gray-400">Course Inprogress</span>
-                <span className="text-lg font-bold text-gray-700">
-                  {inprogressCount}
-                </span>
-              </div>
-              <div className="flex items-center justify-between bg-gray-100 rounded-lg px-3 py-2 flex-1">
-                <span className="text-xs text-gray-400">Course Complete</span>
-                <span className="text-lg font-bold text-gray-700">
-                  {completedCount}
-                </span>
-              </div>
-            </div>
-          </div>
-        </aside>
+        <Sidebar
+          name={mockUser.name}
+          avatarUrl={mockUser.avatarUrl}
+          inprogressCount={inprogressCount}
+          completedCount={completedCount}
+          variant="mobile"
+        />
       </div>
     </div>
   );
 };
 
 export default MyCourses;
+
+const Sidebar: React.FC<{
+  name: string;
+  avatarUrl: string;
+  inprogressCount: number;
+  completedCount: number;
+  variant: "desktop" | "mobile";
+}> = ({ name, avatarUrl, inprogressCount, completedCount, variant }) => {
+  if (variant === "desktop") {
+    return (
+      <aside className="hidden md:flex w-full md:w-1/4 flex-col items-center">
+        <div className="bg-white rounded-xl shadow p-6 w-full flex flex-col items-center sticky top-24">
+          <img
+            src={avatarUrl}
+            alt="Profile"
+            width={80}
+            height={80}
+            className="rounded-full"
+          />
+          <h2 className="mt-4 text-xl text-gray-800">{name}</h2>
+          <div className="flex justify-between w-full mt-6 gap-2">
+            <div className="flex flex-col bg-gray-200 gap-4 p-4 rounded-[8px] w-1/2">
+              <div className="text-sm text-gray-700">Course Inprogress</div>
+              <div className="text-xl font-bold">{inprogressCount}</div>
+            </div>
+            <div className="flex flex-col bg-gray-200 gap-4 p-4 rounded-[8px] w-1/2">
+              <div className="text-sm text-gray-700">Course Complete</div>
+              <div className="text-xl font-bold">{completedCount}</div>
+            </div>
+          </div>
+        </div>
+      </aside>
+    );
+  }
+
+  // mobile
+  return (
+    <aside className="w-full flex flex-col items-center md:hidden">
+      <div className="bg-white shadow p-4 w-full">
+        <div className="flex items-center gap-3 mb-4">
+          <img
+            src={avatarUrl}
+            alt="Profile"
+            width={36}
+            height={36}
+            className="rounded-full"
+          />
+          <span className="text-[17px] font-medium text-[#444]">{name}</span>
+        </div>
+        <div className="flex gap-3">
+          <div className="flex items-center justify-between bg-gray-100 rounded-lg px-3 py-2 flex-1">
+            <span className="text-xs text-gray-400">Course Inprogress</span>
+            <span className="text-lg font-bold text-gray-700">
+              {inprogressCount}
+            </span>
+          </div>
+          <div className="flex items-center justify-between bg-gray-100 rounded-lg px-3 py-2 flex-1">
+            <span className="text-xs text-gray-400">Course Complete</span>
+            <span className="text-lg font-bold text-gray-700">
+              {completedCount}
+            </span>
+          </div>
+        </div>
+      </div>
+    </aside>
+  );
+};
