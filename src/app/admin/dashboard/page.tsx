@@ -5,7 +5,7 @@ import { FiPlus } from 'react-icons/fi';
 import { useRouter } from 'next/navigation';
 import SearchBar from '../components/SearchBar';
 import CoursesTable from '../components/CoursesTable';
-import { useCoursesContext } from '../constext/CoursesContext';
+import { useCoursesContext } from '../context/CoursesContext';
 import LoadingSpinner from '../components/LoadingSpinner';
 
 export default function DashboardPage() {
@@ -39,8 +39,8 @@ export default function DashboardPage() {
   }, []);
 
   return (
-    <div className="p-6 bg-gray-50 flex-1">
-      <div className="flex justify-between items-center mb-6">
+    <div className="bg-gray-100 flex-1 h-full">
+      <div className="flex justify-between items-center mb-12 bg-white p-8 border-b-3 border-gray-200">
         <h1 className="text-3xl font-semibold text-gray-800">Course</h1>
         <div className="flex items-center space-x-4">
           <SearchBar
@@ -58,7 +58,7 @@ export default function DashboardPage() {
           </button>
         </div>
       </div>
-
+      <div className='px-15'>
       {isLoading && <LoadingSpinner text="Loading courses..." size="md" />}
       {error && <div className="text-center py-10 text-red-600 bg-red-100 p-4 rounded-md">Error: {error}</div>}
 
@@ -71,6 +71,7 @@ export default function DashboardPage() {
           isLoading={isLoading}
         />
       )}
+      </div>
     </div>
   );
 }
