@@ -1,7 +1,5 @@
-"use server";
-
 import { supabase } from "@/lib/supabaseClient";
-import { LoginResult } from "../types";
+import { LoginResult } from "../types"; 
 
 export async function login(formData: FormData): Promise<LoginResult> {
   const email = formData.get("email") as string;
@@ -11,63 +9,58 @@ export async function login(formData: FormData): Promise<LoginResult> {
   if (!email?.trim()) {
     return {
       success: false,
-      error: "กรุณากรอกอีเมลของคุณ"
+      error: "please enter your email"
     };
   }
   
   if (!password) {
     return {
       success: false,
-      error: "กรุณากรอกรหัสผ่านของคุณ"
+      error: "please enter your password"
     };
   }
   
   try {
-    // ตรวจสอบก่อนว่าอีเมลนี้มีในระบบหรือไม่
-    const { data: emailExists } = await supabase
-      .from('profiles')
-      .select('user_id')
-      .eq('email', email)
-      .maybeSingle();
-    
-    // ถ้าอีเมลไม่มีในระบบ ให้แจ้งเตือนเกี่ยวกับอีเมล
-    if (!emailExists) {
-      return {
-        success: false,
-        error: "ไม่พบอีเมลนี้ในระบบ กรุณาตรวจสอบอีเมลหรือสมัครบัญชีใหม่"
-      };
-    }
-    
-    // ถ้าอีเมลมีในระบบ ให้ลองเข้าสู่ระบบ
+    // เรียกใช้ API ของ Supabase สำหรับการเข้าสู่ระบบ
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
     
-    // ถ้ามีข้อผิดพลาด
     if (error) {
       console.error("Login error:", error);
       
-      // ถ้าเป็นรหัสผ่านไม่ถูกต้อง
       if (error.message.includes("Invalid login credentials")) {
-        return {
-          success: false,
-          error: "รหัสผ่านไม่ถูกต้อง กรุณาตรวจสอบรหัสผ่านของคุณ"
-        };
+      
+        const { data: emailExists } = await supabase
+          .from('profiles')
+          .select('user_id')
+          .eq('email', email)
+          .maybeSingle();
+        
+        if (emailExists) {
+          return {
+            success: false,
+            error: "please check your password"
+          };
+        } else {
+          return {
+            success: false,
+            error: "no account found with this email"
+          };
+        }
       }
       
-      // ถ้ายังไม่ได้ยืนยันอีเมล
       if (error.message.includes("Email not confirmed")) {
         return {
           success: false,
-          error: "กรุณายืนยันอีเมลของคุณก่อนเข้าสู่ระบบ"
+          error: "please confirm your email address"
         };
       }
       
-      // ข้อผิดพลาดอื่นๆ
       return {
         success: false,
-        error: error.message || "เกิดข้อผิดพลาดระหว่างการเข้าสู่ระบบ กรุณาลองอีกครั้ง"
+        error: error.message || "เกิดข้อผิดพลาดในการเข้าสู่ระบบ กรุณาลองอีกครั้ง"
       };
     }
     
@@ -102,7 +95,7 @@ export async function login(formData: FormData): Promise<LoginResult> {
     console.error("Login error:", error);
     return {
       success: false,
-      error: "เกิดข้อผิดพลาดระหว่างการเข้าสู่ระบบ กรุณาลองอีกครั้ง",
+      error: "An error occurred during login. Please try again.",
     };
   }
 }
