@@ -48,8 +48,8 @@ export default function Sidebar() {
 
 
   return (
-    <div className="bg-white w-[240px] h-screen shadow-md flex flex-col">
-      <div className="p-6 border-b">
+    <div className="bg-white w-[240px] h-screen shadow-md flex flex-col border-3 border-gray-200">
+      <div className="p-6 pb-12 flex flex-col items-center ">
         <h1 className="text-2xl font-semibold text-blue-600">CourseFlow</h1>
         <p className="text-sm text-gray-500 mt-1">Admin Panel Control</p>
       </div>

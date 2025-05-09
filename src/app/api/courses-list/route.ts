@@ -1,16 +1,31 @@
 import { supabase } from '@/lib/supabaseClient';
+import { NextRequest } from 'next/server';
 
-type Lesson = {
-  id: string;
-  course_id: string;
-  title: string;
-  order_no: number;
-  created_at: string;
-  updated_at: string;
-};
-
-export async function GET() {
+export async function GET(request: NextRequest) {
     try {
+
+        const url = new URL(request.url);
+        const page = parseInt(url.searchParams.get('page') || '1', 10);
+        const limit = parseInt(url.searchParams.get('limit') || '10', 10);
+        const searchTerm = url.searchParams.get('search') || '';
+        
+        const from = (page - 1) * limit;
+        const to = from + limit - 1;
+
+
+        const { count, error: countError } = await supabase
+            .from('courses')
+            .select('id', { count: 'exact', head: true })
+            .ilike('name', `%${searchTerm}%`);
+
+        if (countError) {
+            console.error('Error getting count:', countError.message);
+            return Response.json(
+                { error: countError.message },
+                { status: 400 }
+            );
+        }
+
         const { data, error } = await supabase
             .from('courses')
             .select(`
@@ -29,7 +44,11 @@ export async function GET() {
                 published_at,
                 status,
                 lessons ( * ) 
-            `);
+            `)
+            .ilike('name', `%${searchTerm}%`)
+            .range(from, to)
+            .order('created_at', { ascending: true });
+            //TODO: check with team if we need to order by created_at or updated_at [how to order?]
 
         if (error) {
             console.error('Supabase error fetching courses with lessons:', error.message);
@@ -40,7 +59,15 @@ export async function GET() {
         }
 
         if (!data) {
-            return Response.json([], { status: 200 });
+            return Response.json({
+                courses: [], 
+                pagination: { 
+                    totalItems: 0,
+                    totalPages: 0,
+                    currentPage: page,
+                    limit: limit
+                }
+            }, { status: 200 });
         }
 
         const formattedData = data.map(course => {
@@ -53,11 +80,22 @@ export async function GET() {
                 ...restOfCourse,
                 image_url: cover_image_url,
                 lessons_count: lessonsCount,
-                lessons: actualLessons, // Include the array of lesson objects
+                lessons: actualLessons, 
             };
         });
 
-        return Response.json(formattedData, { status: 200 });
+        const totalItems = count || 0;
+        const totalPages = Math.ceil(totalItems / limit);
+
+        return Response.json({
+            courses: formattedData,
+            pagination: {
+                totalItems,
+                totalPages,
+                currentPage: page,
+                limit
+            }
+        }, { status: 200 });
 
     } catch (e) {
         console.error('Server error in GET /api/courses-list:', (e as Error).message);
@@ -67,3 +105,4 @@ export async function GET() {
         );
     }
 }
+

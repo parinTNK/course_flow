@@ -1,6 +1,6 @@
 import React from 'react';
 import Sidebar from './components/Sidebar';
-import { CoursesProvider } from './constext/CoursesContext'; // Import the provider
+import { CoursesProvider } from './context/CoursesContext';
 
 export default function AdminLayout({
   children,

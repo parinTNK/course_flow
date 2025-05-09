@@ -5,7 +5,8 @@ import { FiPlus } from 'react-icons/fi';
 import { useRouter } from 'next/navigation';
 import SearchBar from '../components/SearchBar';
 import CoursesTable from '../components/CoursesTable';
-import { useCoursesContext } from '../constext/CoursesContext';
+import Pagination from '../components/Pagination';
+import { useCoursesContext } from '../context/CoursesContext';
 import LoadingSpinner from '../components/LoadingSpinner';
 
 export default function DashboardPage() {
@@ -17,6 +18,10 @@ export default function DashboardPage() {
     searchTerm,
     setSearchTerm,
     handleDeleteCourse,
+    // Pagination
+    currentPage,
+    totalPages,
+    setCurrentPage
   } = useCoursesContext();
 
   const handleAddCourse = useCallback(() => {
@@ -39,8 +44,8 @@ export default function DashboardPage() {
   }, []);
 
   return (
-    <div className="p-6 bg-gray-50 flex-1">
-      <div className="flex justify-between items-center mb-6">
+    <div className="bg-gray-100 flex-1 min-h-full">
+      <div className="flex justify-between items-center mb-12 bg-white p-8 border-b-3 border-gray-200">
         <h1 className="text-3xl font-semibold text-gray-800">Course</h1>
         <div className="flex items-center space-x-4">
           <SearchBar
@@ -58,19 +63,39 @@ export default function DashboardPage() {
           </button>
         </div>
       </div>
+      <div className='px-8 pb-8'>
+        {isLoading && <LoadingSpinner text="Loading courses..." size="md" />}
+        {error && <div className="text-center py-10 text-red-600 bg-red-100 p-4 rounded-md">Error: {error}</div>}
 
-      {isLoading && <LoadingSpinner text="Loading courses..." size="md" />}
-      {error && <div className="text-center py-10 text-red-600 bg-red-100 p-4 rounded-md">Error: {error}</div>}
+        {!isLoading && !error && (
+          <>
+            <CoursesTable
+              courses={courses}
+              onEditCourse={handleEditCourse}
+              onDeleteCourse={handleDeleteCourse}
+              formatDate={formatDate}
+              isLoading={isLoading}
+              currentPage={currentPage}
+            />
+            {courses.length === 0 && (
+              <div className="px-6 py-10 text-center text-gray-500 bg-white shadow-md rounded-lg">
+                No courses found.
+              </div>
+            )}
+          </>
+        )}
 
-      {!isLoading && !error && (
-        <CoursesTable
-          courses={courses}
-          onEditCourse={handleEditCourse}
-          onDeleteCourse={handleDeleteCourse}
-          formatDate={formatDate}
-          isLoading={isLoading}
-        />
-      )}
+        {/* //TODO: check with team position is ok or not  */}
+        {courses.length > 0 && (
+              <div className="mt-4">
+                <Pagination 
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  onPageChange={setCurrentPage}
+                />
+              </div>
+            )}
+      </div>
     </div>
   );
 }
