@@ -1,6 +1,6 @@
 import React from 'react';
 import Image from 'next/image';
-import { FiEdit2, FiTrash2, FiImage } from 'react-icons/fi';
+import { FiImage } from 'react-icons/fi';
 import { Course } from '../types';
 
 interface CourseRowProps {
@@ -42,7 +42,7 @@ const CourseRow: React.FC<CourseRowProps> = ({ course, index, onEdit, onDelete, 
       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{course.name || course.course_name}</td>
       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{course.lessons_count ?? 'N/A'} Lessons</td>
       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-        {course.price !== null && course.price !== undefined ? `$${course.price.toFixed(2)}` : 'N/A'}
+        {course.price !== null && course.price !== undefined ? `${course.price.toFixed(2)}` : 'N/A'}
       </td>
       <td className="px-6 py-4 whitespace-nowrap text-sm">
         <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusBadgeClass(course.status)}`}>

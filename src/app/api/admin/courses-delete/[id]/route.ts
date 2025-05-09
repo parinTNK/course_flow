@@ -3,7 +3,7 @@ import { NextRequest } from 'next/server';
 
 export async function DELETE(
     req: NextRequest,
-    { params }: { params: { id: string } }
+     { params }: { params: { id: string } }
 ) {
     try {
         const courseId = params.id;

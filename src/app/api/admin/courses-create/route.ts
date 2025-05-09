@@ -17,7 +17,6 @@ export async function POST(req: NextRequest) {
             status
         } = body;
 
-        // TODO: check Validate the input data or refactor to a function or middleware
         if (!name || !price || !detail) {
             return Response.json({ error: 'Course name is required' }, { status: 400 });
         }

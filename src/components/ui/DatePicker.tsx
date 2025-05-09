@@ -36,7 +36,7 @@ const DatePicker: React.FC<DatePickerProps> = ({
       toggle();
     }
   };
-  // TODO: Implement functionality to make the DatePicker fully usable
+
   return (
     <AnimatePresence>
       {isOpen && (
