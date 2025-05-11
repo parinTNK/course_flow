@@ -25,7 +25,7 @@ export default function PaymentCompletedPage({
             </div>
         </div>
         <div className="flex md:flex-row flex-col justify-center md:w-1/2 w-full">
-          <ButtonT variant="primary" className="w-full" onClick={() => router.push(`/courses/${courseId}/learn`)}>Back to Payment</ButtonT>
+          <ButtonT variant="primary" className="w-full" onClick={() => router.push(`/payment`)}>Back to Payment</ButtonT>
         </div>
       </div>
     </div>

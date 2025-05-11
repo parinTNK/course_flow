@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
+import { supabase } from '@/lib/supabaseClient';
 import Omise from "omise";
 
 // สร้าง Omise instance
 const omise = Omise({
-  publicKey: process.env.NEXT_OMISE_PUBLIC_KEY,
-  secretKey: process.env.NEXT_OMISE_SECRET_KEY,
+  publicKey: process.env.NEXT_PUBLIC_OMISE_KEY,
+  secretKey: process.env.NEXT_PUBLIC_OMISE_SECRET_KEY,
 });
 
 export async function POST(req: NextRequest) {
@@ -20,11 +21,31 @@ export async function POST(req: NextRequest) {
       description: `Purchase course ${courseId} by user ${userId}`,
       metadata: { courseId, userId, email },
     });
-    console.log(charge)
     // 2. ตรวจสอบผลลัพธ์
     if (charge.status === "successful") {
-      // TODO: บันทึกข้อมูลการซื้อใน database ที่นี่ (mock)
-      // เช่น await db.purchase.create({ ... })
+
+      // const { error: paymentError } = await supabase.from("payments").insert([
+      //   {
+      //     user_id: userId,
+      //     course_id: courseId,
+      //     amount: charge.amount / 100,
+      //     payment_date: new Date(charge.paid_at * 1000),
+      //     payment_method: charge.funding_instrument,
+      //     promo_code_id: null,
+      //     created_at: new Date(),
+      //     updated_at: new Date(),
+      //     status: charge.status,
+      //     charge_id: charge.id,
+      //     failure_message: charge.failure_message || null,
+      //   },
+      // ]);
+
+      // if (paymentError) {
+      //   return NextResponse.json(
+      //     { success: false, message: paymentError.message },
+      //     { status: 500 }
+      //   );
+      // }
 
       return NextResponse.json({ success: true, charge });
     } else {
