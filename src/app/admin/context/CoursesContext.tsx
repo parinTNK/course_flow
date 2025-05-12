@@ -98,6 +98,7 @@ export const CoursesProvider = ({ children }: { children: ReactNode }) => {
 
   const { success, error: toastError } = useCustomToast();
 
+  
   const confirmDeleteCourse = useCallback(async () => {
     if (!courseToDelete) return;
 
