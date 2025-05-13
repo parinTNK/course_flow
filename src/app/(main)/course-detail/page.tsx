@@ -73,9 +73,7 @@ const CourseDetailPage: React.FC = () => {
     };
 
     return (
-        <div className="min-h-screen flex flex-col">
-            <NavBar user={isAuthenticated ? mockUser : null} />
-            
+        <div className="min-h-screen flex flex-col">  
             <main className="flex-grow container mx-auto mt-20 px-4 py-8">
                 {/* Back button */}
                 <Link href="/our-courses" className="text-blue-600 mb-6 inline-flex items-center">
@@ -256,8 +254,6 @@ const CourseDetailPage: React.FC = () => {
                     </div>
                 </div>
             )}
-
-            <Footer />
         </div>
     );
 }
