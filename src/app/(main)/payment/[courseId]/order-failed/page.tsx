@@ -1,14 +1,12 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useRouter,useParams } from "next/navigation";
 import {ButtonT} from "@/components/ui/ButtonT";
 
-export default function PaymentCompletedPage({
-  courseId = "123",
-}: {
-  courseId?: string;
-}) {
+export default function PaymentFailedPage() {
   const router = useRouter();
+  const params = useParams();
+  const courseId = params.courseId as string;
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-200">
@@ -25,7 +23,7 @@ export default function PaymentCompletedPage({
             </div>
         </div>
         <div className="flex md:flex-row flex-col justify-center md:w-1/2 w-full">
-          <ButtonT variant="primary" className="w-full" onClick={() => router.push(`/payment`)}>Back to Payment</ButtonT>
+          <ButtonT variant="primary" className="w-full cursor-pointer" onClick={() => router.push(`/payment/${courseId}`)}>Back to Payment</ButtonT>
         </div>
       </div>
     </div>

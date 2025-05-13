@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-// @ts-ignore
 import Omise from "omise";
 
 const omise = Omise({
@@ -11,14 +10,12 @@ export async function POST(req: NextRequest) {
   try {
     const { amount, courseId, userId } = await req.json();
 
-    // 1. สร้าง Source สำหรับ QR PromptPay
     const source = await omise.sources.create({
       type: "promptpay",
-      amount: amount * 100, // หน่วยสตางค์
+      amount: amount * 100,
       currency: "thb",
     });
 
-    // 2. สร้าง Charge จาก Source
     const charge = await omise.charges.create({
       amount: amount * 100,
       currency: "thb",
@@ -27,7 +24,6 @@ export async function POST(req: NextRequest) {
       metadata: { courseId, userId },
     });
 
-    // 3. เช็คว่ามี source และ scannable_code จริง
     if (
       !charge.source ||
       !charge.source.scannable_code ||
@@ -40,7 +36,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 4. ส่งข้อมูล QR code กลับไป frontend
     return NextResponse.json({
       success: true,
       charge,

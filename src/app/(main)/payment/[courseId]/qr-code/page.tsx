@@ -15,7 +15,7 @@ export default function QRCodePage() {
   const [amount, setAmount] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // ดึงราคาคอร์ส
+
   useEffect(() => {
     const fetchCourse = async () => {
       try {
@@ -28,7 +28,7 @@ export default function QRCodePage() {
     if (courseId) fetchCourse();
   }, [courseId]);
 
-  // ขอ QR code จาก backend
+
   useEffect(() => {
     const createQR = async () => {
       if (!amount) return;
@@ -52,7 +52,6 @@ export default function QRCodePage() {
     if (amount) createQR();
   }, [amount, courseId]);
 
-  // Polling ตรวจสอบสถานะการจ่ายเงิน
   useEffect(() => {
     if (!chargeId) return;
     const interval = setInterval(async () => {
@@ -68,14 +67,13 @@ export default function QRCodePage() {
           router.push(`/payment/${courseId}/order-failed`);
         }
       } catch (err) {
-        // ignore polling error
       }
     }, 3000);
 
     return () => clearInterval(interval);
   }, [chargeId, courseId, router]);
 
-  // ฟังก์ชันดาวน์โหลด QR
+
   const handleSaveQR = () => {
     if (!qrImage) return;
     const link = document.createElement("a");
@@ -101,8 +99,8 @@ export default function QRCodePage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-[#F8FAFC]">
-      <div className="w-full max-w-md mx-auto">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-[#F8FAFC] px-2 md:px-0">
+      <div className="w-full max-w-md md:max-w-lg mx-auto">
         <button
           className="text-sm text-blue-600 mb-4 flex items-center gap-1 hover:underline"
           onClick={() => router.back()}
@@ -110,20 +108,20 @@ export default function QRCodePage() {
           &larr; Back
         </button>
         <div className="bg-white rounded-2xl shadow-lg px-8 py-10 flex flex-col items-center">
-          <h2 className="text-xl font-semibold mb-1">Scan QR code</h2>
+          <h2 className="text-xl md:text-2xl font-semibold mb-1">Scan QR code</h2>
           <div className="text-gray-400 text-sm mb-2">
             Reference no. {chargeId}
           </div>
-          <div className="text-2xl font-semibold text-[#F47E20] mb-4">
+          <div className="text-2xl md:text-3xl font-semibold text-[#F47E20] mb-4">
             THB {amount.toLocaleString("en-US", { minimumFractionDigits: 2 })}
           </div>
           <img
             src={qrImage}
             alt="QR PromptPay"
-            className="w-48 h-48 mb-6 border border-gray-200 rounded"
+            className="w-48 h-48 md:w-64 md:h-64 mb-6 border border-gray-200 rounded"
           />
           <button
-            className="w-full bg-[#2F5FAC] hover:bg-blue-700 text-white font-semibold py-3 rounded-lg transition cursor-pointer"
+            className="w-full md:w-2/3 bg-[#2F5FAC] hover:bg-blue-700 text-white font-semibold py-3 rounded-lg transition cursor-pointer"
             onClick={handleSaveQR}
           >
             Save QR image

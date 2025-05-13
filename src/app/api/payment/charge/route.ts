@@ -1,63 +1,78 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabase } from '@/lib/supabaseClient';
-import Omise from "omise";
-
-// สร้าง Omise instance
-const omise = Omise({
-  publicKey: process.env.NEXT_PUBLIC_OMISE_KEY,
-  secretKey: process.env.NEXT_PUBLIC_OMISE_SECRET_KEY,
-});
+import { supabase } from "@/lib/supabaseClient";
 
 export async function POST(req: NextRequest) {
-  try {
-    const body = await req.json();
-    const { token, amount, email, courseId, userId } = body;
+  const event = await req.json();
 
-    // 1. สร้าง charge กับ Omise
-    const charge = await omise.charges.create({
-      amount: amount * 100, // Omise ใช้หน่วยสตางค์
-      currency: "thb",
-      card: token,
-      description: `Purchase course ${courseId} by user ${userId}`,
-      metadata: { courseId, userId, email },
-    });
-    // 2. ตรวจสอบผลลัพธ์
-    if (charge.status === "successful") {
+  if (
+    (event.key === "charge.complete" || event.key === "charge.create") &&
+    event.data.status === "successful"
+  ) {
 
-      // const { error: paymentError } = await supabase.from("payments").insert([
-      //   {
-      //     user_id: userId,
-      //     course_id: courseId,
-      //     amount: charge.amount / 100,
-      //     payment_date: new Date(charge.paid_at * 1000),
-      //     payment_method: charge.funding_instrument,
-      //     promo_code_id: null,
-      //     created_at: new Date(),
-      //     updated_at: new Date(),
-      //     status: charge.status,
-      //     charge_id: charge.id,
-      //     failure_message: charge.failure_message || null,
-      //   },
-      // ]);
+    const charge = event.data;
+    const paymentDate = new Date(charge.paid_at).toISOString().replace(/\.\d{3}Z$/, "Z");
 
-      // if (paymentError) {
-      //   return NextResponse.json(
-      //     { success: false, message: paymentError.message },
-      //     { status: 500 }
-      //   );
-      // }
+    let paymentMethod = "Unknown";
+    if (charge.source && charge.source.type === "promptpay") {
+      paymentMethod = "QR PromptPay";
+    } else if (charge.card) {
+      paymentMethod = `Credit card - ${charge.card.brand} - ${charge.card.last_digits}`;
+    }
 
-      return NextResponse.json({ success: true, charge });
-    } else {
+
+    const { data: paymentData, error: paymentError } = await supabase
+      .from("payments")
+      .insert([
+        {
+          user_id: charge.metadata.userId,
+          course_id: charge.metadata.courseId,
+          amount: charge.amount / 100,
+          payment_date: paymentDate,
+          payment_method: paymentMethod,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          status: charge.status,
+          charge_id: charge.id,
+          failure_message: charge.failure_message || null,
+        },
+      ])
+      .select()
+      .single();
+
+    if (paymentError) {
+      console.error("DB insert error (payments):", paymentError);
       return NextResponse.json(
-        { success: false, message: "Payment failed", charge },
-        { status: 400 }
+        { success: false, error: paymentError.message },
+        { status: 500 }
       );
     }
-  } catch (err: any) {
-    return NextResponse.json(
-      { success: false, message: err.message || "Unknown error" },
-      { status: 500 }
+
+    const { error: subscriptionError } = await supabase
+    .from("subscriptions")
+    .upsert(
+      [
+        {
+          user_id: charge.metadata.userId,
+          course_id: charge.metadata.courseId,
+          subscription_date: new Date().toISOString(),
+          progress: 0,
+          rating: null,
+          review: null,
+        },
+      ],
+      { onConflict: "user_id,course_id" }
     );
+
+    if (subscriptionError) {
+      console.error("DB insert error (subscriptions):", subscriptionError);
+      return NextResponse.json(
+        { success: false, error: subscriptionError.message },
+        { status: 502 }
+      );
+    }
+
+    return NextResponse.json({ success: true });
   }
+
+  return NextResponse.json({ received: true });
 }

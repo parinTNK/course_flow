@@ -1,44 +1,34 @@
 "use client";
 
-import React, { useState, useEffect, useRef,ChangeEvent } from "react";
+import React, { useState, useEffect, useRef, ChangeEvent } from "react";
 import { useParams } from "next/navigation";
 import { useForm } from "react-hook-form";
-import NavBar from "@/components/nav";
-import Footer from "@/components/footer";
 import { useRouter } from "next/navigation";
 import Script from "next/script";
 import axios from "axios";
+import { Course, CardForm } from "@/types/payment";
 
-// -------------------- Types --------------------
-type CardForm = {
-  cardNumber: string;
-  nameOnCard: string;
-  expiry: string;
-  cvv: string;
+// -------------------- Mock --------------------
+const Mock_userId = "35557ac8-fb44-4052-9c73-8fc50a3edda1";
+
+// -------------------- Validate Functions --------------------
+const luhnCheck = (num: string) => {
+  let arr = (num + "")
+    .split("")
+    .reverse()
+    .map((x) => parseInt(x));
+  let lastDigit = arr.shift()!;
+  let sum = arr.reduce(
+    (acc, val, i) =>
+      i % 2 === 0 ? acc + ((val *= 2) > 9 ? val - 9 : val) : acc + val,
+    0
+  );
+  return (sum + lastDigit) % 10 === 0;
 };
 
-type Course = {
-  id: string;
-  name: string;
-  price: number;
-};
-
-
-const MOCK_COURSE = {
-  id: "123",
-  name: "Service Design Essentials Course",
-  subtotal: 3559,
-  total: 3359,
-};
-
-// -------------------- Constants --------------------
-const Discount = 200
-
-
-// -------------------- Utility Functions --------------------
 const formatCardNumber = (value: string): string => {
-  const numbers = value.replace(/\D/g, "").slice(0, 16);
-  return numbers.replace(/(.{4})/g, "$1-").replace(/-$/, "");
+  const numbers = value.replace(/\D/g, "").slice(0, 19);
+  return numbers.replace(/(.{4})/g, "$1 ").trim();
 };
 
 const formatExpiry = (value: string): string => {
@@ -47,36 +37,52 @@ const formatExpiry = (value: string): string => {
   return numbers.slice(0, 2) + "/" + numbers.slice(2);
 };
 
+const isExpiryValid = (expiry: string) => {
+  if (!/^(0[1-9]|1[0-2])\/\d{2}$/.test(expiry)) return false;
+  const [mm, yy] = expiry.split("/");
+  const month = parseInt(mm, 10);
+  const year = parseInt("20" + yy, 10);
+  const now = new Date();
+  const exp = new Date(year, month - 1, 1);
+  return exp >= new Date(now.getFullYear(), now.getMonth(), 1);
+};
 
 // -------------------- Main Component --------------------
 export default function PaymentPage() {
   // State
   const [paymentMethod, setPaymentMethod] = useState<"card" | "qr">("card");
+  const [course, setCourse] = useState<Course | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [promoError, setPromoError] = useState<string | null>(null);
   const [promoCode, setPromoCode] = useState("");
   const [promoApplied, setPromoApplied] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [course, setCourse] = useState<Course | null>(null);
+  const [promoResult, setPromoResult] = useState<null | {
+    discountType: string;
+    discountValue: number;
+    discountPercentage: number | null;
+    promoCodeId: string;
+    message: string;
+  }>(null);
+
 
   // Hooks
   const params = useParams();
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
 
- // React Hook Form
+  // React Hook Form
   const {
     register,
     setValue,
     handleSubmit,
+    watch,
     formState: { errors, isSubmitting },
   } = useForm<CardForm>({
     mode: "onSubmit",
   });
 
-// Derived
+  // Derived
   const courseId = params.courseId as string;
-  const total = (course?.price ?? 0) - (promoApplied ? Discount : 0)
-
-
 
   // -------------------- Effects --------------------
   useEffect(() => {
@@ -84,19 +90,55 @@ export default function PaymentPage() {
       try {
         const res = await axios.get(`/api/course/${courseId}`);
         setCourse(res.data);
-        console.log(res.data);
       } catch (err: any) {
         setError(
-          err.response?.data?.error ||
-          err.message ||
-          "Failed to fetch course"
+          err.response?.data?.error || err.message || "Failed to fetch course"
         );
-      } 
+      }
     };
     fetchCourse();
   }, [courseId]);
 
-// -------------------- Omise Token --------------------
+  // -------------------- Promo Code Validate --------------------
+  const handleApplyPromo = async () => {
+    setPromoError(null);
+    setPromoResult(null);
+    if (!promoCode || !course) return;
+    try {
+      const res = await axios.post("/api/promocodes/validate", {
+        code: promoCode,
+        courseId: course.id,
+        amount: course.price,
+      });
+      if (res.data.valid) {
+        setPromoResult(res.data);
+        setPromoApplied(true);
+      } else {
+        setPromoError(res.data.message);
+        setPromoApplied(false);
+      }
+    } catch (err: any) {
+      setPromoError("Error validating promo code");
+      setPromoApplied(false);
+    }
+  };
+
+  // -------------------- Discount Calculation --------------------
+  let discount = 0;
+  if (promoResult) {
+    if (promoResult.discountType === "THB") { //Clean code need to change to constant or enum
+      discount = promoResult.discountValue;
+    } else if (promoResult.discountType === "percentage") {
+      discount =
+        course && promoResult.discountPercentage
+          ? (course.price * promoResult.discountPercentage) / 100
+          : 0;
+    }
+  }
+
+  const total = (course?.price ?? 0) - discount;
+
+  // -------------------- Omise Token --------------------
   const createOmiseToken = async (cardData: any) => {
     return new Promise<string>((resolve, reject) => {
       if (typeof window === "undefined" || !window.Omise) {
@@ -110,66 +152,69 @@ export default function PaymentPage() {
           if (response.object === "error") {
             reject(response.message);
           } else {
-            resolve(response.id); // token
+            resolve(response.id);
           }
         }
       );
     });
   };
 
+  // Watch and format card number and expiry
+  const cardNumber = watch("cardNumber", "");
+  const expiry = watch("expiry", "");
+
+  React.useEffect(() => {
+    setValue("cardNumber", formatCardNumber(cardNumber));
+  }, [cardNumber, setValue]);
+
+  React.useEffect(() => {
+    setValue("expiry", formatExpiry(expiry));
+  }, [expiry, setValue]);
+
   // -------------------- Form Submit --------------------
   const onSubmit = async (data: CardForm) => {
     setError(null);
     try {
-      if (paymentMethod === "card") {
-        const [expMonth, expYear] = data.expiry.split("/");
-        const token = await createOmiseToken({
-          name: data.nameOnCard,
-          number: data.cardNumber.replace(/\s/g, ""),
-          expiration_month: expMonth,
-          expiration_year: "20" + expYear,
-          security_code: data.cvv,
-        });
+      const [expMonth, expYear] = data.expiry.split("/");
+      const token = await createOmiseToken({
+        name: data.nameOnCard,
+        number: data.cardNumber.replace(/\s/g, ""),
+        expiration_month: expMonth,
+        expiration_year: "20" + expYear,
+        security_code: data.cvv,
+      });
 
-        const res = await axios.post("/api/payment/charge", {
-          token,
-          amount: course?.price,
-          email: "user@email.com",  //wait to get from context
-          courseId: course?.id,
-          userId: "user-id", //wait to get from context
-        });
+      const res = await axios.post("/api/payment/create", {
+        token,
+        amount: total,
+        courseId: course?.id,
+        userId: Mock_userId,
+        courseName: course?.name,
+        userName: "Stamp", //Mock
+        promoCode: promoCode, //promoCode
+      });
 
-        const result = res.data
+      const result = res.data;
 
-        if (result.success) {
-          router.push("/payment/order-completed");
-        } else {
-          router.push("/payment/order-failed");
-        }
-
+      if (result.success) {
+        router.push(`/payment/${courseId}/order-completed`);
       } else {
-        // router.push("/payment/order-completed");
+        router.push(`/payment/${courseId}/order-failed`);
       }
     } catch (err: any) {
-      router.push("/payment/order-failed");
+      router.push(`/payment/${courseId}/order-failed`);
     }
-  }
+  };
 
   // -------------------- Render --------------------
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
       <Script src="https://cdn.omise.co/omise.js" strategy="afterInteractive" />
-      <NavBar
-        user={{
-          name: "Max Mayfield",
-          avatarUrl: "https://i.pravatar.cc/150?img=45",
-        }}
-      />
       <main className="pt-20">
         <div className="container mx-auto px-4 py-8 ">
           <div className="max-w-5xl mx-auto">
             <button
-              className="text-sm text-blue-600 mb-8 flex items-center gap-1 hover:underline"
+              className="text-sm text-blue-600 mb-8 flex items-center gap-1 hover:underline cursor-pointer"
               onClick={() => window.history.back()}
             >
               &larr; Back
@@ -211,34 +256,25 @@ export default function PaymentPage() {
                           autoComplete="off"
                         >
                           <div>
-                            <label
-                              htmlFor="cardNumber"
-                              className="block text-sm font-medium mb-1"
-                            >
-                              Card number
-                            </label>
-                            <input
-                              type="text"
+                            <InputField
+                              label="Card number"
                               placeholder="Card number"
-                              className={`w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-200 bg-white ${
-                                errors.cardNumber ? "border-red-500" : ""
-                              }`}
+                              className="w-full"
+                              error={errors.cardNumber?.message}
+                              type="text"
+                              maxLength={19 + 3}
                               {...register("cardNumber", {
                                 required: "Card number is required",
-                                pattern: {
-                                  value: /^[0-9\s]{13,19}$/,
-                                  message: "Invalid card number",
+                                validate: {
+                                  isNumber: (v) =>
+                                    /^\d{13,19}$/.test(v.replace(/\s/g, "")) ||
+                                    "Card number must be 13-19 digits",
+                                  luhn: (v) =>
+                                    luhnCheck(v.replace(/\s/g, "")) ||
+                                    "Invalid card number",
                                 },
                               })}
-                              onChange={(e: ChangeEvent<HTMLInputElement>) => {
-                                setValue("cardNumber", formatCardNumber(e.target.value));
-                              }}
                             />
-                            {errors.cardNumber && (
-                              <span className="text-xs text-red-500">
-                                {errors.cardNumber.message}
-                              </span>
-                            )}
                             <div className="md:hidden flex flex-row gap-2">
                               <img
                                 src="/card-visa.svg"
@@ -252,87 +288,56 @@ export default function PaymentPage() {
                               />
                             </div>
                           </div>
-                          <div>
-                            <label
-                              htmlFor="cardNumber"
-                              className="block text-sm font-medium mb-1"
-                            >
-                              Name on card
-                            </label>
-                            <input
+                          <InputField
+                            label="Name on card"
+                            placeholder="Name on card"
+                            className="w-full"
+                            error={errors.nameOnCard?.message}
+                            type="text"
+                            {...register("nameOnCard", {
+                              required: "Name on card is required",
+                              pattern: {
+                                value: /^[A-Za-z\s]+$/,
+                                message: "Name must be alphabet only",
+                              },
+                            })}
+                          />
+
+                          <div className="flex gap-4">
+                            <InputField
+                              label="Expiry date"
+                              placeholder="MM/YY"
+                              className="w-1/2"
+                              error={errors.expiry?.message}
                               type="text"
-                              placeholder="Name on card"
-                              className={`w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-200 bg-white ${
-                                errors.nameOnCard ? "border-red-500" : ""
-                              }`}
-                              {...register("nameOnCard", {
-                                required: "Name on card is required",
+                              maxLength={5}
+                              {...register("expiry", {
+                                required: "Expiry date is required",
+                                pattern: {
+                                  value: /^(0[1-9]|1[0-2])\/\d{2}$/,
+                                  message: "Invalid expiry date",
+                                },
+                                validate: {
+                                  notExpired: (v) =>
+                                    isExpiryValid(v) || "Card has expired",
+                                },
                               })}
                             />
-                            {errors.nameOnCard && (
-                              <span className="text-xs text-red-500">
-                                {errors.nameOnCard.message}
-                              </span>
-                            )}
-                          </div>
-                          <div className="flex gap-4">
-                            <div className="w-1/2">
-                              <label
-                                htmlFor="cardNumber"
-                                className="block text-sm font-medium mb-1"
-                              >
-                                Expiry date
-                              </label>
-                              <input
-                                type="text"
-                                placeholder="MM/YY"
-                                className={`w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-200 bg-white ${
-                                  errors.expiry ? "border-red-500" : ""
-                                }`}
-                                {...register("expiry", {
-                                  required: "Expiry date is required",
-                                  pattern: {
-                                    value: /^(0[1-9]|1[0-2])\/\d{2}$/,
-                                    message: "Invalid expiry date",
-                                  },
-                                })}
-                                onChange={(e: ChangeEvent<HTMLInputElement>) => {
-                                  setValue("expiry", formatExpiry(e.target.value));
-                                }}
-                              />
-                              {errors.expiry && (
-                                <span className="text-xs text-red-500">
-                                  {errors.expiry.message}
-                                </span>
-                              )}
-                            </div>
-                            <div className="w-1/2">
-                              <label
-                                htmlFor="cardNumber"
-                                className="block text-sm font-medium mb-1"
-                              >
-                                CVV
-                              </label>
-                              <input
-                                type="text"
-                                placeholder="CVV"
-                                className={`w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-200 bg-white ${
-                                  errors.cvv ? "border-red-500" : ""
-                                }`}
-                                {...register("cvv", {
-                                  required: "CVV is required",
-                                  pattern: {
-                                    value: /^[0-9]{3,4}$/,
-                                    message: "Invalid CVV",
-                                  },
-                                })}
-                              />
-                              {errors.cvv && (
-                                <span className="text-xs text-red-500">
-                                  {errors.cvv.message}
-                                </span>
-                              )}
-                            </div>
+                            <InputField
+                              label="CVV"
+                              placeholder="CVV"
+                              className="w-1/2"
+                              error={errors.cvv?.message}
+                              type="text"
+                              maxLength={4}
+                              {...register("cvv", {
+                                required: "CVV is required",
+                                pattern: {
+                                  value: /^[0-9]{3,4}$/,
+                                  message: "Invalid CVV",
+                                },
+                              })}
+                            />
                           </div>
                           {error && (
                             <div className="text-red-500 text-sm mb-2">
@@ -396,19 +401,33 @@ export default function PaymentPage() {
                           type="text"
                           placeholder="Promo code"
                           value={promoCode}
-                          onChange={(e) => setPromoCode(e.target.value)}
+                          onChange={(e) => {
+                            setPromoCode(e.target.value);
+                            setPromoApplied(false);
+                            setPromoResult(null);
+                            setPromoError(null);
+                          }}
                           className="border rounded-md px-3 py-3 text-sm flex-1"
-                          disabled={promoApplied}
                         />
                         <button
-                          className="bg-gray-100 text-gray-600 px-5 py-3 rounded-md text-sm font-medium cursor-pointer"
+                          className={`px-5 py-3 rounded-md text-sm font-medium cursor-pointer
+                            ${
+                              promoCode
+                                ? "bg-[#2F5FAC] text-white"
+                                : "bg-[#D6D9E4] text-[#9AA1B9]"
+                            }`}
                           disabled={promoApplied || !promoCode}
-                          onClick={() => setPromoApplied(true)}
+                          onClick={handleApplyPromo}
                           type="button"
                         >
                           Apply
                         </button>
                       </div>
+                      {promoError && (
+                        <div className="text-red-500 text-sm mb-2">
+                          {promoError}
+                        </div>
+                      )}
                       <div className="flex justify-between text-sm mb-1">
                         <span className="">Subtotal</span>
                         <span className="text-[#646D89]">
@@ -420,8 +439,11 @@ export default function PaymentPage() {
                       {promoApplied && (
                         <div className="flex justify-between text-sm mb-1">
                           <span className="">Discount</span>
-                          <span className="text-[#646D89]">
-                                    {Discount}
+                          <span className="text-[#9B2FAC]">
+                            {discount !== 0 ? <span> - </span> : ""}
+                            {discount.toLocaleString("en-US", {
+                              minimumFractionDigits: 2,
+                            })}
                           </span>
                         </div>
                       )}
@@ -443,13 +465,11 @@ export default function PaymentPage() {
                           })}
                         </span>
                       </div>
-                      {/* ปุ่ม Place order เดียว ใช้ร่วมกัน */}
                       <button
                         className="w-full bg-[#2F5FAC] hover:bg-blue-700 text-white font-semibold py-3 rounded-lg transition cursor-pointer"
                         disabled={isSubmitting}
                         onClick={async () => {
                           if (paymentMethod === "card") {
-                            // trigger form submit
                             if (formRef.current) {
                               formRef.current.requestSubmit();
                             }
@@ -468,13 +488,9 @@ export default function PaymentPage() {
           </div>
         </div>
       </main>
-      <Footer />
     </div>
   );
 }
-
-
-
 
 type Props = React.InputHTMLAttributes<HTMLInputElement> & {
   label: string;
