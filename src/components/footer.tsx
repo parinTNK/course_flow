@@ -5,9 +5,9 @@ import Link from "next/link";
 
 const Footer: React.FC = () => {
   return (
-    <footer className="bg-[#112B55] text-white px-6 sm:px-20 lg:px-40 py-10 mt-16">
-      <div className="max-w-screen-xl mx-auto flex flex-col sm:flex-row justify-between items-center sm:items-start text-center sm:text-left gap-8">
-        {/* Left: Logo */}
+<footer className="bg-[#112B55] text-white px-6 sm:px-20 lg:px-40 h-[17rem] sm:h-[10rem] py-8">
+
+<div className="max-w-screen-xl mx-auto h-full flex flex-col sm:flex-row justify-between items-start sm:items-center text-center sm:text-left gap-8">        {/* Left: Logo */}
         <Link
           href="/"
           className="text-2xl font-extrabold bg-gradient-to-r from-[#95BEFF] to-[#0040E5] bg-clip-text text-transparent"
@@ -17,7 +17,7 @@ const Footer: React.FC = () => {
         </Link>
 
         {/* Center: Navigation Links */}
-        <div className="flex flex-col sm:flex-row gap-4 sm:gap-8">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-8">
           <Link
             href="/courses"
             className="text-[#C0C9E3] text-base hover:text-white transition"

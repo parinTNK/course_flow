@@ -19,6 +19,8 @@
     "clsx": "^2.1.1",
     "dotenv": "^16.5.0",
     "lucide-react": "^0.507.0",
+    "embla-carousel-autoplay": "^8.6.0",
+    "embla-carousel-react": "^8.6.0",
     "motion": "^12.9.7",
     "next": "15.3.1",
     "react": "^19.0.0",

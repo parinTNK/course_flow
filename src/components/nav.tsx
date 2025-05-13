@@ -49,7 +49,7 @@ const NavBar = ({ user }: { user?: UserType | null }) => {
 
         <div className="flex items-center space-x-6">
           <Link
-            href="/courses"
+            href="/our-courses"
             className="font-semibold text-[#1A1A66] hover:text-[#0033CC] transition"
           >
             Our Courses
@@ -122,17 +122,22 @@ const NavBar = ({ user }: { user?: UserType | null }) => {
 
         <div className="flex items-center space-x-4">
           <Link
-            href="/courses"
-            className="text-sm font-semibold text-[#1A1A66] hover:text-[#0033CC] transition"
+            href="/our-courses"
+            className="text-sm font-bold text-[#1A1A66] hover:text-[#0033CC] transition !important"
           >
             Our Courses
           </Link>
 
           {!user ? (
             <Link href="/login">
-              <ButtonT variant="primary" className="w-[90px] h-[40px] text-sm">
-                Log in
-              </ButtonT>
+<ButtonT
+  variant="primary"
+  className="font-sans whitespace-nowrap w-[74px] h-[37px] sm:w-[90px] sm:h-[40px] text-sm sm:text-base"
+>
+  Log in
+</ButtonT>
+
+
             </Link>
           ) : (
             <DropdownMenu onOpenChange={setIsOpen}>
