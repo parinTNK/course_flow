@@ -1,6 +1,5 @@
 "use client";
 import { useState } from "react";
-import NavBar from "@/components/nav";
 import { ValidationError } from "./utils/validation";
 import { register } from "./utils/action";
 
@@ -44,18 +43,21 @@ export default function RegisterPage() {
   // UI
   return (
     <div className="min-h-screen mx-auto bg-white">
-      <NavBar />
-
-      <div className="absolute top-70 -left-102 w-125 h-125 rounded-full !bg-[var(--orange-100)]"></div>
+      <div className="absolute md:top-70 md:-left-102 md:w-125 md:h-125 md:rounded-full bottom-5 -left-40 w-50 h-50 rounded-full !bg-[var(--orange-100)]"></div>
       <div>
         <img
           src="/Group 5.svg"
           alt="loading"
-          className="absolute top-70 left-70"
+          className="md:absolute md:top-70 md:left-70"
         />
       </div>
-      <div className="absolute top-46 left-45 w-15 h-15 rounded-full bg-[var(--blue-200)]"></div>
-      <div className="absolute right-32 bottom-100 w-10 h-10 rounded-full border-amber-500 border-4"></div>
+      <div className="absolute md:top-46 md:left-45 md:w-15 md:h-15 md:rounded-full w-10 h-10 top-20 -left-5 rounded-full bg-[var(--blue-200)]"></div>
+      <img
+        src="/Vector-8.svg"
+        alt="loading"
+        className="absolute md:top-3 md:right-0 -top-45 -right-30 "
+      />
+      <div className="absolute md:right-20 md:bottom-90 md:w-10 md:h-10 right-10 bottom-110 rounded-full w-4 h-4 md:rounded-full border-amber-500 border-4 "></div>
       <div className="max-w-md mx-auto px-4 py-8 mt-40">
         <h2 className="text-[#2d3ecb] text-h2 font-bold mb-10 w-[453px] h-[45px]">
           Register to start learning!
