@@ -1,6 +1,7 @@
 import React from 'react';
 import Sidebar from './components/Sidebar';
 import { CoursesProvider } from './context/CoursesContext';
+import {Toaster} from 'sonner'
 
 export default function AdminLayout({
   children,
@@ -13,6 +14,7 @@ export default function AdminLayout({
         <Sidebar />
         <main className="flex-1 bg-gray-50 min-h-screen">
           {children}
+          <Toaster position="bottom-right" richColors />
         </main>
       </div>
     </CoursesProvider>

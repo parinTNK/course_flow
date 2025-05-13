@@ -3,15 +3,15 @@ import { NextRequest } from 'next/server';
 
 export async function DELETE(
     req: NextRequest,
-    { params }: { params: { id: string } }
+     { params }: { params: { id: string } }
 ) {
     try {
-        const courseId = params.id;
+        const { id } = await params;
 
         const { data: existingCourse, error: fetchError } = await supabase
             .from('courses')
             .select('id')
-            .eq('id', courseId)
+            .eq('id', id)
             .single();
 
         if (fetchError || !existingCourse) {
@@ -21,7 +21,7 @@ export async function DELETE(
         const { error } = await supabase
             .from('courses')
             .delete()
-            .eq('id', courseId);
+            .eq('id', id);
 
         if (error) {
             return Response.json({ error: error.message }, { status: 500 });
