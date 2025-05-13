@@ -2,14 +2,17 @@
 import { useState } from "react";
 import { ValidationError } from "./utils/validation";
 import { register } from "./utils/action";
+import { useRouter } from "next/navigation";
+import { useCustomToast } from "@/components/ui/CustomToast";
 
 export default function RegisterPage() {
+  const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
   const [validationErrors, setValidationErrors] = useState<ValidationError[]>(
     []
   );
+  const toast = useCustomToast();
 
   const [formData, setFormData] = useState({
     name: "",
@@ -42,8 +45,8 @@ export default function RegisterPage() {
 
   // UI
   return (
-    <div className="min-h-screen mx-auto bg-white">
-      <div className="absolute md:top-70 md:-left-102 md:w-125 md:h-125 md:rounded-full bottom-5 -left-40 w-50 h-50 rounded-full !bg-[var(--orange-100)]"></div>
+    <div className=" md:mx-auto bg-white container w-full ">
+      <div className="absolute md:top-70 md:-left-102 md:w-125 md:h-125 md:rounded-full top-210 -left-40 w-50 h-50 rounded-full !bg-[var(--orange-100)]"></div>
       <div>
         <img
           src="/Group 5.svg"
@@ -55,29 +58,19 @@ export default function RegisterPage() {
       <img
         src="/Vector-8.svg"
         alt="loading"
-        className="absolute md:top-3 md:right-0 -top-45 -right-30 "
+        className="absolute md:top-3 md:right-0 top-50 -right-40 "
       />
-      <div className="absolute md:right-20 md:bottom-90 md:w-10 md:h-10 right-10 bottom-110 rounded-full w-4 h-4 md:rounded-full border-amber-500 border-4 "></div>
-      <div className="max-w-md mx-auto px-4 py-8 mt-40">
-        <h2 className="text-[#2d3ecb] text-h2 font-bold mb-10 w-[453px] h-[45px]">
+      <div className="absolute md:right-20 md:bottom-90 md:w-10 md:h-10 right-10 bottom-115 rounded-full w-4 h-4 md:rounded-full border-amber-500 border-4 "></div>
+      <div className="md:max-w-md md:mx-auto px-4 py-8 mt-40">
+        <h2 className="text-[#2d3ecb] md:text-h2 text-h3 font-bold md:mb-10 mb-5 md:w-[453px] md:h-[45px] w-[470px] h-[45px] ">
           Register to start learning!
         </h2>
-
-        {success && (
-          <div className="mb-4 p-3 bg-green-50 text-green-700 rounded-lg">
-            {success}{" "}
-            <a href="/login" className="underline text-blue-600">
-              Log in now
-            </a>
-          </div>
-        )}
 
         <form
           onSubmit={async (e) => {
             e.preventDefault();
             setLoading(true);
             setError("");
-            setSuccess("");
             setValidationErrors([]);
 
             try {
@@ -89,7 +82,10 @@ export default function RegisterPage() {
               const result = await register(submitFormData);
 
               if (result.success) {
-                setSuccess("successfully registered, please verify your email");
+                toast.success(
+                  "Registration Successful",
+                  "Please check your email to verify your account"
+                );
 
                 setFormData({
                   name: "",
@@ -98,8 +94,13 @@ export default function RegisterPage() {
                   email: "",
                   password: "",
                 });
+                router.push("/login");
               } else if (result.errors) {
                 setValidationErrors(result.errors);
+                toast.warning(
+                  "Invalid Information",
+                  "Please check your input and try again"
+                );
               } else if (result.error) {
                 if (
                   result.error.includes("User already registered") ||
@@ -111,6 +112,10 @@ export default function RegisterPage() {
                   setError(
                     "email already registered, please try another email"
                   );
+                  toast.error(
+                    "Email Already Registered",
+                    "Please use another email or login to your account"
+                  );
 
                   setValidationErrors([
                     {
@@ -120,17 +125,22 @@ export default function RegisterPage() {
                   ]);
                 } else {
                   setError(result.error);
+                  toast.error(
+                    "Error Occurred",
+                    result.error || "Please try again"
+                  );
                 }
               }
             } catch (err) {
               setError("An error occurred. Please try again later.");
+              toast.error("Unexpected Error", "Please try again later");
             } finally {
               setLoading(false);
             }
           }}
           className="space-y-4"
         >
-          <div className="mb-12">
+          <div className="md:mb-12 mb-7">
             <label className="block text-b2 mb-2">Name</label>
             <input
               name="name"
@@ -150,7 +160,7 @@ export default function RegisterPage() {
             )}
           </div>
 
-          <div className="mb-12">
+          <div className="md:mb-12 mb-7">
             <label className="block text-b2 mb-2">Date of Birth</label>
             <input
               name="dob"
@@ -170,7 +180,7 @@ export default function RegisterPage() {
             )}
           </div>
 
-          <div className="mb-12">
+          <div className="md:mb-12 mb-7">
             <label className="block text-b2 mb-2">Educational Background</label>
             <input
               name="education"
@@ -190,7 +200,7 @@ export default function RegisterPage() {
             )}
           </div>
 
-          <div className="mb-12">
+          <div className="md:mb-12 mb-7">
             <label className="block text-b2 mb-2">Email</label>
             <input
               name="email"
@@ -210,7 +220,7 @@ export default function RegisterPage() {
             )}
           </div>
 
-          <div className="mb-12">
+          <div className="md:mb-12 mb-7">
             <label className="block text-b2 mb-2">Password</label>
             <input
               name="password"
