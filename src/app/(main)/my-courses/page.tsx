@@ -1,32 +1,9 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import NavBar from "@/components/nav";
-import Footer from "@/components/footer";
 import CourseCard from "@/components/CourseCard";
 import axios from "axios";
-
-
-type Lesson = {
-  id: string;
-  title: string;
-  order_no: number;
-  course_id: string;
-  created_at: string;
-  updated_at: string;
-};
-
-type Course = {
-  id: string;
-  name: string;
-  price: number;
-  status: string;
-  lessons: Lesson[];
-  summary: string;
-  cover_image_url: string;
-  total_learning_time: number;
-  progress: number;
-};
+import type {Course} from '@/types/Course';
 
 const mockUser = {
   name: "John Donut",
@@ -39,7 +16,7 @@ const MyCourses: React.FC = () => {
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
+  
   const filteredCourses = courses.filter((course) => {
     if (tab === "all") return true;
     if (tab === "inprogress")
@@ -73,7 +50,6 @@ const MyCourses: React.FC = () => {
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
-      <NavBar user={mockUser} />
       <main className="flex-1 pt-30">
         <div className="container mx-auto px-4 py-8">
           <div className="flex flex-col gap-8 max-w-6xl mx-auto">
@@ -153,7 +129,6 @@ const MyCourses: React.FC = () => {
           </div>
         </div>
       </main>
-      <Footer />
       <div className="block md:hidden">
         <Sidebar
           name={mockUser.name}
