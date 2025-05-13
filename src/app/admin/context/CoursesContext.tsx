@@ -11,6 +11,7 @@ import React, {
 } from "react";
 import { Course } from "../types";
 import ConfirmationModal from "@/app/admin/components/ConfirmationModal";
+import { useCustomToast } from '@/components/ui/CustomToast';
 
 interface PaginationData {
   totalItems: number;
@@ -53,7 +54,6 @@ export const CoursesProvider = ({ children }: { children: ReactNode }) => {
   });
   const coursesPerPage = 10;
 
-  // Fetch courses with pagination
   const fetchCourses = useCallback(async () => {
     setIsLoading(true);
     setError(null);
@@ -63,14 +63,14 @@ export const CoursesProvider = ({ children }: { children: ReactNode }) => {
         limit: coursesPerPage.toString(),
         search: searchTerm
       });
-      
+
       const response = await fetch(`/api/courses-list?${queryParams.toString()}`);
-      
+
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.error || `Failed to fetch courses: ${response.statusText}`);
       }
-      
+
       const data = await response.json();
       setCourses(data.courses);
       setPagination(data.pagination);
@@ -86,16 +86,19 @@ export const CoursesProvider = ({ children }: { children: ReactNode }) => {
     fetchCourses();
   }, [fetchCourses]);
 
-  // Reset to first page when search term changes
   useEffect(() => {
     setCurrentPage(1);
   }, [searchTerm]);
+
 
   const handleDeleteCourse = useCallback((id: string) => {
     setCourseToDelete(id);
     setIsConfirmOpen(true);
   }, []);
 
+  const { success, error: toastError } = useCustomToast();
+
+  
   const confirmDeleteCourse = useCallback(async () => {
     if (!courseToDelete) return;
 
@@ -109,10 +112,10 @@ export const CoursesProvider = ({ children }: { children: ReactNode }) => {
         throw new Error(errorData.error || "Failed to delete course");
       }
 
-      // Re-fetch courses after deletion
+      success('Course deleted successfully', 'The course has been removed from the system.');
       fetchCourses();
     } catch (err) {
-      alert(`Error deleting course: ${(err as Error).message}`);
+      toastError('An error occurred', 'Unable to delete the course.');
       console.error("Error deleting course:", err);
     } finally {
       setIsConfirmOpen(false);
@@ -123,7 +126,7 @@ export const CoursesProvider = ({ children }: { children: ReactNode }) => {
   const contextValue = useMemo(
     () => ({
       courses,
-      filteredCourses: courses, // No longer needed but kept for API compatibility
+      filteredCourses: courses,
       isLoading,
       error,
       searchTerm,

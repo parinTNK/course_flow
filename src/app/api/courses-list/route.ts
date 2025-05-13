@@ -3,7 +3,6 @@ import { NextRequest } from 'next/server';
 
 export async function GET(request: NextRequest) {
     try {
-
         const url = new URL(request.url);
         const page = parseInt(url.searchParams.get('page') || '1', 10);
         const limit = parseInt(url.searchParams.get('limit') || '10', 10);
@@ -11,7 +10,6 @@ export async function GET(request: NextRequest) {
         
         const from = (page - 1) * limit;
         const to = from + limit - 1;
-
 
         const { count, error: countError } = await supabase
             .from('courses')
@@ -25,7 +23,6 @@ export async function GET(request: NextRequest) {
                 { status: 400 }
             );
         }
-
         const { data, error } = await supabase
             .from('courses')
             .select(`

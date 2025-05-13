@@ -44,7 +44,7 @@ export default function DashboardPage() {
   }, []);
 
   return (
-    <div className="bg-gray-100 flex-1 min-h-full">
+    <div className="bg-gray-100 flex-1 h-screen overflow-hidden">
       <div className="flex justify-between items-center mb-12 bg-white p-8 border-b-3 border-gray-200">
         <h1 className="text-3xl font-semibold text-gray-800">Course</h1>
         <div className="flex items-center space-x-4">
@@ -85,7 +85,6 @@ export default function DashboardPage() {
           </>
         )}
 
-        {/* //TODO: check with team position is ok or not  */}
         {courses.length > 0 && (
               <div className="mt-4">
                 <Pagination 
