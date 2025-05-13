@@ -1,216 +1,208 @@
 "use client"
 
+import React from 'react';
 import NavBar from "@/components/nav";
 import Footer from "@/components/footer";
-import { useState } from "react";
+import CourseCard from "@/components/CourseCard";
+import { useEffect, useState } from "react";
+import { VideoOff } from "lucide-react";
 import Link from "next/link";
+import { useSearchParams } from 'next/navigation';
+import { supabase } from "@/lib/supabaseClient";
 
-export default function CourseDetail() {
+const CourseDetailPage: React.FC = () => {
+    const searchParams = useSearchParams();
+    const [isAuthenticated, setIsAuthenticated] = useState(true);
     const mockUser = {
         name: "John Donut",
         avatarUrl: "https://i.pravatar.cc/150?img=45",
     };
 
     const [showModal, setShowModal] = useState(false);
-    
-    // Mock data สำหรับ Module Samples
     const [expandedModule, setExpandedModule] = useState<number | null>(null);
+    const [courses, setCourses] = useState<any>(null);
+    const [modules, setModules] = useState<any[]>([]);
+    const [otherCourses, setOtherCourses] = useState<any[]>([]); 
 
-    const modules = [
-        {
-            id: 1,
-            title: "Introduction",
-            topics: [
-                "Welcome to the Course",
-                "Course Overview",
-                "Getting to Know You",
-                "What is Service Design ?",
-                "Service Design vs. UX vs. UI vs. Design Thinking",
-                "4 Levels of Service Design in an Organization",
-                "Scope of Service Design",
-                "Develop an Entirely New Service - U Drink I Drive",
-                "Improving Existing Services - Credit Cards",
-                "Improving Existing Services - MK",
-                "Levels of Impact"
-            ]
-        },
-        {
-            id: 2,
-            title: "Service Design Theories and Principles",
-            topics: []
-        },
-        {
-            id: 3,
-            title: "Understanding Users and Finding Opportunities",
-            topics: []
-        },
-        {
-            id: 4,
-            title: "Identifying and Validating Opportunities for Design",
-            topics: []
-        },
-        {
-            id: 5,
-            title: "Prototyping",
-            topics: []
-        },
-        {
-            id: 6,
-            title: "Course Summary",
-            topics: []
-        }
-    ];
+    // fetch data from supabase
+    useEffect(() => {
+        const fetchData = async () => {
+            const courseId = searchParams.get('id') || "10feb05e-8999-425f-bc0d-9c0940bf1e04";
 
-    // Mock data สำหรับ Related Courses
-    const relatedCourses = [
-        {
-            id: 1,
-            title: "Service Design Essentials",
-            description: "Lorem ipsum dolor sit amet, conse ctetur adipiscing elit.",
-            image: "/path/to/service-design-image.jpg",
-            lessons: 6,
-            hours: 6
-        },
-        {
-            id: 2,
-            title: "Software Developer",
-            description: "Lorem ipsum dolor sit amet, conse ctetur adipiscing elit.",
-            image: "/path/to/software-dev-image.jpg",
-            lessons: 6,
-            hours: 6
-        },
-        {
-            id: 3,
-            title: "UX/UI Design Beginer",
-            description: "Lorem ipsum dolor sit amet, conse ctetur adipiscing elit.",
-            image: "/path/to/uxui-design-image.jpg",
-            lessons: 6,
-            hours: 6
-        }
-    ];
+            const { data: courseData, error: courseError } = await supabase
+                .from("courses")
+                .select("*")
+                .eq("id", courseId)
+                .single();
+
+            const { data: moduleData, error: moduleError } = await supabase
+                .from("lessons")
+                .select("*, sub_lessons(*)")
+                .eq("course_id", courseId)
+                .order("order_no", { ascending: true });
+
+            const { data: otherCourseData, error: otherCourseError } = await supabase
+                .from("courses")
+                .select(`
+                    *,
+                    lessons:lessons(count)
+                `)
+                .neq("id", courseId)
+                .limit(3);
+
+            if (courseData) setCourses(courseData);
+            if (moduleData) setModules(moduleData);
+            if (otherCourseData) {
+                const formattedOtherCourses = otherCourseData.map(course => ({
+                    ...course,
+                    total_lessons: course.lessons.count
+                }));
+                setOtherCourses(formattedOtherCourses);
+            }
+
+            if (courseError || moduleError || otherCourseError) {
+                console.error(courseError || moduleError || otherCourseError);
+            }
+        };
+
+        fetchData();
+    }, [searchParams]); // เพิ่ม searchParams เป็น dependency
 
     const toggleModule = (moduleId: number) => {
-        if (expandedModule === moduleId) {
-            setExpandedModule(null);
-        } else {
-            setExpandedModule(moduleId);
-        }
+       setExpandedModule(expandedModule === moduleId ? null : moduleId);
     };
 
     return (
         <div className="min-h-screen flex flex-col">
-            <NavBar user={mockUser} />
+            <NavBar user={isAuthenticated ? mockUser : null} />
             
             <main className="flex-grow container mx-auto mt-20 px-4 py-8">
                 {/* Back button */}
-                <Link href="/our-courses" className="text-blue-600 mb-6 inline-block">
-                    ← Back
+                <Link href="/our-courses" className="text-blue-600 mb-6 inline-flex items-center">
+                    <img src="/Left-Arrow.svg" alt="Back Button" className="mr-1"/> 
+                    <span>Back</span>
                 </Link>
 
                 {/* Course Header Section */}
-                <div className="grid md:grid-cols-3 gap-8 mb-12">
+                <div className="grid md:grid-cols-3 gap-8 mb-12 relative">
+                    {/* Content Area */}
                     <div className="md:col-span-2">
-                        <div className="relative w-full h-[400px] bg-gray-200 rounded-lg overflow-hidden">
-                            {/* Placeholder for video/thumbnail */}
-                            <div className="absolute inset-0 flex items-center justify-center">
-                                <button className="w-16 h-16 bg-white rounded-full flex items-center justify-center">
-                                    <span className="text-4xl">▶</span>
-                                </button>
+                        {courses?.video_trailer_url ? (
+                            <video 
+                                className="relative w-full h-[400px] bg-gray-200 rounded-lg overflow-hidden"
+                                controls>
+                                <source src={courses?.video_trailer_url} type="video/mp4" />
+                                    Your browser does not support the video tag.
+                            </video>
+                        ) : (
+                            <div className="flex items-center justify-center w-full h-[400px] bg-gray-200 rounded-lg text-gray-500 text-sm">
+                                <VideoOff className="w-10 h-10 mb-2" />
+                                    <span>Video not found</span>
                             </div>
-                        </div>
-                    </div>
-                    
-                    <div className="md:col-span-1">
-                        <div className="p-6 border rounded-lg">
-                            <span className="text-orange-500">Course</span>
-                            <h1 className="text-2xl font-bold mb-2">Service Design Essentials</h1>
-                            <p className="text-gray-600 mb-4">Lorem ipsum dolor sit amet, conse ctetur adipiscing elit.</p>
-                            <p className="text-2xl font-bold mb-6">THB 3,559.00</p>
-                            
-                            <button className="w-full mb-3 py-2 px-4 border border-orange-500 text-orange-500 rounded hover:bg-orange-50">
-                                Add to Wishlist
-                            </button>
-                            <button 
-                                className="w-full py-2 px-4 bg-blue-600 text-white rounded hover:bg-blue-700"
-                                onClick={() => setShowModal(true)}
-                            >
-                                Subscribe This Course
-                            </button>
-                        </div>
-                    </div>
-                </div>
+                        )}  
 
-                {/* Course Detail Section */}
-                <div className="mb-12">
-                    <h2 className="text-2xl font-bold mb-4">Course Detail</h2>
-                    <div className="prose max-w-none">
-                        <p className="text-gray-600">
-                            Lorem ipsum dolor sit amet, consectetur adipisicing elit. Elementum aenean fermentum, velit vel, scelerisque morbi accumsan. Nec, tellus leo id leo id felis egestas. Quam sit lorem quis vitae ut mus imperdiet. Volutpat placerat dignissim dolor faucibus elit ornare fringilla. Vivamus amet risus ullamcorper auctor nibh. Maecenas morbi nec vestibulum ac tempus vehicula.
-                        </p>
-                    </div>
-                </div>
+                        {/* Course Detail Section */}
+                        <div className="my-12">
+                            <h2 className="text-2xl font-bold mb-4">Course Detail</h2>
+                            <div className="prose max-w-none text-gray-600">
+                                {courses?.detail?.split('\n\n').map((para, idx) => (
+                                <p key={idx} className="mb-4 whitespace-pre-line">
+                                    {para}
+                                </p>
+                            ))}
+                            </div>
+                        </div>   
 
-                {/* Module Samples Section */}
-                <div className="mb-12">
-                    <h2 className="text-2xl font-bold mb-4">Module Samples</h2>
-                    <div className="space-y-4">
-                        {modules.map((module) => (
-                            <div key={module.id} className="border rounded-lg">
-                                <button
-                                    className="w-full p-4 text-left flex items-center justify-between"
-                                    onClick={() => toggleModule(module.id)}
-                                >
-                                    <span className="flex items-center">
-                                        <span className="text-gray-500 mr-4">{String(module.id).padStart(2, '0')}</span>
-                                        {module.title}
-                                    </span>
-                                    <span className={`transform transition-transform ${expandedModule === module.id ? 'rotate-180' : ''}`}>
-                                        ▼
-                                    </span>
-                                </button>
-                                {expandedModule === module.id && module.topics.length > 0 && (
-                                    <div className="p-4 pt-0">
-                                        <ul className="space-y-2 text-gray-600">
-                                            {module.topics.map((topic, index) => (
-                                                <li key={index} className="pl-12">• {topic}</li>
-                                            ))}
-                                        </ul>
+                        {/* Module Samples Section */}
+                        <div className="mb-12">
+                            <h2 className="text-2xl font-bold mb-4">Module Samples</h2>
+                            <div className="space-y-4">
+                                {modules.map((module: any) => (
+                                    <div key={module.id} className="border rounded-lg">
+                                        <button
+                                            className="w-full p-4 text-left flex items-center justify-between"
+                                            onClick={() => toggleModule(module.id)}
+                                        >
+                                            <span className="flex items-center">
+                                                <span className="text-gray-500 mr-4">{String(module.order_no).padStart(2, '0')}</span>
+                                                {module.title}
+                                            </span>
+                                            <span className={`transform transition-transform ${expandedModule === module.id ? 'rotate-180' : ''}`}>
+                                                ▼
+                                            </span>
+                                        </button>
+                                        {expandedModule === module.id && module.title.length > 0 && (
+                                            <div className="p-4 pt-0">
+                                                <ul className="space-y-2 text-gray-600">
+                                                    {module.sub_lessons?.map((sub: any) => (
+                                                        <li key={sub.id} className="pl-12">• {sub.title}</li>
+                                                    ))}
+                                                </ul>
+                                            </div>
+                                        )}
                                     </div>
-                                )}
+                                ))}
                             </div>
-                        ))}
+                        </div>
+                    </div>
+
+                    {/* Sidebar Sticky Area */}
+                    <div className="md:col-span-1">
+                        <div className="sticky top-30 mb-12 p-6 border rounded-lg bg-white z-10">
+                            <span className="text-orange-500">Course</span>
+                            <h1 className="text-2xl font-bold mb-2">{courses?.name}</h1>
+                            <p className="text-gray-600 mb-4">{courses?.summary}</p>
+                            <p className="text-2xl font-bold mb-6">THB {courses?.price?.toLocaleString()}</p>
+                            
+                            {isAuthenticated ? (
+                                <>
+                                    <button className="w-full mb-3 py-2 px-4 border border-orange-500 text-orange-500 rounded hover:bg-orange-50">
+                                        Add to Wishlist
+                                    </button>
+                                    <button 
+                                        className="w-full py-2 px-4 bg-blue-600 text-white rounded hover:bg-blue-700"
+                                        onClick={() => setShowModal(true)}
+                                    >
+                                        Subscribe This Course
+                                    </button>
+                                </>
+                            ) : (
+                                <>
+                                    <Link 
+                                        href="/login" 
+                                        className="w-full mb-3 py-2 px-4 border border-orange-500 text-orange-500 rounded hover:bg-orange-50 block text-center"
+                                    >
+                                        Add to Wishlist
+                                    </Link>
+                                    <Link 
+                                        href="/login"
+                                        className="w-full py-2 px-4 bg-blue-600 text-white rounded hover:bg-blue-700 block text-center"
+                                    >
+                                        Subscribe This Course
+                                    </Link>
+                                </>
+                            )}
+                        </div>
                     </div>
                 </div>
 
                 {/* Other Interesting Courses Section */}
                 <div className="mb-12">
-                    <h2 className="text-2xl font-bold mb-6">Other Interesting Courses</h2>
+                    <hr></hr>
+                    <h2 className="text-center text-2xl font-bold my-6 ">Other Interesting Courses</h2>
                     <div className="grid md:grid-cols-3 gap-6">
-                        {relatedCourses.map((course) => (
-                            <Link href={`/course-detail/${course.id}`} key={course.id}>
-                                <div className="border rounded-lg overflow-hidden hover:shadow-lg transition-shadow">
-                                    <div className="relative h-48 bg-gray-200">
-                                        {/* Course Image Placeholder */}
-                                    </div>
-                                    <div className="p-4">
-                                        <span className="text-orange-500">Course</span>
-                                        <h3 className="font-bold mb-2">{course.title}</h3>
-                                        <p className="text-gray-600 text-sm mb-4">{course.description}</p>
-                                        <div className="flex items-center text-sm text-gray-500">
-                                            <span className="mr-4">{course.lessons} Lesson</span>
-                                            <span>{course.hours} Hours</span>
-                                        </div>
-                                    </div>
-                                </div>
+                        {otherCourses.map((course) => (
+                            <Link href={`/course-detail?id=${course.id}`} key={course.id}>
+                                <CourseCard course={course} />
                             </Link>
                         ))}
                     </div>
                 </div>
             </main>
 
-            {/* Modal */}
-            {showModal && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            {/* Modal - แสดงเฉพาะเมื่อ login แล้ว */}
+            {isAuthenticated && showModal && (
+                <div className="fixed inset-0 bg-white bg-opacity-100 flex items-center justify-center z-50">
                     <div className="bg-white p-6 rounded-lg shadow-lg max-w-md w-full mx-4">
                         <div className="flex justify-between items-center mb-4">
                             <h3 className="text-xl font-semibold">Confirmation</h3>
@@ -218,11 +210,11 @@ export default function CourseDetail() {
                                 onClick={() => setShowModal(false)}
                                 className="text-gray-500 hover:text-gray-700"
                             >
-                                ×
+                                <img src="/Frame-6.svg" alt="X Button" />
                             </button>
                         </div>
-                        <p className="mb-6">Do you sure to subscribe Service Design Essentials Course?</p>
-                        <div className="flex justify-end space-x-4">
+                        <p className="mb-6">Do you sure to subscribe {courses.name} Course?</p>
+                        <div className="flex space-x-4">
                             <button 
                                 onClick={() => setShowModal(false)}
                                 className="px-4 py-2 border border-gray-300 rounded text-gray-700 hover:bg-gray-50"
@@ -240,8 +232,33 @@ export default function CourseDetail() {
                     </div>
                 </div>
             )}
+         
+            {/* Register Section - แสดงเฉพาะเมื่อเป็น Guest */}
+            {!isAuthenticated && (
+                <div className="bg-blue-600 text-white py-16 px-4 rounded-lg">
+                    <div className="container mx-auto flex flex-col md:flex-row items-center justify-between">
+                        <div className="md:w-1/2 mb-8 md:mb-0">
+                            <h2 className="text-3xl font-bold mb-4">Want to start learning?</h2>
+                            <Link 
+                                href="/register" 
+                                className="inline-block px-8 py-3 bg-white text-orange-500 rounded-lg font-semibold hover:bg-gray-100"
+                            >
+                                Register here
+                            </Link>
+                        </div>
+                        <div className="md:w-1/2">
+                            <img 
+                                src="/learning.svg" 
+                                alt="Learning Illustration" 
+                                className="w-full max-w-md mx-auto"
+                            />
+                        </div>
+                    </div>
+                </div>
+            )}
 
             <Footer />
         </div>
     );
 }
+export default CourseDetailPage;
