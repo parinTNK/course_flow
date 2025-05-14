@@ -70,7 +70,7 @@ export async function register(formData: FormData) {
             full_name: name,
             educational_background: education,
             date_of_birth: formattedDob,
-            profile_picture: "https://randomuser.me/api/portraits/men/1.jpg"
+            profile_picture: "https://randomuser.me/api/portraits/men/1.jpg" 
         };
         
         console.log("Attempting to create profile with data:", profileData);
