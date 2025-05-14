@@ -1,19 +1,25 @@
 import { supabase } from '@/lib/supabaseClient';
 import { NextRequest } from 'next/server';
 
+// ========== HELPER FUNCTIONS ==========
+function createErrorResponse(message: string, status: number) {
+  return Response.json({ error: message }, { status });
+}
+
+function createSuccessResponse(data: unknown, status: number) {
+  return Response.json(data, { status });
+}
+
+// ========== GET HANDLER ==========
 export async function GET(
   req: NextRequest,
   context: { params: { userId: string } }
 ) {
   try {
-    // Mock user ID for testing
-    const mockUser = {
-      id: "35557ac8-fb44-4052-9c73-8fc50a3edda1",
-    };
-    const userId = mockUser.id; // Use mock user ID
+    const userId = context.params.userId;
 
     if (!userId) {
-      return Response.json({ error: 'Missing user_id' }, { status: 400 });
+      return createErrorResponse('Missing user_id', 400);
     }
 
     const { data, error } = await supabase
@@ -24,16 +30,13 @@ export async function GET(
 
     if (error) {
       console.error('Error fetching profile:', error.message);
-      return Response.json({ error: error.message }, { status: 400 });
+      return createErrorResponse(error.message, 400);
     }
 
-    return Response.json({ profile: data }, { status: 200 });
+    return createSuccessResponse({ profile: data }, 200);
   } catch (e) {
     console.error('Server error in GET /api/users/[userId]/profile:', (e as Error).message);
-    return Response.json(
-      { error: (e as Error).message || 'Unknown error' },
-      { status: 500 }
-    );
+    return createErrorResponse((e as Error).message || 'Unknown error', 500);
   }
 }
 
@@ -65,14 +68,10 @@ export async function PATCH(
   context: { params: { userId: string } }
 ) {
   try {
-    // Mock user ID for testing
-    const mockUser = {
-      id: "35557ac8-fb44-4052-9c73-8fc50a3edda1",
-    };
-    const userId = mockUser.id; // Use mock user ID
+    const userId = context.params.userId;
 
     if (!userId) {
-      return Response.json({ error: 'Missing user_id' }, { status: 400 });
+      return createErrorResponse('Missing user_id', 400);
     }
 
     const body = await req.json();
@@ -107,14 +106,14 @@ export async function PATCH(
 
     // Handle validation errors
     if (Object.keys(errors).length > 0) {
-      return Response.json({ errors }, { status: 422 });
+      return createSuccessResponse({ errors }, 422);
     }
 
     // Update auth.users table if email is present
     if (email != null) {
       const { error: emailUpdateError } = await supabase.auth.updateUser({ email });
       if (emailUpdateError) {
-        return Response.json({ error: emailUpdateError.message }, { status: 400 });
+        return createErrorResponse(emailUpdateError.message, 400);
       }
     }
 
@@ -137,15 +136,15 @@ export async function PATCH(
 
       if (error) {
         console.error("🔴 Supabase profile update error:", error.message);
-        return Response.json({ error: error.message }, { status: 400 });
+        return createErrorResponse(error.message, 400);
       }
 
       updatedProfile = data;
     }
 
-    return Response.json({ profile: updatedProfile }, { status: 200 });
+    return createSuccessResponse({ profile: updatedProfile }, 200);
   } catch (e) {
     console.error('PATCH error:', (e as Error).message);
-    return Response.json({ error: 'Server error' }, { status: 500 });
+    return createErrorResponse('Server error', 500);
   }
 }

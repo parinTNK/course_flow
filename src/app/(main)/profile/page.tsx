@@ -10,7 +10,7 @@ import { useRouter } from "next/navigation";
 import axios from "axios";
 
 interface FormData {
-  firstName: string; // Change this to represent "Full Name"
+  firstName: string;
   dob: string;
   school: string;
   email: string;
@@ -26,7 +26,6 @@ export default function ProfilePage() {
     null
   );
   const [uploading, setUploading] = useState(false);
-
   const [formData, setFormData] = useState<FormData>({
     firstName: "",
     dob: "",
@@ -43,47 +42,39 @@ export default function ProfilePage() {
     const selected = e.target.files?.[0];
     if (selected && selected.type.startsWith("image/")) {
       setFile(selected);
-      const preview = URL.createObjectURL(selected);
-      setPhoto(preview); // Preview only
+      setPhoto(URL.createObjectURL(selected)); // Preview only
     } else {
       alert("Please select a valid image.");
     }
   };
 
-  useEffect(() => {
-    const checkSessionAndFetchProfile = async () => {
-      const mockUser = { id: "35557ac8-fb44-4052-9c73-8fc50a3edda1" }; // Replace with Supabase session if needed
-      const userId = mockUser.id;
-      setUserId(userId);
+  const fetchProfile = async (userId: string) => {
+    try {
+      const res = await axios.get(`/api/users/${userId}/profile`);
+      const profile = res.data?.profile;
 
-      try {
-        const res = await axios.get(`/api/users/${userId}/profile`);
-        const profile = res.data?.profile;
-
-        if (profile) {
-          const [firstName, ...lastParts] = (profile.full_name || "").split(
-            " "
-          );
-          const lastName = lastParts.join(" ");
-
-          setFormData({
-            firstName: profile.full_name || "", // Use full_name directly
-            dob: profile.date_of_birth || "",
-            school: profile.educational_background || "",
-            email: profile.email || "",
-          });
-
-          setPhoto(profile.profile_picture || "");
-          setPreviousPhotoPath(profile.profile_picture || null);
-          setUserName(firstName || "User");
-        }
-      } catch (err) {
-        console.error("Failed to fetch profile:", err);
-        setPhoto("");
+      if (profile) {
+        setFormData({
+          firstName: profile.full_name || "",
+          dob: profile.date_of_birth || "",
+          school: profile.educational_background || "",
+          email: profile.email || "",
+        });
+        setPhoto(profile.profile_picture || "");
+        setPreviousPhotoPath(profile.profile_picture || null);
+        setUserName(profile.full_name?.split(" ")[0] || "User");
       }
-    };
+    } catch (err) {
+      console.error("Failed to fetch profile:", err);
+      setPhoto("");
+    }
+  };
 
-    checkSessionAndFetchProfile();
+  useEffect(() => {
+    const mockUser = { id: "35557ac8-fb44-4052-9c73-8fc50a3edda1" }; // Replace with Supabase session if needed
+    const userId = mockUser.id;
+    setUserId(userId);
+    fetchProfile(userId);
   }, []);
 
   const validate = (): FormErrors => {
@@ -101,68 +92,52 @@ export default function ProfilePage() {
       setErrors({ ...errors, [field]: "" });
     };
 
+  const uploadImage = async (): Promise<string | null> => {
+    if (!file) return previousPhotoPath;
+
+    const ext = file.name.split(".").pop();
+    const filename = `${Date.now()}.${ext}`;
+    const path = `${userId}/${filename}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from("profile-images")
+      .upload(path, file, { upsert: true });
+
+    if (uploadError) throw uploadError;
+
+    const { data: publicData } = supabase.storage
+      .from("profile-images")
+      .getPublicUrl(path);
+
+    if (previousPhotoPath && previousPhotoPath !== publicData?.publicUrl) {
+      const oldPath = previousPhotoPath.split("/").slice(-2).join("/");
+      await supabase.storage.from("profile-images").remove([oldPath]);
+    }
+
+    return publicData?.publicUrl || null;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const validationErrors = validate();
+    setErrors(validationErrors);
+    if (Object.keys(validationErrors).length > 0 || !userId) return;
+
+    setLoading(true);
     try {
-      const validationErrors = validate();
-      setErrors(validationErrors);
-      if (Object.keys(validationErrors).length > 0 || !userId) return;
+      const uploadedImageUrl = await uploadImage();
 
-      setLoading(true);
-      let uploadedImageUrl: string | null = previousPhotoPath;
-
-      // ✅ Case 1: Upload new image
-      if (file) {
-        const ext = file.name.split(".").pop();
-        const filename = `${Date.now()}.${ext}`;
-        const path = `${userId}/${filename}`;
-
-        const { error: uploadError } = await supabase.storage
-          .from("profile-images")
-          .upload(path, file, { upsert: true });
-
-        if (uploadError) throw uploadError;
-
-        const { data: publicData } = supabase.storage
-          .from("profile-images")
-          .getPublicUrl(path);
-
-        uploadedImageUrl = publicData?.publicUrl || null;
-
-        // ✅ Remove old file if different
-        if (previousPhotoPath && previousPhotoPath !== uploadedImageUrl) {
-          const oldPath = previousPhotoPath.split("/").slice(-2).join("/");
-          await supabase.storage.from("profile-images").remove([oldPath]);
-        }
-      }
-
-      // ✅ Case 2: No new file + image was removed earlier via UI
-      if (!file && !photo && previousPhotoPath) {
-        const oldPath = previousPhotoPath.split("/").slice(-2).join("/");
-        await supabase.storage.from("profile-images").remove([oldPath]);
-        uploadedImageUrl = null;
-
-        // 🛠️ Add this:
-        setPreviousPhotoPath("");
-      }
-
-      // ✅ Prepare data
       const payload: Partial<FormData> = {};
       Object.entries(formData).forEach(([key, value]) => {
-        if (value.trim()) {
-          payload[key as keyof FormData] = value;
-        }
+        if (value.trim()) payload[key as keyof FormData] = value;
       });
 
-      // ✅ Send update request
       const res = await axios.patch(`/api/users/${userId}/profile`, {
         ...payload,
-        profile_picture: uploadedImageUrl, // <- Correctly null if removed
+        profile_picture: uploadedImageUrl,
       });
 
       console.log("✅ Profile updated:", res.data.profile);
-
-      // ✅ Update local state
       setPreviousPhotoPath(uploadedImageUrl);
       setPhoto(uploadedImageUrl || "");
       setFile(null);
@@ -170,6 +145,28 @@ export default function ProfilePage() {
       console.error("Error during form submission:", err.message || err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleRemovePhoto = async () => {
+    try {
+      if (previousPhotoPath) {
+        const oldPath = previousPhotoPath.split("/").slice(-2).join("/");
+        const { error: deleteError } = await supabase.storage
+          .from("profile-images")
+          .remove([oldPath]);
+
+        if (deleteError) {
+          console.error("Failed to delete image from storage:", deleteError.message);
+        } else {
+          console.log("✅ Image deleted from storage");
+        }
+      }
+      setPhoto("");
+      setFile(null);
+      setPreviousPhotoPath("");
+    } catch (err) {
+      console.error("Error during image removal:", err);
     }
   };
 
@@ -218,39 +215,9 @@ export default function ProfilePage() {
                 ? "Change photo"
                 : "Upload photo"}
             </ButtonT>
-
             <button
               type="button"
-              onClick={async () => {
-                try {
-                  // If there is a previous photo path, delete it from Supabase Storage
-                  if (previousPhotoPath) {
-                    const oldPath = previousPhotoPath
-                      .split("/")
-                      .slice(-2)
-                      .join("/");
-                    const { error: deleteError } = await supabase.storage
-                      .from("profile-images")
-                      .remove([oldPath]);
-
-                    if (deleteError) {
-                      console.error(
-                        "Failed to delete image from storage:",
-                        deleteError.message
-                      );
-                    } else {
-                      console.log("✅ Image deleted from storage");
-                    }
-                  }
-
-                  // Clear local preview and file state
-                  setPhoto("");
-                  setFile(null);
-                  setPreviousPhotoPath("");
-                } catch (err) {
-                  console.error("Error during image removal:", err);
-                }
-              }}
+              onClick={handleRemovePhoto}
               className="text-sm mt-2 text-[#2563EB] hover:underline"
             >
               Remove photo
@@ -260,7 +227,7 @@ export default function ProfilePage() {
           <div className="w-full max-w-md space-y-6">
             {(
               [
-                "firstName", // Now represents "Full Name"
+                "firstName",
                 "dob",
                 "school",
                 "email",
@@ -271,7 +238,7 @@ export default function ProfilePage() {
                   {field === "dob"
                     ? "Date of Birth"
                     : field === "firstName"
-                    ? "Full Name" // Update label
+                    ? "Full Name"
                     : field.charAt(0).toUpperCase() +
                       field.slice(1).replace(/([A-Z])/g, " $1")}
                 </Label>
@@ -280,7 +247,7 @@ export default function ProfilePage() {
                   type={field === "dob" ? "date" : "text"}
                   placeholder={`Enter your ${
                     field === "firstName" ? "full name" : field
-                  }`} // Update placeholder
+                  }`}
                   value={formData[field]}
                   onChange={handleInputChange(field)}
                   className={errors[field] ? "border border-red-500" : ""}
