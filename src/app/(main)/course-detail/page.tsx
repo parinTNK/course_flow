@@ -4,15 +4,26 @@ import React from 'react';
 import NavBar from "@/components/nav";
 import Footer from "@/components/footer";
 import CourseCard from "@/components/CourseCard";
+import CallToAction from '@/components/landing/CallToAction';
 import { useEffect, useState } from "react";
 import { VideoOff } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from 'next/navigation';
 import { supabase } from "@/lib/supabaseClient";
+import {
+    Carousel,
+    CarouselContent,
+    CarouselItem,
+    CarouselNext,
+    CarouselPrevious,
+  } from "@/components/ui/carousel";
+import ConfirmationModal from "@/app/admin/components/ConfirmationModal";
 
 const CourseDetailPage: React.FC = () => {
     const searchParams = useSearchParams();
     const [isAuthenticated, setIsAuthenticated] = useState(true);
+    const [isSubscribed, setIsSubscribed] = useState(false);
+
     const mockUser = {
         name: "John Donut",
         avatarUrl: "https://i.pravatar.cc/150?img=45",
@@ -28,6 +39,18 @@ const CourseDetailPage: React.FC = () => {
     useEffect(() => {
         const fetchData = async () => {
             const courseId = searchParams.get('id') || "10feb05e-8999-425f-bc0d-9c0940bf1e04";
+
+            // เช็คสถานะ subscribe จาก database
+            const { data: subscriptionData, error: subscriptionError } = await supabase
+                .from("subscriptions")
+                .select("*")
+                .eq("course_id", courseId)
+                .eq("user_id", "current_user_id") // ต้องแทนที่ด้วย user id จริง
+                .single();
+
+            if (subscriptionData) {
+                setIsSubscribed(true);
+            }
 
             const { data: courseData, error: courseError } = await supabase
                 .from("courses")
@@ -45,18 +68,27 @@ const CourseDetailPage: React.FC = () => {
                 .from("courses")
                 .select(`
                     *,
-                    lessons:lessons(count)
+                    lessons!inner(
+                        id,
+                        sub_lessons(count)
+                    )
                 `)
-                .neq("id", courseId)
-                .limit(3);
+                .neq("id", courseId);
 
             if (courseData) setCourses(courseData);
             if (moduleData) setModules(moduleData);
             if (otherCourseData) {
-                const formattedOtherCourses = otherCourseData.map(course => ({
-                    ...course,
-                    total_lessons: course.lessons.count
-                }));
+                const formattedOtherCourses = otherCourseData.map(course => {
+                    // คำนวณจำนวน lessons ทั้งหมด (รวม sub_lessons)
+                    const totalSubLessons = course.lessons.reduce((total: number, lesson: any) => {
+                        return total + (lesson.sub_lessons?.count || 0);
+                    }, 0);
+                    
+                    return {
+                        ...course,
+                        total_lessons: totalSubLessons
+                    };
+                });
                 setOtherCourses(formattedOtherCourses);
             }
 
@@ -73,9 +105,8 @@ const CourseDetailPage: React.FC = () => {
     };
 
     return (
-        <div className="min-h-screen flex flex-col">  
+        <div className="min-h-screen flex flex-col">
             <main className="flex-grow container mx-auto mt-20 px-4 py-8">
-                {/* Back button */}
                 <Link href="/our-courses" className="text-blue-600 mb-6 inline-flex items-center">
                     <img src="/Left-Arrow.svg" alt="Back Button" className="mr-1"/> 
                     <span>Back</span>
@@ -104,12 +135,40 @@ const CourseDetailPage: React.FC = () => {
                             <h2 className="text-2xl font-bold mb-4">Course Detail</h2>
                             <div className="prose max-w-none text-gray-600">
                                 {courses?.detail?.split('\n\n').map((para, idx) => (
-                                <p key={idx} className="mb-4 whitespace-pre-line">
-                                    {para}
-                                </p>
-                            ))}
+                                    <p key={idx} className="mb-4 whitespace-pre-line">
+                                        {para}
+                                    </p>
+                                ))}
                             </div>
                         </div>   
+
+                        {/* Attach File Section - แสดงเฉพาะเมื่อ user subscribe แล้ว */}
+                        {isAuthenticated && isSubscribed && (
+                            <div className="my-12">
+                                <h2 className="text-2xl font-bold mb-4">Attach File</h2>
+                                {courses?.attachment_url ? (
+                                    <a 
+                                        href={courses.attachment_url}
+                                        download
+                                        className="block bg-blue-50 p-4 rounded-lg w-full max-w-sm hover:bg-blue-100 transition-colors"
+                                    >
+                                        <div className="flex items-center space-x-3">
+                                            <div className="bg-white p-2 rounded">
+                                                <img src="/file.svg" alt="Document" className="w-5 h-5" />
+                                            </div>
+                                            <div>
+                                                <p className="font-medium text-sm">{courses.name}.pdf</p>
+                                                <p className="text-xs text-gray-500">68 mb</p>
+                                            </div>
+                                        </div>
+                                    </a>
+                                ) : (
+                                    <div className="bg-gray-50 p-4 rounded-lg flex items-center justify-center text-gray-500 w-full max-w-md">
+                                        <p>No attachment file available for this course</p>
+                                    </div>
+                                )}
+                            </div>
+                        )}
 
                         {/* Module Samples Section */}
                         <div className="mb-12">
@@ -153,17 +212,26 @@ const CourseDetailPage: React.FC = () => {
                             <p className="text-2xl font-bold mb-6">THB {courses?.price?.toLocaleString()}</p>
                             
                             {isAuthenticated ? (
-                                <>
-                                    <button className="w-full mb-3 py-2 px-4 border border-orange-500 text-orange-500 rounded hover:bg-orange-50">
-                                        Add to Wishlist
-                                    </button>
-                                    <button 
-                                        className="w-full py-2 px-4 bg-blue-600 text-white rounded hover:bg-blue-700"
-                                        onClick={() => setShowModal(true)}
+                                isSubscribed ? (
+                                    <Link 
+                                        href={`/course-learning/${courses?.id}`}
+                                        className="w-full py-2 px-4 bg-blue-600 text-white rounded hover:bg-blue-700 block text-center"
                                     >
-                                        Subscribe This Course
-                                    </button>
-                                </>
+                                        Start Learning
+                                    </Link>
+                                ) : (
+                                    <>
+                                        <button className="w-full mb-3 py-2 px-4 border border-orange-500 text-orange-500 rounded hover:bg-orange-50">
+                                            Add to Wishlist
+                                        </button>
+                                        <button 
+                                            className="w-full py-2 px-4 bg-blue-600 text-white rounded hover:bg-blue-700"
+                                            onClick={() => setShowModal(true)}
+                                        >
+                                            Subscribe This Course
+                                        </button>
+                                    </>
+                                )
                             ) : (
                                 <>
                                     <Link 
@@ -184,76 +252,58 @@ const CourseDetailPage: React.FC = () => {
                     </div>
                 </div>
 
-                {/* Other Interesting Courses Section */}
-                <div className="mb-12">
-                    <hr></hr>
-                    <h2 className="text-center text-2xl font-bold my-6 ">Other Interesting Courses</h2>
-                    <div className="grid md:grid-cols-3 gap-6">
-                        {otherCourses.map((course) => (
-                            <Link href={`/course-detail?id=${course.id}`} key={course.id}>
-                                <CourseCard course={course} />
-                            </Link>
-                        ))}
+                {/* Other Interesting Courses Section - แสดงเฉพาะเมื่อยังไม่ได้ subscribe */}
+                {!isSubscribed && (
+                    <div className="mb-12">
+                        <hr></hr>
+                        <h2 className="text-center text-2xl font-bold my-6">Other Interesting Courses</h2>
+                        <div className="relative">
+                            <Carousel
+                                opts={{
+                                    align: "start",
+                                    loop: true,
+                                }}
+                                className="w-full"
+                            >
+                                <CarouselContent className="-ml-1 md:-ml-2">
+                                    {otherCourses.map((course) => (
+                                        <CarouselItem key={course.id} className="pl-1 md:pl-2 md:basis-1/3">
+                                            <div className="scale-95 px-6"> {/* เปลี่ยนจาก mx-4 เป็น px-6 */}
+                                                <Link href={`/course-detail?id=${course.id}`}>
+                                                    <CourseCard course={course} />
+                                                </Link>
+                                            </div>
+                                        </CarouselItem>
+                                    ))}
+                                </CarouselContent>
+                                <CarouselPrevious className="absolute -left-4 -translate-y-1/2 bg-white shadow-lg" /> {/* ปรับตำแหน่งและเพิ่ม shadow */}
+                                <CarouselNext className="absolute -right-4 -translate-y-1/2 bg-white shadow-lg" /> {/* ปรับตำแหน่งและเพิ่ม shadow */}
+                            </Carousel>
+                        </div>
                     </div>
-                </div>
+                )}
             </main>
 
             {/* Modal - แสดงเฉพาะเมื่อ login แล้ว */}
-            {isAuthenticated && showModal && (
-                <div className="fixed inset-0 bg-white bg-opacity-100 flex items-center justify-center z-50">
-                    <div className="bg-white p-6 rounded-lg shadow-lg max-w-md w-full mx-4">
-                        <div className="flex justify-between items-center mb-4">
-                            <h3 className="text-xl font-semibold">Confirmation</h3>
-                            <button 
-                                onClick={() => setShowModal(false)}
-                                className="text-gray-500 hover:text-gray-700"
-                            >
-                                <img src="/Frame-6.svg" alt="X Button" />
-                            </button>
-                        </div>
-                        <p className="mb-6">Do you sure to subscribe {courses.name} Course?</p>
-                        <div className="flex space-x-4">
-                            <button 
-                                onClick={() => setShowModal(false)}
-                                className="px-4 py-2 border border-gray-300 rounded text-gray-700 hover:bg-gray-50"
-                            >
-                                No, I don't
-                            </button>
-                            <Link 
-                                href="/payment"
-                                onClick={() => setShowModal(false)}
-                                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-                            >
-                                Yes, I want to subscribe
-                            </Link>
-                        </div>
-                    </div>
-                </div>
+            {isAuthenticated && (
+                <ConfirmationModal
+                    isOpen={showModal}
+                    onClose={() => setShowModal(false)}
+                    onConfirm={() => {
+                        setShowModal(false);
+                        window.location.href = '/payment';
+                    }}
+                    title="Confirmation"
+                    message={`Do you sure to subscribe ${courses?.name} Course?`}
+                    confirmText="Yes, I want to subscribe"
+                    cancelText="No, I don't"
+                    confirmButtonClass="bg-[#1D4ED8] text-white hover:bg-blue-700" // ปรับสีให้ตรงตามรูป
+                    cancelButtonClass="bg-[#1D4ED8] text-white hover:bg-blue-700" // ทำให้ปุ่ม Cancel มีสีเหมือนกัน
+                />
             )}
          
             {/* Register Section - แสดงเฉพาะเมื่อเป็น Guest */}
-            {!isAuthenticated && (
-                <div className="bg-blue-600 text-white py-16 px-4 rounded-lg">
-                    <div className="container mx-auto flex flex-col md:flex-row items-center justify-between">
-                        <div className="md:w-1/2 mb-8 md:mb-0">
-                            <h2 className="text-3xl font-bold mb-4">Want to start learning?</h2>
-                            <Link 
-                                href="/register" 
-                                className="inline-block px-8 py-3 bg-white text-orange-500 rounded-lg font-semibold hover:bg-gray-100"
-                            >
-                                Register here
-                            </Link>
-                        </div>
-                        <div className="md:w-1/2">
-                            <img 
-                                src="/learning.svg" 
-                                alt="Learning Illustration" 
-                                className="w-full max-w-md mx-auto"
-                            />
-                        </div>
-                    </div>
-                </div>
-            )}
+            {!isAuthenticated && <CallToAction />}
         </div>
     );
 }
