@@ -5,7 +5,7 @@ export async function POST(req: NextRequest) {
     try {
         const body = await req.json();
         const { 
-            name, 
+            name,
             price, 
             total_learning_time, 
             summary, 
@@ -14,10 +14,12 @@ export async function POST(req: NextRequest) {
             cover_image_url,
             video_trailer_url,
             attachment_url,
-            status
+            status,
+            created_at,
+            updated_at
         } = body;
 
-        if (!name || !price || !detail) {
+        if (!name) {
             return Response.json({ error: 'Course name is required' }, { status: 400 });
         }
 
@@ -33,7 +35,9 @@ export async function POST(req: NextRequest) {
                 cover_image_url,
                 video_trailer_url,
                 attachment_url,
-                status: status || 'draft'
+                status: status || 'draft',
+                created_at: created_at || new Date().toISOString(),
+                updated_at: updated_at || new Date().toISOString()
             }])
             .select();
 

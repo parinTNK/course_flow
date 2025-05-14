@@ -1,13 +1,14 @@
 "use client";
 
-import React, { useCallback } from "react";
-import { FiPlus } from "react-icons/fi";
-import { useRouter } from "next/navigation";
-import SearchBar from "../components/SearchBar";
-import CoursesTable from "../components/CoursesTable";
-import Pagination from "../components/Pagination";
-import { useCoursesContext } from "../context/CoursesContext";
-import LoadingSpinner from "../components/LoadingSpinner";
+import React, { useCallback } from 'react';
+import { FiPlus } from 'react-icons/fi';
+import { useRouter } from 'next/navigation';
+import SearchBar from '../components/SearchBar';
+import CoursesTable from '../components/CoursesTable';
+import Pagination from '../components/Pagination';
+import { useCoursesContext } from '../context/CoursesContext';
+import LoadingSpinner from '../components/LoadingSpinner';
+import { ButtonT } from '@/components/ui/ButtonT';
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -18,14 +19,13 @@ export default function DashboardPage() {
     searchTerm,
     setSearchTerm,
     handleDeleteCourse,
-    // Pagination
     currentPage,
     totalPages,
     setCurrentPage,
   } = useCoursesContext();
 
   const handleAddCourse = useCallback(() => {
-    alert("Add course functionality to be implemented");
+    router.push('/admin/dashboard/create-courses');
   }, [router]);
 
   const handleEditCourse = useCallback(
@@ -56,7 +56,7 @@ export default function DashboardPage() {
 
   return (
     <div className="bg-gray-100 flex-1 h-screen overflow-hidden">
-      <div className="flex justify-between items-center mb-12 bg-white p-8 border-b-3 border-gray-200">
+      <div className="flex justify-between items-center mb-8 bg-white px-8 py-6 border-b-3 border-gray-200">
         <h1 className="text-3xl font-semibold text-gray-800">Course</h1>
         <div className="flex items-center space-x-4">
           <SearchBar
@@ -65,13 +65,13 @@ export default function DashboardPage() {
             placeholder="Search courses..."
             className="w-64"
           />
-          <button
+          <ButtonT
             onClick={handleAddCourse}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md flex items-center space-x-2 transition"
+            className='w-[200px] flex justify-center items-center gap-3'
           >
             <FiPlus size={20} />
             <span>Add Course</span>
-          </button>
+          </ButtonT>
         </div>
       </div>
       <div className="px-8 pb-8">
