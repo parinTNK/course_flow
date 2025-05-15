@@ -1,31 +1,20 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuTrigger,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-} from "@/components/ui/dropdown-menu";
-import {
-  ChevronDown,
-  User,
-  LogOut,
-  BookText,
-  ClipboardCheck,
-  Star,
-} from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger, DropdownMenuItem, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
+import { ChevronDown, User, LogOut, BookText, ClipboardCheck, Star } from "lucide-react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { ButtonT } from "@/components/ui/ButtonT";
+import { supabase } from "@/lib/supabaseClient";
 
 type UserType = {
   name: string;
   avatarUrl: string;
 };
 
-const NavBar = ({ user }: { user?: UserType | null }) => {
+const NavBar = () => {
+  const [user, setUser] = useState<UserType | null>(null);
   const [isOpen, setIsOpen] = useState(false);
 
   const menuItems = [
@@ -34,6 +23,42 @@ const NavBar = ({ user }: { user?: UserType | null }) => {
     { icon: ClipboardCheck, label: "My Assignments", href: "/my-assignments" },
     { icon: Star, label: "My Wishlist", href: "/wishlist" },
   ];
+
+  useEffect(() => {
+    const fetchUser = async () => {
+      const { data, error } = await supabase.auth.getUser(); // Fetching user data from Supabase auth
+      if (error) {
+        console.error("Error fetching user:", error);
+        return;
+      }
+
+      if (data?.user) {
+        // Now fetch the user's profile using the user_id from Supabase auth
+        const { data: profileData, error: profileError } = await supabase
+          .from('profiles')
+          .select('full_name, profile_picture')
+          .eq('user_id', data.user.id) // Matching the user_id from auth
+          .single(); // Expecting a single profile
+
+        if (profileError) {
+          console.error("Error fetching profile:", profileError);
+          return;
+        }
+
+        if (profileData) {
+          const userProfile = {
+            name: profileData.full_name || "User",
+            avatarUrl: profileData.profile_picture || "/img/defaultProfileImage.png",
+          };
+          setUser(userProfile);
+        } else {
+          console.log("No profile found for this user.");
+        }
+      }
+    };
+
+    fetchUser();
+  }, []);
 
   return (
     <nav className="bg-white fixed w-full h-[88px] z-20 top-0 start-0 border-b border-gray-200 shadow-sm">
@@ -130,14 +155,12 @@ const NavBar = ({ user }: { user?: UserType | null }) => {
 
           {!user ? (
             <Link href="/login">
-<ButtonT
-  variant="primary"
-  className="font-sans whitespace-nowrap w-[74px] h-[37px] sm:w-[90px] sm:h-[40px] text-sm sm:text-base"
->
-  Log in
-</ButtonT>
-
-
+              <ButtonT
+                variant="primary"
+                className="font-sans whitespace-nowrap w-[74px] h-[37px] sm:w-[90px] sm:h-[40px] text-sm sm:text-base"
+              >
+                Log in
+              </ButtonT>
             </Link>
           ) : (
             <DropdownMenu onOpenChange={setIsOpen}>
@@ -183,3 +206,4 @@ const NavBar = ({ user }: { user?: UserType | null }) => {
 };
 
 export default NavBar;
+
