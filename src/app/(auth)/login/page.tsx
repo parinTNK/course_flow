@@ -53,16 +53,28 @@ export default function LoginPage() {
       if (result.success && result.data) {
         console.log("Login successful");
 
-        if (
-          !localStorage.getItem("userToken") &&
-          result.data.session?.access_token
-        ) {
-          localStorage.setItem("userToken", result.data.session.access_token);
-        }
+        if (result.data.session) {
+          localStorage.setItem(
+            "supabase_auth_token",
+            JSON.stringify({
+              access_token: result.data.session.access_token,
+              refresh_token: result.data.session.refresh_token,
+              expires_at: result.data.session.expires_at,
+            })
+          );
 
-        //  user_uid in localStorage
-        if (result.data.user?.id) {
+          // บันทึกข้อมูลอื่นๆ ที่จำเป็น...
           localStorage.setItem("user_uid", result.data.user.id);
+
+          if (result.data.user.user_metadata?.role === "admin") {
+            localStorage.setItem(
+              "adminToken",
+              result.data.session.access_token
+            );
+            localStorage.setItem("isAdmin", "true");
+          } else {
+            localStorage.setItem("userToken", result.data.session.access_token);
+          }
         }
 
         toast.success("Success", "You have been logged in successfully!");

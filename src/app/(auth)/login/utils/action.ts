@@ -1,7 +1,6 @@
 "use server"
 import { supabase } from "@/lib/supabaseClient";
 import { LoginResult } from "../types"; 
-import { signIn } from "@/lib/auth";
 
 export async function login(formData: FormData): Promise<LoginResult> {
   const email = formData.get("email") as string;
@@ -24,21 +23,23 @@ export async function login(formData: FormData): Promise<LoginResult> {
   }
 
   try {
-    console.log("Calling signIn from server action");
-    
-    const response = await signIn(email, password, true);
-    
-    if (response.error) {
-      console.error("Authentication error:", response.error);
+
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (error) {
+      console.error("Authentication error:", error);
       
-      if (response.error.message.includes("Invalid") || response.error.message.includes("incorrect")) {
+      if (error.message.includes("Invalid") || error.message.includes("incorrect")) {
         return {
           success: false,
           error: "Email or password is incorrect",
         };
       }
 
-      if (response.error.message.includes("Email not confirmed")) {
+      if (error.message.includes("Email not confirmed")) {
         return {
           success: false,
           error: "Please confirm your email address before logging in",
@@ -47,11 +48,11 @@ export async function login(formData: FormData): Promise<LoginResult> {
 
       return {
         success: false,
-        error: response.error.message || "An error occurred during login. Please try again.",
+        error: error.message || "An error occurred during login. Please try again.",
       };
     }
 
-    if (!response.data?.user) {
+    if (!data?.user) {
       console.error("No user data in response");
       return {
         success: false,
@@ -62,7 +63,7 @@ export async function login(formData: FormData): Promise<LoginResult> {
     const { data: profileData, error: profileError } = await supabase
       .from('profiles')
       .select('*')
-      .eq('user_id', response.data.user.id)
+      .eq('user_id', data.user.id)
       .single();
     
     if (profileError) {
@@ -72,9 +73,9 @@ export async function login(formData: FormData): Promise<LoginResult> {
     return {
       success: true,
       data: {
-        user: response.data.user,
+        user: data.user,
         profile: profileData || null,
-        session: response.data.session
+        session: data.session
       }
     };
   } catch (error) {

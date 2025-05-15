@@ -7,6 +7,7 @@ export const signIn = async (email: string, password: string, forceUserMode = fa
   try {
     console.log("Attempting to sign in with email:", email);
     
+    // เรียก API เพียงครั้งเดียว
     const response = await supabase.auth.signInWithPassword({
       email,
       password,
@@ -17,13 +18,26 @@ export const signIn = async (email: string, password: string, forceUserMode = fa
       error: response.error?.message
     });
     
+    // ถ้าเกิด error ให้ return เลย
+    if (response.error) {
+      return response;
+    }
+    
+    // จัดการกับ localStorage เฉพาะในฝั่ง client
     if (isClient() && response.data.session && response.data.user) {
       console.log("Storing session in localStorage");
+      
+      // เก็บข้อมูล token ไว้ใน localStorage
+      // อัพเดท supabase_auth_token ซึ่งเป็น default ที่ supabase ใช้
+      localStorage.setItem('supabase_auth_token', JSON.stringify({
+        access_token: response.data.session.access_token,
+        refresh_token: response.data.session.refresh_token,
+        expires_at: response.data.session.expires_at
+      }));
       
       if (forceUserMode) {
         localStorage.removeItem("adminToken");
         localStorage.removeItem("isAdmin");
-        
         localStorage.setItem("userToken", response.data.session.access_token);
       } else {
         const isAdmin = response.data.user.user_metadata?.role === 'admin';
@@ -67,9 +81,14 @@ export const signIn = async (email: string, password: string, forceUserMode = fa
 
 export const signOut = async () => {
   try {
+    const result = await supabase.auth.signOut();
+    
     if (isClient()) {
       console.log("Clearing session from localStorage");
-    
+      
+      // ลบ supabase token
+      localStorage.removeItem('supabase_auth_token');
+      
       localStorage.removeItem("adminToken");
       localStorage.removeItem("userToken");
       localStorage.removeItem("refreshToken");
@@ -86,13 +105,12 @@ export const signOut = async () => {
       localStorage.removeItem("admin_expires_at");
     }
     
-    return await supabase.auth.signOut();
+    return result;
   } catch (error) {
     console.error("Error in signOut function:", error);
     return { error: { message: "Failed to sign out", status: 500 } };
   }
 };
-
 // signUp 
 export const signUp = async (email: string, password: string, userData?: any) => {
   try {
@@ -121,62 +139,64 @@ export const signUp = async (email: string, password: string, userData?: any) =>
 
 export const isAuthenticated = async (): Promise<boolean> => {
   try {
+    // เช็คกับ Supabase ก่อนเสมอเพื่อให้แน่ใจว่ามี session ที่ valid
+    const { data } = await supabase.auth.getSession();
     
-    if (!isClient()) {
-      const { data } = await supabase.auth.getSession();
-      return !!data.session;
-    }
-    // ตรวจสอบทั้ง adminToken และ userToken
-    const adminToken = localStorage.getItem("adminToken");
-    const userToken = localStorage.getItem("userToken");
-    
-    // ถ้าไม่มี token ใดๆ แสดงว่าไม่ได้ล็อกอิน
-    if (!adminToken && !userToken) {
-      console.log("No token found in localStorage");
-      return false;
+    // ถ้ามี session ถือว่า authenticated
+    if (data.session) {
+      return true;
     }
     
-    // ตรวจสอบการหมดอายุของ token
-    const expiresAt = localStorage.getItem("expiresAt");
-    if (expiresAt) {
-      const expiryTime = parseInt(expiresAt, 10) * 1000; 
-      const currentTime = Date.now();
+    // ถ้าไม่มี session ในฝั่ง supabase แต่อยู่ในฝั่ง client
+    if (isClient()) {
+      // ตรวจสอบทั้ง adminToken และ userToken
+      const adminToken = localStorage.getItem("adminToken");
+      const userToken = localStorage.getItem("userToken");
       
-      console.log("Token expires at:", new Date(expiryTime).toISOString());
-      console.log("Current time:", new Date(currentTime).toISOString());
-      
-      if (currentTime >= expiryTime) {
-        console.log("Token expired, attempting to refresh");
-        try {
-          const { data, error } = await supabase.auth.refreshSession();
-          
-          if (error || !data.session) {
-            console.error("Failed to refresh session:", error);
-            clearAuthTokens();
-            return false;
-          }
-          
-          console.log("Session refreshed successfully");
-          await updateAuthTokens(data.session);
-          return true;
-        } catch (err) {
-          console.error("Error refreshing session:", err);
-          clearAuthTokens();
-          return false;
-        }
+      if (adminToken || userToken) {
+        // มี token แต่ไม่มี session ใน supabase
+        // ลองทำการ refresh
+        return await attemptTokenRefresh();
       }
     }
-
-    const { data } = await supabase.auth.getSession();
-    return !!data.session;
+    
+    // ไม่มี session และไม่มี token ใน localStorage
+    return false;
   } catch (error) {
     console.error("Error checking authentication:", error);
     return false;
   }
 };
 
+async function attemptTokenRefresh(): Promise<boolean> {
+  try {
+    // ใช้ supabase built-in refresh
+    const { data, error } = await supabase.auth.refreshSession();
+    
+    if (error || !data.session) {
+      console.error("Failed to refresh token:", error);
+      // ลบ token ที่ไม่ถูกต้องออก
+      clearAuthTokens();
+      return false;
+    }
+    
+    console.log("Session refreshed successfully");
+    // อัพเดท token ใน localStorage
+    if (isClient()) {
+      await updateAuthTokens(data.session);
+    }
+    return true;
+  } catch (err) {
+    console.error("Error refreshing token:", err);
+    clearAuthTokens();
+    return false;
+  }
+}
+
+
 export const isAdmin = async (): Promise<boolean> => {
   try {
+    // ตรวจสอบการล็อกอินก่อน
     const authenticated = await isAuthenticated();
     
     if (!authenticated) {
@@ -184,59 +204,36 @@ export const isAdmin = async (): Promise<boolean> => {
       return false;
     }
     
-    console.log("Checking if user is admin");
-    
-    // ตรวจสอบจาก adminToken โดยตรง
-    if (localStorage.getItem("adminToken")) {
-      return true;
-    }
-    
-    // ตรวจสอบจาก isAdmin flag
-    if (localStorage.getItem("isAdmin") === "true") {
-      return true;
-    }
-    
-    // ตรวจสอบจาก adminUser
-    try {
+    // เช็คจาก localStorage ก่อน (เร็วกว่า)
+    if (isClient()) {
+      if (localStorage.getItem("isAdmin") === "true") {
+        return true;
+      }
+      
+      // เช็คจาก adminUser object
       const adminUserStr = localStorage.getItem("adminUser");
       if (adminUserStr) {
-        const adminUser = JSON.parse(adminUserStr);
-        if (adminUser.role === 'admin') {
-          // อัปเดต adminToken และ isAdmin flag
-          const token = localStorage.getItem("userToken");
-          if (token) {
-            localStorage.setItem("adminToken", token);
-            localStorage.removeItem("userToken");
+        try {
+          const adminUser = JSON.parse(adminUserStr);
+          if (adminUser.role === 'admin') {
+            return true;
           }
-          localStorage.setItem("isAdmin", "true");
-          return true;
+        } catch (err) {
+          console.warn("Error parsing adminUser from localStorage:", err);
         }
       }
-    } catch (err) {
-      console.warn("Error parsing adminUser from localStorage:", err);
     }
     
-    // ตรวจสอบจาก Supabase API ถ้าไม่พบข้อมูลใน localStorage
+    // เช็คกับ Supabase API
     const { data } = await supabase.auth.getUser();
-    const isAdmin = data.user?.user_metadata?.role === 'admin';
-    
-    // อัปเดต adminToken และ userToken ตามข้อมูลจาก API
-    if (isAdmin && localStorage.getItem("userToken")) {
-      const token = localStorage.getItem("userToken");
-      localStorage.setItem("adminToken", token || "");
-      localStorage.removeItem("userToken");
-      localStorage.setItem("isAdmin", "true");
-    }
-    
-    console.log("Is admin:", isAdmin);
-    return isAdmin;
+    return data.user?.user_metadata?.role === 'admin';
   } catch (error) {
     console.error("Error checking admin status:", error);
     return false;
   }
 };
 
-// เพิ่มฟังก์ชันสำหรับเช็คว่าเป็น user ทั่วไป (ไม่ใช่ admin)
+// ฟังก์ชันสำหรับเช็คว่าเป็น user ทั่วไป (ไม่ใช่ admin)
 export const isRegularUser = async (): Promise<boolean> => {
   try {
     const authenticated = await isAuthenticated();
@@ -292,26 +289,30 @@ const updateAuthTokens = async (session: any) => {
   try {
     console.log("Updating auth tokens in localStorage");
     
+    // อัพเดท supabase_auth_token ก่อน
+    localStorage.setItem('supabase_auth_token', JSON.stringify({
+      access_token: session.access_token,
+      refresh_token: session.refresh_token,
+      expires_at: session.expires_at
+    }));
+    
     // เช็คประเภท token ปัจจุบัน
     const hasUserToken = !!localStorage.getItem("userToken");
     const hasAdminToken = !!localStorage.getItem("adminToken");
     
-    // ถ้ามี userToken อยู่แล้ว ให้คงสถานะ userToken ไว้
+    // ส่วนที่เหลือคงเดิม
     if (hasUserToken) {
       localStorage.setItem("userToken", session.access_token);
       localStorage.removeItem("adminToken");
       localStorage.removeItem("isAdmin");
       console.log("Preserved userToken during refresh");
-    } 
-    // ถ้ามี adminToken อยู่แล้ว ให้คงสถานะ adminToken ไว้
-    else if (hasAdminToken) {
+    } else if (hasAdminToken) {
       localStorage.setItem("adminToken", session.access_token);
       localStorage.removeItem("userToken");
       localStorage.setItem("isAdmin", "true");
       console.log("Preserved adminToken during refresh");
-    } 
-    // ถ้าไม่มี token เดิม ให้ตรวจสอบบทบาทแล้วเซ็ต token ตามนั้น
-    else {
+    } else {
+      // ตรวจสอบบทบาทจาก session
       const { data } = await supabase.auth.getUser();
       const user = data?.user;
       const isAdmin = user?.user_metadata?.role === 'admin';
@@ -327,24 +328,26 @@ const updateAuthTokens = async (session: any) => {
       }
     }
     
-    // อัปเดต refresh token และเวลาหมดอายุเสมอ
+    // อัพเดท refresh token และเวลาหมดอายุ
     localStorage.setItem("refreshToken", session.refresh_token);
     localStorage.setItem("expiresAt", String(session.expires_at));
     
-    // อัปเดตข้อมูลผู้ใช้... (ส่วนที่เหลือเหมือนเดิม)
+    // อัพเดทข้อมูลผู้ใช้ (คุณสามารถเพิ่มโค้ดเพิ่มเติมตรงนี้ได้)
   } catch (error) {
     console.error("Error updating auth tokens:", error);
   }
 };
 
 const clearAuthTokens = () => {
-  // ลบข้อมูลจาก localStorage เฉพาะเมื่อทำงานในฝั่ง client
   if (!isClient()) return;
   
   try {
     console.log("Clearing auth tokens from localStorage");
     
-    // ลบข้อมูลทั้งหมด
+    // ลบ supabase token ด้วย
+    localStorage.removeItem('supabase_auth_token');
+    
+    // ลบข้อมูลอื่นๆ
     localStorage.removeItem("adminToken");
     localStorage.removeItem("userToken");
     localStorage.removeItem("refreshToken");
@@ -353,7 +356,7 @@ const clearAuthTokens = () => {
     localStorage.removeItem("user_uid");
     localStorage.removeItem("isAdmin");
     
-    // ลบคีย์เก่าด้วย
+    // ลบคีย์เก่า
     localStorage.removeItem("admin_token");
     localStorage.removeItem("admin_refresh_token");
     localStorage.removeItem("admin_user_id");
@@ -364,7 +367,7 @@ const clearAuthTokens = () => {
   }
 };
 
-// เพิ่มฟังก์ชันสำหรับตรวจสอบข้อมูล token
+// ฟังก์ชันสำหรับตรวจสอบข้อมูล token
 export const getTokenInfo = () => {
   if (!isClient()) return null;
   
