@@ -21,7 +21,7 @@ import ConfirmationModal from "@/app/admin/components/ConfirmationModal";
 
 const CourseDetailPage: React.FC = () => {
     const searchParams = useSearchParams();
-    const [isAuthenticated, setIsAuthenticated] = useState(true);
+    const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [isSubscribed, setIsSubscribed] = useState(false);
 
     const mockUser = {
