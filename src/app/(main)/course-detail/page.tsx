@@ -1,8 +1,6 @@
 "use client"
 
 import React from 'react';
-import NavBar from "@/components/nav";
-import Footer from "@/components/footer";
 import CourseCard from "@/components/CourseCard";
 import CallToAction from '@/components/landing/CallToAction';
 import { useEffect, useState } from "react";
@@ -17,11 +15,11 @@ import {
     CarouselNext,
     CarouselPrevious,
   } from "@/components/ui/carousel";
-import ConfirmationModal from "@/app/admin/components/ConfirmationModal";
+import ConfirmModal from '@/components/ConfirmModal';
 
 const CourseDetailPage: React.FC = () => {
     const searchParams = useSearchParams();
-    const [isAuthenticated, setIsAuthenticated] = useState(false);
+    const [isAuthenticated, setIsAuthenticated] = useState(true);
     const [isSubscribed, setIsSubscribed] = useState(false);
 
     const mockUser = {
@@ -35,17 +33,15 @@ const CourseDetailPage: React.FC = () => {
     const [modules, setModules] = useState<any[]>([]);
     const [otherCourses, setOtherCourses] = useState<any[]>([]); 
 
-    // fetch data from supabase
     useEffect(() => {
         const fetchData = async () => {
             const courseId = searchParams.get('id') || "10feb05e-8999-425f-bc0d-9c0940bf1e04";
 
-            // เช็คสถานะ subscribe จาก database
             const { data: subscriptionData, error: subscriptionError } = await supabase
                 .from("subscriptions")
                 .select("*")
                 .eq("course_id", courseId)
-                .eq("user_id", "current_user_id") // ต้องแทนที่ด้วย user id จริง
+                .eq("user_id", "current_user_id")
                 .single();
 
             if (subscriptionData) {
@@ -98,7 +94,7 @@ const CourseDetailPage: React.FC = () => {
         };
 
         fetchData();
-    }, [searchParams]); // เพิ่ม searchParams เป็น dependency
+    }, [searchParams]);
 
     const toggleModule = (moduleId: number) => {
        setExpandedModule(expandedModule === moduleId ? null : moduleId);
@@ -268,7 +264,7 @@ const CourseDetailPage: React.FC = () => {
                                 <CarouselContent className="-ml-1 md:-ml-2">
                                     {otherCourses.map((course) => (
                                         <CarouselItem key={course.id} className="pl-1 md:pl-2 md:basis-1/3">
-                                            <div className="scale-95 px-6"> {/* เปลี่ยนจาก mx-4 เป็น px-6 */}
+                                            <div className="scale-95 px-6">
                                                 <Link href={`/course-detail?id=${course.id}`}>
                                                     <CourseCard course={course} />
                                                 </Link>
@@ -276,8 +272,8 @@ const CourseDetailPage: React.FC = () => {
                                         </CarouselItem>
                                     ))}
                                 </CarouselContent>
-                                <CarouselPrevious className="absolute -left-4 -translate-y-1/2 bg-white shadow-lg" /> {/* ปรับตำแหน่งและเพิ่ม shadow */}
-                                <CarouselNext className="absolute -right-4 -translate-y-1/2 bg-white shadow-lg" /> {/* ปรับตำแหน่งและเพิ่ม shadow */}
+                                <CarouselPrevious className="absolute -left-4 -translate-y-1/2 bg-white shadow-lg" />
+                                <CarouselNext className="absolute -right-4 -translate-y-1/2 bg-white shadow-lg" />
                             </Carousel>
                         </div>
                     </div>
@@ -286,19 +282,22 @@ const CourseDetailPage: React.FC = () => {
 
             {/* Modal - แสดงเฉพาะเมื่อ login แล้ว */}
             {isAuthenticated && (
-                <ConfirmationModal
+                <ConfirmModal
                     isOpen={showModal}
                     onClose={() => setShowModal(false)}
                     onConfirm={() => {
                         setShowModal(false);
-                        window.location.href = '/payment';
+                        window.location.href = `/payment/id=${courses.id}`;
                     }}
                     title="Confirmation"
-                    message={`Do you sure to subscribe ${courses?.name} Course?`}
+                    message={`Are you sure you want to subscribe to ${courses?.name} course?`}
+  
                     confirmText="Yes, I want to subscribe"
                     cancelText="No, I don't"
-                    confirmButtonClass="bg-[#1D4ED8] text-white hover:bg-blue-700" // ปรับสีให้ตรงตามรูป
-                    cancelButtonClass="bg-[#1D4ED8] text-white hover:bg-blue-700" // ทำให้ปุ่ม Cancel มีสีเหมือนกัน
+  
+                    
+                    confirmButtonClass="bg-blue-600 text-white hover:bg-blue-700"
+                    cancelButtonClass="border border-orange-500 text-orange-500 hover:bg-orange-50"
                 />
             )}
          
