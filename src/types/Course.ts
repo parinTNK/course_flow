@@ -14,7 +14,10 @@ export type Lesson = {
     status: string;
     lessons: Lesson[];
     summary: string;
+    detail: string;
     cover_image_url: string;
+    attachment_url: string;
+    video_trailer_url: string;
     total_learning_time: number;
     progress: number;
   };
