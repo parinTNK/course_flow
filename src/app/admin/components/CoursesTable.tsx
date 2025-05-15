@@ -1,6 +1,6 @@
-import React from 'react';
-import CourseRow from './CourseRow'; 
-import { Course } from '../types';
+import React from "react";
+import CourseRow from "./CourseRow";
+import { Course } from "../types";
 
 interface CoursesTableProps {
   courses: Course[];
@@ -12,13 +12,13 @@ interface CoursesTableProps {
   currentPage: number; // Keep this to calculate row numbers
 }
 
-const CoursesTable: React.FC<CoursesTableProps> = ({ 
-  courses, 
-  onEditCourse, 
-  onDeleteCourse, 
-  formatDate, 
+const CoursesTable: React.FC<CoursesTableProps> = ({
+  courses,
+  onEditCourse,
+  onDeleteCourse,
+  formatDate,
   isLoading,
-  currentPage
+  currentPage,
 }) => {
   if (!isLoading && courses.length === 0) {
     return (
@@ -28,7 +28,8 @@ const CoursesTable: React.FC<CoursesTableProps> = ({
     );
   }
 
-  const tableHeaderClasses = "px-6 py-3 text-left text-[14px] font-medium text-gray-500 uppercase tracking-wider";
+  const tableHeaderClasses =
+    "px-6 py-3 text-left text-[14px] font-medium text-gray-500 uppercase tracking-wider";
   const coursesPerPage = 10;
 
   return (
@@ -38,19 +39,21 @@ const CoursesTable: React.FC<CoursesTableProps> = ({
           <thead className="bg-gray-300">
             <tr>
               {[
-                '',
-                'Image',
-                'Course name',
-                'Lesson',
-                'Price',
-                'Status',
-                'Created date',
-                'Updated date',
-                'Action',
+                "",
+                "Image",
+                "Course name",
+                "Lesson",
+                "Price",
+                "Status",
+                "Created date",
+                "Updated date",
+                "Action",
               ].map((header, idx) => (
                 <th
                   key={idx}
-                  className={`${tableHeaderClasses} ${header === 'Action' ? 'text-center' : ''}`}
+                  className={`${tableHeaderClasses} ${
+                    header === "Action" ? "text-center" : ""
+                  }`}
                 >
                   {header}
                 </th>

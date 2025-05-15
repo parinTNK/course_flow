@@ -1,10 +1,11 @@
 "use client";
-import { useState } from "react";
-import { login } from "./utils/action";
+import { useState, useEffect } from "react";
+import { signInWithEmail } from "./utils/auth";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { validateEmail, validatePassword } from "./utils/validation";
 import { useCustomToast } from "@/components/ui/CustomToast";
+import { supabase } from "@/lib/supabaseClient";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -16,6 +17,17 @@ export default function LoginPage() {
     email: "",
     password: "",
   });
+
+  useEffect(() => {
+    const checkToken = async () => {
+      const { data } = await supabase.auth.getSession();
+      if (data.session) {
+        router.push("/");
+      }
+    };
+
+    checkToken();
+  }, [router]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -41,39 +53,21 @@ export default function LoginPage() {
     }
 
     try {
-      const submitFormData = new FormData();
-      Object.entries(form).forEach(([key, value]) => {
-        submitFormData.append(key, value);
-      });
-
-      console.log("Submitting login form");
-      const result = await login(submitFormData);
-      console.log("Login result:", { success: result.success });
+      const result = await signInWithEmail(form.email, form.password);
 
       if (result.success && result.data) {
-        console.log("Login successful");
+        console.log(
+          "All localStorage keys after login:",
+          Object.keys(localStorage)
+        );
 
         if (result.data.session) {
-          localStorage.setItem(
-            "supabase_auth_token",
-            JSON.stringify({
-              access_token: result.data.session.access_token,
-              refresh_token: result.data.session.refresh_token,
-              expires_at: result.data.session.expires_at,
-            })
-          );
-
-          // บันทึกข้อมูลอื่นๆ ที่จำเป็น...
           localStorage.setItem("user_uid", result.data.user.id);
 
           if (result.data.user.user_metadata?.role === "admin") {
-            localStorage.setItem(
-              "adminToken",
-              result.data.session.access_token
-            );
             localStorage.setItem("isAdmin", "true");
           } else {
-            localStorage.setItem("userToken", result.data.session.access_token);
+            localStorage.setItem("isAdmin", "false");
           }
         }
 

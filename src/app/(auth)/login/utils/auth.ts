@@ -1,37 +1,13 @@
-"use server"
 import { supabase } from "@/lib/supabaseClient";
-import { LoginResult,} from "../types"; 
 
-export async function login(formData: FormData): Promise<LoginResult> {
-  const email = formData.get("email") as string;
-  const password = formData.get("password") as string;
-  
-  console.log("Server login attempt with email:", email);
-
-  if (!email?.trim()) {
-    return {
-      success: false,
-      error: "Please enter your email"
-    };
-  }
-
-  if (!password) {
-    return {
-      success: false,
-      error: "Please enter your password"
-    };
-  }
-
+export async function signInWithEmail(email: string, password: string) {
   try {
-
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
 
     if (error) {
-      console.error("Authentication error:", error);
-      
       if (error.message.includes("Invalid") || error.message.includes("incorrect")) {
         return {
           success: false,
@@ -53,33 +29,28 @@ export async function login(formData: FormData): Promise<LoginResult> {
     }
 
     if (!data?.user) {
-      console.error("No user data in response");
       return {
         success: false,
         error: "Failed to retrieve user data",
       };
     }
 
+    // ดึงข้อมูล profile
     const { data: profileData, error: profileError } = await supabase
       .from('profiles')
       .select('*')
       .eq('user_id', data.user.id)
       .single();
-    
-    if (profileError) {
-      console.warn("Profile fetch error:", profileError);
-    }
 
     return {
       success: true,
       data: {
         user: data.user,
-        profile: profileData || null,
+        profile: profileError ? null : profileData,
         session: data.session
       }
     };
   } catch (error: any) {
-    console.error("Server login error:", error);
     return {
       success: false,
       error: "An error occurred during login. Please try again.",
