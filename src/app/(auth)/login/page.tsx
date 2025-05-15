@@ -1,14 +1,16 @@
 "use client";
 import { useState } from "react";
-import NavBar from "@/components/nav";
 import { login } from "./utils/action";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { validateEmail, validatePassword } from "./utils/validation";
+import { useCustomToast } from "@/components/ui/CustomToast";
 
 export default function LoginPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const toast = useCustomToast();
 
   const [form, setForm] = useState({
     email: "",
@@ -29,15 +31,54 @@ export default function LoginPage() {
     setLoading(true);
     setError("");
 
+    const emailError = validateEmail(form.email);
+    const passwordError = validatePassword(form.password);
+
+    if (emailError || passwordError) {
+      setError(emailError || passwordError || "");
+      setLoading(false);
+      return;
+    }
+
     try {
       const submitFormData = new FormData();
       Object.entries(form).forEach(([key, value]) => {
         submitFormData.append(key, value);
       });
 
+      console.log("Submitting login form");
       const result = await login(submitFormData);
+      console.log("Login result:", { success: result.success });
 
-      if (result.success) {
+      if (result.success && result.data) {
+        console.log("Login successful");
+
+        if (result.data.session) {
+          localStorage.setItem(
+            "supabase_auth_token",
+            JSON.stringify({
+              access_token: result.data.session.access_token,
+              refresh_token: result.data.session.refresh_token,
+              expires_at: result.data.session.expires_at,
+            })
+          );
+
+          // บันทึกข้อมูลอื่นๆ ที่จำเป็น...
+          localStorage.setItem("user_uid", result.data.user.id);
+
+          if (result.data.user.user_metadata?.role === "admin") {
+            localStorage.setItem(
+              "adminToken",
+              result.data.session.access_token
+            );
+            localStorage.setItem("isAdmin", "true");
+          } else {
+            localStorage.setItem("userToken", result.data.session.access_token);
+          }
+        }
+
+        toast.success("Success", "You have been logged in successfully!");
+
         setForm({
           email: "",
           password: "",
@@ -45,10 +86,19 @@ export default function LoginPage() {
 
         router.push("/");
       } else if (result.error) {
+        console.error("Login failed:", result.error);
         setError(result.error);
+        toast.error("Login Failed", result.error);
       }
     } catch (err) {
-      setError("เกิดข้อผิดพลาด โปรดลองอีกครั้งในภายหลัง");
+      console.error("Login error:", err);
+      const errorMessage =
+        err instanceof Error
+          ? err.message
+          : "An error occurred. Please try again.";
+
+      setError(errorMessage);
+      toast.error("Login Failed", errorMessage);
     } finally {
       setLoading(false);
     }
@@ -56,25 +106,27 @@ export default function LoginPage() {
 
   // UI
   return (
-    <div className="min-h-screen bg-white">
-      <NavBar />
-      <div className="absolute top-70 -left-102 w-125 h-125 rounded-full !bg-[var(--orange-100)]"></div>
+    <div className=" bg-white">
+      <div className="absolute md:top-70 md:-left-102 md:w-125 md:h-125 md:rounded-full bottom-5 -left-40 w-50 h-50 rounded-full !bg-[var(--orange-100)]"></div>
       <div>
         <img
           src="/Group 5.svg"
           alt="loading"
-          className="absolute top-70 left-70"
+          className="md:absolute md:top-70 md:left-70"
         />
       </div>
-      <div className="absolute top-46 left-45 w-15 h-15 rounded-full bg-[var(--blue-200)]"></div>
-      <div className="absolute top-10 -right-56 w-90 h-90 rounded-full bg-[var(--blue-500)]"></div>
-      <div className="absolute top-15 -right-58 w-90 h-100 rounded-full bg-[var(--blue-500)] -rotate-45"></div>
-      <div className="absolute right-32 bottom-100 w-10 h-10 rounded-full border-amber-500 border-4"></div>
-      <div className="max-w-md mx-auto px-4 py-8 mt-40">
-        <h2 className="text-[#2d3ecb] text-h2 font-bold mb-10">
+      <div className="absolute md:top-46 md:left-45 md:w-15 md:h-15 md:rounded-full w-10 h-10 top-20 -left-5 rounded-full bg-[var(--blue-200)]"></div>
+      <img
+        src="/Vector-8.svg"
+        alt="loading"
+        className="absolute md:top-3 md:right-0 -top-45 -right-30 "
+      />
+      <div className="absolute md:right-20 md:bottom-90 md:w-10 md:h-10 right-10 bottom-110 rounded-full w-4 h-4 md:rounded-full border-amber-500 border-4 "></div>
+      <div className="md:max-w-md md:mx-auto px-4 py-8 mt-40  max-w-md mx-auto ">
+        <h2 className="text-[#2d3ecb] text-h2 font-bold mb-10 ">
           Welcome back!
         </h2>
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-6 ">
           <div>
             <label className="block mb-2">Email</label>
             <input
