@@ -2,8 +2,22 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger, DropdownMenuItem, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
-import { ChevronDown, User, LogOut, BookText, ClipboardCheck, Star } from "lucide-react";
+import { signOut } from "@/lib/auth";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
+import {
+  ChevronDown,
+  User,
+  LogOut,
+  BookText,
+  ClipboardCheck,
+  Star,
+} from "lucide-react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { ButtonT } from "@/components/ui/ButtonT";
 import { supabase } from "@/lib/supabaseClient";
@@ -23,6 +37,14 @@ const NavBar = () => {
     { icon: ClipboardCheck, label: "My Assignments", href: "/my-assignments" },
     { icon: Star, label: "My Wishlist", href: "/wishlist" },
   ];
+  const handleLogout = async () => {
+    try {
+      await signOut();
+      window.location.href = "/login";
+    } catch (error) {
+      console.error("Logout error:", error);
+    }
+  };
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -35,9 +57,9 @@ const NavBar = () => {
       if (data?.user) {
         // Now fetch the user's profile using the user_id from Supabase auth
         const { data: profileData, error: profileError } = await supabase
-          .from('profiles')
-          .select('full_name, profile_picture')
-          .eq('user_id', data.user.id) // Matching the user_id from auth
+          .from("profiles")
+          .select("full_name, profile_picture")
+          .eq("user_id", data.user.id) // Matching the user_id from auth
           .single(); // Expecting a single profile
 
         if (profileError) {
@@ -48,7 +70,8 @@ const NavBar = () => {
         if (profileData) {
           const userProfile = {
             name: profileData.full_name || "User",
-            avatarUrl: profileData.profile_picture || "/img/defaultProfileImage.png",
+            avatarUrl:
+              profileData.profile_picture || "/img/defaultProfileImage.png",
           };
           setUser(userProfile);
         } else {
@@ -125,7 +148,10 @@ const NavBar = () => {
 
                 <DropdownMenuSeparator className="my-2 border-t text-[#E4E6ED]" />
 
-                <DropdownMenuItem className="px-4 py-2 hover:bg-gray-100 flex items-center space-x-3 text-[#646D89]">
+                <DropdownMenuItem
+                  className="px-4 py-2 hover:bg-gray-100 flex items-center space-x-3 text-[#646D89] cursor-pointer"
+                  onClick={handleLogout}
+                >
                   <LogOut className="w-5 h-5 text-[#8DADE0]" />
                   <span>Log out</span>
                 </DropdownMenuItem>
@@ -192,7 +218,10 @@ const NavBar = () => {
 
                 <DropdownMenuSeparator className="my-2 border-t text-[#E4E6ED]" />
 
-                <DropdownMenuItem className="px-4 py-2 hover:bg-gray-100 flex items-center space-x-3 text-[#646D89]">
+                <DropdownMenuItem
+                  className="px-4 py-2 hover:bg-gray-100 flex items-center space-x-3 text-[#646D89]"
+                  onClick={handleLogout}
+                >
                   <LogOut className="w-5 h-5 text-[#8DADE0]" />
                   <span>Log out</span>
                 </DropdownMenuItem>
@@ -206,4 +235,3 @@ const NavBar = () => {
 };
 
 export default NavBar;
-

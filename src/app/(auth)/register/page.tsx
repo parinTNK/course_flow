@@ -45,8 +45,8 @@ export default function RegisterPage() {
 
   // UI
   return (
-    <div className=" md:mx-auto bg-white container w-full ">
-      <div className="absolute md:top-70 md:-left-102 md:w-125 md:h-125 md:rounded-full top-210 -left-40 w-50 h-50 rounded-full !bg-[var(--orange-100)]"></div>
+    <div className="min-h-screen mx-auto bg-white">
+      <div className="absolute md:top-70 md:-left-102 md:w-125 md:h-125 md:rounded-full bottom-5 -left-40 w-50 h-50 rounded-full !bg-[var(--orange-100)]"></div>
       <div>
         <img
           src="/Group 5.svg"
