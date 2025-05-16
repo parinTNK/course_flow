@@ -25,7 +25,7 @@ import { supabase } from "@/lib/supabaseClient";
 
 const NavBar: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
-  const { user, loading, fetchUser, authStateChanged } = useAuth(); 
+  const { user, loading, fetchUser } = useAuth();
 
   const menuItems = [
     { icon: User, label: "Profile", href: "/profile" },
@@ -45,25 +45,6 @@ const NavBar: React.FC = () => {
 
   const displayName = user?.full_name || "User";
   const avatarUrl = user?.profile_picture || "/img/defaultProfileImage.png";
-
-  useEffect(() => {
-    const { data: listener } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        if (event === "SIGNED_IN") {
-          await fetchUser(); 
-        }
-      }
-    );
-    return () => {
-      listener.subscription.unsubscribe();
-    };
-  }, []);
-
-  useEffect(() => {
-    if (authStateChanged) {
-      fetchUser(); // Ensure user data is refreshed when auth state changes
-    }
-  }, [authStateChanged, fetchUser]); 
 
   return (
     <nav className="bg-white fixed w-full h-[88px] z-20 top-0 start-0 border-b border-gray-200 shadow-sm">

@@ -172,12 +172,7 @@ export default function ProfilePage() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <NavBar
-        user={{
-          name: userName,
-          avatarUrl: photo || "/img/defaultProfileImage.png",
-        }}
-      />
+      <NavBar />
       <section className="flex-1 bg-white flex flex-col items-center justify-center py-20">
         <h2 className="text-3xl font-bold text-center text-black mb-12">
           Profile
