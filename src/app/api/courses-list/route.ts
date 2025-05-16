@@ -44,7 +44,7 @@ export async function GET(request: NextRequest) {
             `)
             .ilike('name', `%${searchTerm}%`)
             .range(from, to)
-            .order('created_at', { ascending: true });
+            .order('created_at', { ascending: false });
             //TODO: check with team if we need to order by created_at or updated_at [how to order?]
 
         if (error) {

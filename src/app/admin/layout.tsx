@@ -11,8 +11,10 @@ export default function AdminLayout({
   return (
     <CoursesProvider>
       <div className="flex">
+        <div className='fixed'>
         <Sidebar />
-        <main className="flex-1 bg-gray-50 min-h-screen">
+        </div>
+        <main className="flex-1 bg-gray-50 min-h-screen ml-[240px]">
           {children}
           <Toaster position="bottom-right" richColors />
         </main>

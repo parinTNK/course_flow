@@ -1,6 +1,6 @@
 type ButtonProps = {
     variant?: "primary"  | "Secondary" ;
-    onClick?: () => void;
+    onClick?: (event?: React.MouseEvent<HTMLButtonElement>) => void;
     children: React.ReactNode;
     className?: string;
   };
@@ -13,8 +13,8 @@ type ButtonProps = {
   }: ButtonProps) {
   
     const variantStyles = {
-      primary: "bg-[var(--blue-500)] hover:bg-blue-700 text-white w-[126px] h-[60px] rounded-[12px] text-[var(--B2)] font-bold px-[32px] py-[18px]",
-      Secondary: "bg-[var(--white)] w-[149px] h-[60px] rounded-[12px] text-[var(--B2)] font-bold px-[32px] py-[18px] text-[var(--orange-500)] border-[2px] border-[var(--orange-500)] hover:bg-[var(--orange-500)] hover:text-white",
+      primary: "bg-[var(--blue-500)] hover:bg-blue-700 text-white w-[126px] h-[60px] rounded-[12px] text-[var(--B2)] font-bold px-[32px] py-[18px] cursor-pointer",
+      Secondary: "bg-[var(--white)] w-[149px] h-[60px] rounded-[12px] text-[var(--B2)] font-bold px-[32px] py-[18px] text-[var(--orange-500)] border-[2px] border-[var(--orange-500)] hover:bg-[var(--orange-500)] hover:text-white cursor-pointer",
     };
   
     return (
