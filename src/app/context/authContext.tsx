@@ -21,6 +21,7 @@ type AuthContextType = {
   user: UserType | null;
   loading: boolean;
   error: Error | null;
+  authStateChanged: boolean; // New state to track auth changes
   setUser: React.Dispatch<React.SetStateAction<UserType | null>>;
   fetchUser: () => Promise<void>;
 };
@@ -31,12 +32,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<UserType | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  const [authStateChanged, setAuthStateChanged] = useState(false); // New state
 
   const fetchUser = async () => {
     setLoading(true);
     setError(null);
     try {
-      
+      // const userToken = localStorage.getItem("userToken") as string;
+      // const { data: { user }, error: userError } = await supabase.auth.getUser(userToken);
       const { data: { user }, error: userError } = await supabase.auth.getUser();
 
       if (userError) throw new Error("Error fetching user: " + userError.message);
@@ -78,13 +81,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(null);
     } finally {
       setLoading(false);
+      setAuthStateChanged(true);
     }
   };
 
   useEffect(() => {
     fetchUser();
 
-    // Subscribe to auth state change
+    
     const { data: listener } = supabase.auth.onAuthStateChange(
       (_event, _session) => {
         fetchUser();
@@ -97,7 +101,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, loading, error, setUser, fetchUser }}
+      value={{ user, loading, error, authStateChanged, setUser, fetchUser }}
     >
       {children}
     </AuthContext.Provider>
