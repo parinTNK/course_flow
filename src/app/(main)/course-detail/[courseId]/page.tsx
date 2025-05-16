@@ -1,12 +1,11 @@
 "use client"
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import CourseCard from "@/components/CourseCard";
 import CallToAction from '@/components/landing/CallToAction';
-import { useEffect, useState } from "react";
 import { VideoOff } from "lucide-react";
 import Link from "next/link";
-import { useSearchParams } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import { supabase } from "@/lib/supabaseClient";
 import {
     Carousel,
@@ -18,7 +17,9 @@ import {
 import ConfirmModal from '@/components/ConfirmModal';
 
 const CourseDetailPage: React.FC = () => {
-    const searchParams = useSearchParams();
+    const params = useParams();
+    const courseId = params?.courseId as string || "10feb05e-8999-425f-bc0d-9c0940bf1e04";
+
     const [isAuthenticated, setIsAuthenticated] = useState(true);
     const [isSubscribed, setIsSubscribed] = useState(false);
 
@@ -35,8 +36,6 @@ const CourseDetailPage: React.FC = () => {
 
     useEffect(() => {
         const fetchData = async () => {
-            const courseId = searchParams.get('id') || "10feb05e-8999-425f-bc0d-9c0940bf1e04";
-
             const { data: subscriptionData, error: subscriptionError } = await supabase
                 .from("subscriptions")
                 .select("*")
@@ -93,8 +92,10 @@ const CourseDetailPage: React.FC = () => {
             }
         };
 
-        fetchData();
-    }, [searchParams]);
+        if (courseId) {
+            fetchData();
+        }
+    }, [courseId]);
 
     const toggleModule = (moduleId: number) => {
        setExpandedModule(expandedModule === moduleId ? null : moduleId);
@@ -210,7 +211,7 @@ const CourseDetailPage: React.FC = () => {
                             {isAuthenticated ? (
                                 isSubscribed ? (
                                     <Link 
-                                        href={`/course-learning/${courses?.id}`}
+                                        href={`/course-learning/${courses?.id}/learning`}
                                         className="w-full py-2 px-4 bg-blue-600 text-white rounded hover:bg-blue-700 block text-center"
                                     >
                                         Start Learning
@@ -265,7 +266,7 @@ const CourseDetailPage: React.FC = () => {
                                     {otherCourses.map((course) => (
                                         <CarouselItem key={course.id} className="pl-1 md:pl-2 md:basis-1/3">
                                             <div className="scale-95 px-6">
-                                                <Link href={`/course-detail?id=${course.id}`}>
+                                                <Link href={`/course-detail/${course.id}`}>
                                                     <CourseCard course={course} />
                                                 </Link>
                                             </div>
@@ -287,7 +288,7 @@ const CourseDetailPage: React.FC = () => {
                     onClose={() => setShowModal(false)}
                     onConfirm={() => {
                         setShowModal(false);
-                        window.location.href = `/payment/id=${courses.id}`;
+                        window.location.href = `/payment/${courses?.id}`;
                     }}
                     title="Confirmation"
                     message={`Are you sure you want to subscribe to ${courses?.name} course?`}
