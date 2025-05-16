@@ -53,7 +53,12 @@ const CourseCard: React.FC<CourseCardProps> = ({ course }) => {
       <div className="flex items-center space-x-6 text-sm p-4 border-t">
         <span className="flex items-center space-x-1">
           <BookOpen className="w-5 h-5 text-[#5483D0]" />
-          <span className="text-gray-600">{course.lessons.length} Lessons</span>
+          <span className="text-gray-600">
+            {Array.isArray(course.lessons)
+              ? course.lessons.length
+              : course.lessons}
+            {" "} Lessons
+          </span>
         </span>
         <span className="flex items-center space-x-1">
           <Clock className="w-5 h-5 text-[#5483D0]" />
