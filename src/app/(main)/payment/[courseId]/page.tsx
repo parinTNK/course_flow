@@ -7,9 +7,8 @@ import { useRouter } from "next/navigation";
 import Script from "next/script";
 import axios from "axios";
 import { Course, CardForm } from "@/types/payment";
-
-// -------------------- Mock --------------------
-const Mock_userId = "35557ac8-fb44-4052-9c73-8fc50a3edda1";
+import { useAuth } from "@/app/context/authContext";
+import LoadingSpinner from "../../../admin/components/LoadingSpinner";
 
 // -------------------- Validate Functions --------------------
 const luhnCheck = (num: string) => {
@@ -63,6 +62,7 @@ export default function PaymentPage() {
     promoCodeId: string;
     message: string;
   }>(null);
+  const { user,loading: authLoading } = useAuth();
 
 
   // Hooks
@@ -174,6 +174,12 @@ export default function PaymentPage() {
   // -------------------- Form Submit --------------------
   const onSubmit = async (data: CardForm) => {
     setError(null);
+
+    if (!user) {
+      setError("User not found. Please login again.");
+      return;
+    }
+
     try {
       const [expMonth, expYear] = data.expiry.split("/");
       const token = await createOmiseToken({
@@ -188,10 +194,10 @@ export default function PaymentPage() {
         token,
         amount: total,
         courseId: course?.id,
-        userId: Mock_userId,
+        userId: user?.user_id,
         courseName: course?.name,
-        userName: "Stamp", //Mock
-        promoCode: promoCode, //promoCode
+        userName: user?.full_name,
+        promoCode: promoCode,
       });
 
       const result = res.data;
@@ -205,6 +211,26 @@ export default function PaymentPage() {
       router.push(`/payment/${courseId}/order-failed`);
     }
   };
+
+
+if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <LoadingSpinner text="Loading..." className = '' size="md" />
+      </div>
+    );
+  }
+
+  // --- ถ้า user ยังไม่มา (เช่น logout) ---
+  if (!user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-gray-500 text-lg">
+          Please login to continue.
+        </div>
+      </div>
+    );
+  }
 
   // -------------------- Render --------------------
   return (
