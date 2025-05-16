@@ -1,13 +1,13 @@
 "use client";
 
-import React, { useCallback } from 'react';
-import { FiPlus } from 'react-icons/fi';
-import { useRouter } from 'next/navigation';
-import SearchBar from '../components/SearchBar';
-import CoursesTable from '../components/CoursesTable';
-import Pagination from '../components/Pagination';
-import { useCoursesContext } from '../context/CoursesContext';
-import LoadingSpinner from '../components/LoadingSpinner';
+import React, { useCallback } from "react";
+import { FiPlus } from "react-icons/fi";
+import { useRouter } from "next/navigation";
+import SearchBar from "../components/SearchBar";
+import CoursesTable from "../components/CoursesTable";
+import Pagination from "../components/Pagination";
+import { useCoursesContext } from "../context/CoursesContext";
+import LoadingSpinner from "../components/LoadingSpinner";
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -21,22 +21,33 @@ export default function DashboardPage() {
     // Pagination
     currentPage,
     totalPages,
-    setCurrentPage
+    setCurrentPage,
   } = useCoursesContext();
 
   const handleAddCourse = useCallback(() => {
-    alert('Add course functionality to be implemented');
+    alert("Add course functionality to be implemented");
   }, [router]);
 
-  const handleEditCourse = useCallback((id: string) => {
-    alert(`Edit course ${id} functionality to be implemented`);
-  }, [router]);
+  const handleEditCourse = useCallback(
+    (id: string) => {
+      alert(`Edit course ${id} functionality to be implemented`);
+    },
+    [router]
+  );
 
   const formatDate = useCallback((dateString: string): string => {
-    if (!dateString) return 'N/A';
+    if (!dateString) return "N/A";
     try {
       const date = new Date(dateString);
-      return `${date.toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' })} ${date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}`;
+      return `${date.toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+      })} ${date.toLocaleTimeString("en-US", {
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: true,
+      })}`;
     } catch (e) {
       console.error("Error formatting date:", dateString, e);
       return dateString;
@@ -63,9 +74,13 @@ export default function DashboardPage() {
           </button>
         </div>
       </div>
-      <div className='px-8 pb-8'>
+      <div className="px-8 pb-8">
         {isLoading && <LoadingSpinner text="Loading courses..." size="md" />}
-        {error && <div className="text-center py-10 text-red-600 bg-red-100 p-4 rounded-md">Error: {error}</div>}
+        {error && (
+          <div className="text-center py-10 text-red-600 bg-red-100 p-4 rounded-md">
+            Error: {error}
+          </div>
+        )}
 
         {!isLoading && !error && (
           <>
@@ -86,14 +101,14 @@ export default function DashboardPage() {
         )}
 
         {courses.length > 0 && (
-              <div className="mt-4">
-                <Pagination 
-                  currentPage={currentPage}
-                  totalPages={totalPages}
-                  onPageChange={setCurrentPage}
-                />
-              </div>
-            )}
+          <div className="mt-4">
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+            />
+          </div>
+        )}
       </div>
     </div>
   );

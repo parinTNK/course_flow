@@ -1,12 +1,12 @@
-import React from 'react';
-import Sidebar from './components/Sidebar';
-import { CoursesProvider } from './context/CoursesContext';
-import {Toaster} from 'sonner'
+import React from "react";
+import Sidebar from "./components/Sidebar";
+import { CoursesProvider } from "./context/CoursesContext";
+import { Toaster } from "sonner";
 
 export default function AdminLayout({
   children,
 }: {
-  children: React.ReactNode
+  children: React.ReactNode;
 }) {
   return (
     <CoursesProvider>

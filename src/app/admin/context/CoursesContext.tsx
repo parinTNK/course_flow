@@ -11,7 +11,7 @@ import React, {
 } from "react";
 import { Course } from "../types";
 import ConfirmationModal from "@/app/admin/components/ConfirmationModal";
-import { useCustomToast } from '@/components/ui/CustomToast';
+import { useCustomToast } from "@/components/ui/CustomToast";
 
 interface PaginationData {
   totalItems: number;
@@ -50,7 +50,7 @@ export const CoursesProvider = ({ children }: { children: ReactNode }) => {
     totalItems: 0,
     totalPages: 0,
     currentPage: 1,
-    limit: 10
+    limit: 10,
   });
   const coursesPerPage = 10;
 
@@ -61,14 +61,18 @@ export const CoursesProvider = ({ children }: { children: ReactNode }) => {
       const queryParams = new URLSearchParams({
         page: currentPage.toString(),
         limit: coursesPerPage.toString(),
-        search: searchTerm
+        search: searchTerm,
       });
 
-      const response = await fetch(`/api/courses-list?${queryParams.toString()}`);
+      const response = await fetch(
+        `/api/courses-list?${queryParams.toString()}`
+      );
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || `Failed to fetch courses: ${response.statusText}`);
+        throw new Error(
+          errorData.error || `Failed to fetch courses: ${response.statusText}`
+        );
       }
 
       const data = await response.json();
@@ -90,7 +94,6 @@ export const CoursesProvider = ({ children }: { children: ReactNode }) => {
     setCurrentPage(1);
   }, [searchTerm]);
 
-
   const handleDeleteCourse = useCallback((id: string) => {
     setCourseToDelete(id);
     setIsConfirmOpen(true);
@@ -98,24 +101,29 @@ export const CoursesProvider = ({ children }: { children: ReactNode }) => {
 
   const { success, error: toastError } = useCustomToast();
 
-  
   const confirmDeleteCourse = useCallback(async () => {
     if (!courseToDelete) return;
 
     try {
-      const response = await fetch(`/api/admin/courses-delete/${courseToDelete}`, {
-        method: "DELETE",
-      });
+      const response = await fetch(
+        `/api/admin/courses-delete/${courseToDelete}`,
+        {
+          method: "DELETE",
+        }
+      );
 
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.error || "Failed to delete course");
       }
 
-      success('Course deleted successfully', 'The course has been removed from the system.');
+      success(
+        "Course deleted successfully",
+        "The course has been removed from the system."
+      );
       fetchCourses();
     } catch (err) {
-      toastError('An error occurred', 'Unable to delete the course.');
+      toastError("An error occurred", "Unable to delete the course.");
       console.error("Error deleting course:", err);
     } finally {
       setIsConfirmOpen(false);
