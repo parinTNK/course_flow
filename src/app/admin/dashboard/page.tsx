@@ -84,15 +84,16 @@ export default function DashboardPage() {
 
         {!isLoading && !error && (
           <>
-            <CoursesTable
-              courses={courses}
-              onEditCourse={handleEditCourse}
-              onDeleteCourse={handleDeleteCourse}
-              formatDate={formatDate}
-              isLoading={isLoading}
-              currentPage={currentPage}
-            />
-            {courses.length === 0 && (
+            {courses.length > 0 ? (
+              <CoursesTable
+                courses={courses}
+                onEditCourse={handleEditCourse}
+                onDeleteCourse={handleDeleteCourse}
+                formatDate={formatDate}
+                isLoading={isLoading}
+                currentPage={currentPage}
+              />
+            ) : (
               <div className="px-6 py-10 text-center text-gray-500 bg-white shadow-md rounded-lg">
                 No courses found.
               </div>

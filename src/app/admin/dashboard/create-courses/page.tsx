@@ -11,7 +11,6 @@ function CreateCourse() {
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [success, setSuccess] = useState(false)
 
-  // Form state
   const [formData, setFormData] = useState({
     name: '',
     price: '',
@@ -27,11 +26,9 @@ function CreateCourse() {
     }
   })
 
-  // Handle input changes
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { id, value } = e.target
 
-    // Clear validation error when user starts typing
     if (errors[id]) {
       setErrors(prevErrors => ({
         ...prevErrors,
@@ -49,23 +46,20 @@ function CreateCourse() {
     }))
   }
 
-  // Handle promo code section changes
-  const handlePromoChange = (promoData: any) => {
-    setFormData(prevData => ({
-      ...prevData,
-      promo: {
-        ...promoData
-      }
-    }))
-  }
+  // const handlePromoChange = (promoData: any) => {
+  //   setFormData(prevData => ({
+  //     ...prevData,
+  //     promo: {
+  //       ...promoData
+  //     }
+  //   }))
+  // }
 
   const { success: toastSuccess, error: toastError } = useCustomToast();
 
-  // Form validation
   const validateForm = () => {
     const newErrors: Record<string, string> = {}
 
-    // Validate required fields
     if (!formData.name.trim()) {
       newErrors['course-name'] = 'Please fill out this field'
     }
@@ -94,18 +88,30 @@ function CreateCourse() {
     return Object.keys(newErrors).length === 0
   }
 
-  // Handle form submission
+  const validateDraft = () => {
+    const newErrors: Record<string, string> = {}
+
+    if (!formData.name.trim()) {
+      newErrors['course-name'] = 'Please fill out this field'
+    }
+    
+    setErrors(newErrors)
+    return Object.keys(newErrors).length === 0
+  }
+
+
   const handleSubmit = async (e: React.FormEvent, status: 'draft' | 'published') => {
     e.preventDefault()
-
+    
     if (status === 'published' && !validateForm()) {
       return
+    } else if (status === 'draft' && !validateDraft()) {
+      return
     }
-
+    
     setIsLoading(true)
-
+    
     try {
-      // Prepare data for API
       const courseData = {
         ...formData,
         price: formData.price ? parseFloat(formData.price) : 0,
@@ -113,7 +119,6 @@ function CreateCourse() {
         status,
       }
 
-      // Send data to API
       const response = await fetch('/api/admin/courses-create', {
         method: 'POST',
         headers: {
@@ -129,7 +134,13 @@ function CreateCourse() {
       }
 
       setSuccess(true)
-      toastSuccess('Course created successfully!', 'You can now view the course in the dashboard.', 3000)
+      toastSuccess(
+        status === 'published' 
+          ? 'Course created successfully!' 
+          : 'Course saved as draft!', 
+        'You can now view the course in the dashboard.', 
+        3000
+      )
       router.push('/admin/dashboard')
 
     } catch (err) {
@@ -303,9 +314,8 @@ function CreateCourse() {
               variant="Secondary"
               className="mr-4 w-[169px]"
               onClick={(e) => handleSubmit(e as React.FormEvent, 'draft')}
-
             >
-              Draft
+              {isLoading ? 'Saving...' : 'Draft'}
             </ButtonT>
           </div>
         </form>
