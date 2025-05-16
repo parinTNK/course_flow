@@ -24,8 +24,8 @@ export default function PaymentCompletedPage() {
             </div>
         </div>
         <div className="flex md:flex-row flex-col gap-4 justify-center w-full">
-          <ButtonT variant="Secondary" className="w-full cursor-pointer" onClick={() => router.push(`/courses-detail/${courseId}`)}>View Course detail</ButtonT>
-          <ButtonT variant="primary" className="w-full cursor-pointer" onClick={() => router.push(`/courses-learning/${courseId}`)}>Start Learning</ButtonT>
+          <ButtonT variant="Secondary" className="w-full cursor-pointer" onClick={() => router.push(`/course-detail/${courseId}`)}>View Course detail</ButtonT>
+          <ButtonT variant="primary" className="w-full cursor-pointer" onClick={() => router.push(`/course-learning/${courseId}/learning`)}>Start Learning</ButtonT>
         </div>
       </div>
     </div>
