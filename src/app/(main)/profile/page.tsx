@@ -8,6 +8,7 @@ import { ButtonT } from "@/components/ui/ButtonT";
 import { supabase } from "@/lib/supabaseClient";
 import { useRouter } from "next/navigation";
 import axios from "axios";
+import { useAuth } from "@/app/context/authContext";
 
 interface FormData {
   firstName: string;
@@ -22,9 +23,7 @@ export default function ProfilePage() {
   const [userId, setUserId] = useState<string | null>(null);
   const [photo, setPhoto] = useState<string>("");
   const [file, setFile] = useState<File | null>(null);
-  const [previousPhotoPath, setPreviousPhotoPath] = useState<string | null>(
-    null
-  );
+  const [previousPhotoPath, setPreviousPhotoPath] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [formData, setFormData] = useState<FormData>({
     firstName: "",
@@ -36,17 +35,27 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(false);
   const [userName, setUserName] = useState<string>("User");
 
+  const { fetchUser } = useAuth();
   const router = useRouter();
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selected = e.target.files?.[0];
-    if (selected && selected.type.startsWith("image/")) {
-      setFile(selected);
-      setPhoto(URL.createObjectURL(selected)); // Preview only
-    } else {
-      alert("Please select a valid image.");
-    }
-  };
+  useEffect(() => {
+    const getSessionUserId = async () => {
+      const {
+        data: { user },
+        error,
+      } = await supabase.auth.getUser();
+
+      if (error || !user?.id) {
+        console.error("❌ Cannot get session user ID", error);
+        return;
+      }
+
+      setUserId(user.id);
+      fetchProfile(user.id);
+    };
+
+    getSessionUserId();
+  }, []);
 
   const fetchProfile = async (userId: string) => {
     try {
@@ -70,13 +79,6 @@ export default function ProfilePage() {
     }
   };
 
-  useEffect(() => {
-    const mockUser = { id: "35557ac8-fb44-4052-9c73-8fc50a3edda1" }; // Replace with Supabase session if needed
-    const userId = mockUser.id;
-    setUserId(userId);
-    fetchProfile(userId);
-  }, []);
-
   const validate = (): FormErrors => {
     const newErrors: FormErrors = {};
     const today = new Date().toISOString().split("T")[0];
@@ -92,8 +94,19 @@ export default function ProfilePage() {
       setErrors({ ...errors, [field]: "" });
     };
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selected = e.target.files?.[0];
+    if (selected && selected.type.startsWith("image/")) {
+      setFile(selected);
+      setPhoto(URL.createObjectURL(selected)); // preview only
+    } else {
+      alert("Please select a valid image.");
+    }
+  };
+
   const uploadImage = async (): Promise<string | null> => {
     if (!file) return previousPhotoPath;
+    if (!userId) return null;
 
     const ext = file.name.split(".").pop();
     const filename = `${Date.now()}.${ext}`;
@@ -138,9 +151,12 @@ export default function ProfilePage() {
       });
 
       console.log("✅ Profile updated:", res.data.profile);
+
       setPreviousPhotoPath(uploadedImageUrl);
       setPhoto(uploadedImageUrl || "");
       setFile(null);
+
+      await fetchUser(); // 🔁 update context to sync NavBar
     } catch (err: any) {
       console.error("Error during form submission:", err.message || err);
     } finally {
@@ -157,16 +173,17 @@ export default function ProfilePage() {
           .remove([oldPath]);
 
         if (deleteError) {
-          console.error("Failed to delete image from storage:", deleteError.message);
+          console.error("Failed to delete image:", deleteError.message);
         } else {
-          console.log("✅ Image deleted from storage");
+          console.log("✅ Image deleted");
         }
       }
+
       setPhoto("");
       setFile(null);
       setPreviousPhotoPath("");
     } catch (err) {
-      console.error("Error during image removal:", err);
+      console.error("Error during photo removal:", err);
     }
   };
 
@@ -181,12 +198,12 @@ export default function ProfilePage() {
           onSubmit={handleSubmit}
           className="flex flex-col lg:flex-row gap-8 lg:gap-28"
         >
+          {/* Left: Avatar */}
           <div className="flex flex-col items-center w-[358px] shrink-0">
             <img
               src={photo || "/img/defaultProfileImage.png"}
               alt="User Avatar"
               onError={(e) => {
-                console.error("Image load failed:", photo);
                 e.currentTarget.onerror = null;
                 e.currentTarget.src = "/img/defaultProfileImage.png";
               }}
@@ -219,39 +236,35 @@ export default function ProfilePage() {
             </button>
           </div>
 
+          {/* Right: Form Fields */}
           <div className="w-full max-w-md space-y-6">
-            {(
-              [
-                "firstName",
-                "dob",
-                "school",
-                "email",
-              ] as (keyof FormData)[]
-            ).map((field) => (
-              <div key={field}>
-                <Label htmlFor={field} className="block mb-1">
-                  {field === "dob"
-                    ? "Date of Birth"
-                    : field === "firstName"
-                    ? "Full Name"
-                    : field.charAt(0).toUpperCase() +
-                      field.slice(1).replace(/([A-Z])/g, " $1")}
-                </Label>
-                <Input
-                  id={field}
-                  type={field === "dob" ? "date" : "text"}
-                  placeholder={`Enter your ${
-                    field === "firstName" ? "full name" : field
-                  }`}
-                  value={formData[field]}
-                  onChange={handleInputChange(field)}
-                  className={errors[field] ? "border border-red-500" : ""}
-                />
-                {errors[field] && (
-                  <span className="text-sm text-red-500">{errors[field]}</span>
-                )}
-              </div>
-            ))}
+            {(["firstName", "dob", "school", "email"] as (keyof FormData)[]).map(
+              (field) => (
+                <div key={field}>
+                  <Label htmlFor={field} className="block mb-1">
+                    {field === "dob"
+                      ? "Date of Birth"
+                      : field === "firstName"
+                      ? "Full Name"
+                      : field.charAt(0).toUpperCase() +
+                        field.slice(1).replace(/([A-Z])/g, " $1")}
+                  </Label>
+                  <Input
+                    id={field}
+                    type={field === "dob" ? "date" : "text"}
+                    placeholder={`Enter your ${
+                      field === "firstName" ? "full name" : field
+                    }`}
+                    value={formData[field]}
+                    onChange={handleInputChange(field)}
+                    className={errors[field] ? "border border-red-500" : ""}
+                  />
+                  {errors[field] && (
+                    <span className="text-sm text-red-500">{errors[field]}</span>
+                  )}
+                </div>
+              )
+            )}
             <ButtonT variant="primary" className="w-full mt-4">
               {loading ? "Updating..." : "Update Profile"}
             </ButtonT>
