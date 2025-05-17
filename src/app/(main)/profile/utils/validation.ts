@@ -72,3 +72,11 @@ export const validateProfileForm = (formData: any, file: File | null): Validatio
 
   return errors;
 };
+
+export const validateNewEmail = (email: string): string | null => {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) {
+    return "Email must be valid and contain @ and .com";
+  }
+  return null;
+};
