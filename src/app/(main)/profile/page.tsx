@@ -8,6 +8,10 @@ import { ButtonT } from "@/components/ui/ButtonT";
 import { supabase } from "@/lib/supabaseClient";
 import { useRouter } from "next/navigation";
 import axios from "axios";
+import { useAuth } from "@/app/context/authContext";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { validateProfileForm, ValidationError, validateNewEmail } from "./utils/validation";
+import { useCustomToast } from "@/components/ui/CustomToast";
 
 interface FormData {
   firstName: string;
@@ -16,248 +20,276 @@ interface FormData {
   email: string;
 }
 
-interface FormErrors extends Partial<FormData> {}
-
 export default function ProfilePage() {
   const [userId, setUserId] = useState<string | null>(null);
   const [photo, setPhoto] = useState<string>("");
   const [file, setFile] = useState<File | null>(null);
-  const [previousPhotoPath, setPreviousPhotoPath] = useState<string | null>(
-    null
-  );
-  const [uploading, setUploading] = useState(false);
-  const [formData, setFormData] = useState<FormData>({
-    firstName: "",
-    dob: "",
-    school: "",
-    email: "",
-  });
-  const [errors, setErrors] = useState<FormErrors>({});
+  const [previousPhotoPath, setPreviousPhotoPath] = useState<string | null>(null);
+  const [formData, setFormData] = useState<FormData>({ firstName: "", dob: "", school: "", email: "" });
+  const [validationErrors, setValidationErrors] = useState<ValidationError[]>([]);
   const [loading, setLoading] = useState(false);
-  const [userName, setUserName] = useState<string>("User");
-
+  const [showEmailModal, setShowEmailModal] = useState(false);
+  const [newEmail, setNewEmail] = useState("");
+  const toast = useCustomToast();
+  const { fetchUser } = useAuth();
   const router = useRouter();
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selected = e.target.files?.[0];
-    if (selected && selected.type.startsWith("image/")) {
-      setFile(selected);
-      setPhoto(URL.createObjectURL(selected)); // Preview only
-    } else {
-      alert("Please select a valid image.");
-    }
-  };
+  useEffect(() => {
+    const initializeUser = async () => {
+      const { data: { user }, error } = await supabase.auth.getUser();
+      if (error || !user?.id) return console.error("❌ Cannot get session user ID", error);
+      setUserId(user.id);
+      fetchProfile(user.id, user.email || "");
+    };
+    initializeUser();
+  }, []);
 
-  const fetchProfile = async (userId: string) => {
+  const fetchProfile = async (userId: string, authEmail: string) => {
     try {
       const res = await axios.get(`/api/users/${userId}/profile`);
       const profile = res.data?.profile;
-
       if (profile) {
         setFormData({
           firstName: profile.full_name || "",
           dob: profile.date_of_birth || "",
           school: profile.educational_background || "",
-          email: profile.email || "",
+          email: authEmail
         });
         setPhoto(profile.profile_picture || "");
         setPreviousPhotoPath(profile.profile_picture || null);
-        setUserName(profile.full_name?.split(" ")[0] || "User");
       }
     } catch (err) {
       console.error("Failed to fetch profile:", err);
-      setPhoto("");
     }
   };
 
-  useEffect(() => {
-    const mockUser = { id: "35557ac8-fb44-4052-9c73-8fc50a3edda1" }; // Replace with Supabase session if needed
-    const userId = mockUser.id;
-    setUserId(userId);
-    fetchProfile(userId);
-  }, []);
-
-  const validate = (): FormErrors => {
-    const newErrors: FormErrors = {};
-    const today = new Date().toISOString().split("T")[0];
-    if (formData.dob && formData.dob > today) {
-      newErrors.dob = "Date of birth cannot be in the future";
+  const handleEmailChange = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      toast.error("Error", "No active session. Please sign in again.");
+      return;
     }
-    return newErrors;
+
+    const { error } = await supabase.auth.updateUser({ email: newEmail });
+    if (error) {
+      toast.error("Error", "Email update failed. Please try again.");
+      return;
+    }
+
+    toast.success("Success", "Confirmation email sent successfully!");
+    setShowEmailModal(false);
   };
 
-  const handleInputChange =
-    (field: keyof FormData) => (e: React.ChangeEvent<HTMLInputElement>) => {
-      setFormData({ ...formData, [field]: e.target.value });
-      setErrors({ ...errors, [field]: "" });
-    };
+  const validate = (): ValidationError[] => validateProfileForm(formData, file);
+
+  const getFieldError = (fieldName: keyof FormData): string | null => {
+    const error = validationErrors.find((e) => e.field === fieldName);
+    return error ? error.message : null;
+  };
+
+  const handleInputChange = (field: keyof FormData) => (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormData({ ...formData, [field]: e.target.value });
+  };
 
   const uploadImage = async (): Promise<string | null> => {
-    if (!file) return previousPhotoPath;
-
+    if (!file || !userId) return previousPhotoPath;
     const ext = file.name.split(".").pop();
     const filename = `${Date.now()}.${ext}`;
     const path = `${userId}/${filename}`;
+    const { error } = await supabase.storage.from("profile-images").upload(path, file, { upsert: true });
+    if (error) throw error;
 
-    const { error: uploadError } = await supabase.storage
-      .from("profile-images")
-      .upload(path, file, { upsert: true });
-
-    if (uploadError) throw uploadError;
-
-    const { data: publicData } = supabase.storage
-      .from("profile-images")
-      .getPublicUrl(path);
-
+    const { data: publicData } = supabase.storage.from("profile-images").getPublicUrl(path);
     if (previousPhotoPath && previousPhotoPath !== publicData?.publicUrl) {
       const oldPath = previousPhotoPath.split("/").slice(-2).join("/");
       await supabase.storage.from("profile-images").remove([oldPath]);
     }
-
     return publicData?.publicUrl || null;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const validationErrors = validate();
-    setErrors(validationErrors);
-    if (Object.keys(validationErrors).length > 0 || !userId) return;
+    const errors = validate();
+    setValidationErrors(errors);
+    if (errors.length > 0 || !userId) return;
 
     setLoading(true);
     try {
       const uploadedImageUrl = await uploadImage();
+      const payload = buildPayload(uploadedImageUrl);
 
-      const payload: Partial<FormData> = {};
-      Object.entries(formData).forEach(([key, value]) => {
-        if (value.trim()) payload[key as keyof FormData] = value;
-      });
-
-      const res = await axios.patch(`/api/users/${userId}/profile`, {
-        ...payload,
-        profile_picture: uploadedImageUrl,
-      });
-
-      console.log("✅ Profile updated:", res.data.profile);
-      setPreviousPhotoPath(uploadedImageUrl);
-      setPhoto(uploadedImageUrl || "");
-      setFile(null);
+      if (Object.keys(payload).length > 0) {
+        const { error } = await supabase.from("profiles").update(payload).eq("user_id", userId);
+        if (error) {
+          toast.error("Error", "Failed to update profile. Please try again.");
+        } else {
+          updateProfileState(uploadedImageUrl);
+          toast.success("Success", "Profile updated successfully!");
+        }
+      }
     } catch (err: any) {
-      console.error("Error during form submission:", err.message || err);
+      toast.error("Error", "An error occurred during profile update.");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleRemovePhoto = async () => {
-    try {
-      if (previousPhotoPath) {
-        const oldPath = previousPhotoPath.split("/").slice(-2).join("/");
-        const { error: deleteError } = await supabase.storage
-          .from("profile-images")
-          .remove([oldPath]);
+  const buildPayload = (uploadedImageUrl: string | null): Record<string, any> => {
+    const payload: Record<string, any> = {};
+    if (formData.firstName) payload.full_name = formData.firstName;
+    if (formData.dob) payload.date_of_birth = formData.dob;
+    if (formData.school) payload.educational_background = formData.school;
+    if (uploadedImageUrl) payload.profile_picture = uploadedImageUrl;
+    return payload;
+  };
 
-        if (deleteError) {
-          console.error("Failed to delete image from storage:", deleteError.message);
-        } else {
-          console.log("✅ Image deleted from storage");
-        }
-      }
-      setPhoto("");
-      setFile(null);
-      setPreviousPhotoPath("");
-    } catch (err) {
-      console.error("Error during image removal:", err);
-    }
+  const updateProfileState = (uploadedImageUrl: string | null) => {
+    setPreviousPhotoPath(uploadedImageUrl);
+    setPhoto(uploadedImageUrl || "");
+    setFile(null);
+    fetchUser();
   };
 
   return (
     <div className="min-h-screen flex flex-col">
       <NavBar />
       <section className="flex-1 bg-white flex flex-col items-center justify-center py-20">
-        <h2 className="text-3xl font-bold text-center text-black mb-12">
-          Profile
-        </h2>
-        <form
-          onSubmit={handleSubmit}
-          className="flex flex-col lg:flex-row gap-8 lg:gap-28"
-        >
-          <div className="flex flex-col items-center w-[358px] shrink-0">
-            <img
-              src={photo || "/img/defaultProfileImage.png"}
-              alt="User Avatar"
-              onError={(e) => {
-                console.error("Image load failed:", photo);
-                e.currentTarget.onerror = null;
-                e.currentTarget.src = "/img/defaultProfileImage.png";
-              }}
-              className="rounded-xl object-cover w-[358px] h-[358px] border"
-            />
-            <input
-              id="file-input"
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={handleFileChange}
-            />
-            <ButtonT
-              variant="primary"
-              className="mt-4 w-[175px] h-[60px]"
-              onClick={() => document.getElementById("file-input")?.click()}
-            >
-              {uploading
-                ? "Uploading..."
-                : previousPhotoPath
-                ? "Change photo"
-                : "Upload photo"}
-            </ButtonT>
-            <button
-              type="button"
-              onClick={handleRemovePhoto}
-              className="text-sm mt-2 text-[#2563EB] hover:underline"
-            >
-              Remove photo
-            </button>
-          </div>
-
-          <div className="w-full max-w-md space-y-6">
-            {(
-              [
-                "firstName",
-                "dob",
-                "school",
-                "email",
-              ] as (keyof FormData)[]
-            ).map((field) => (
-              <div key={field}>
-                <Label htmlFor={field} className="block mb-1">
-                  {field === "dob"
-                    ? "Date of Birth"
-                    : field === "firstName"
-                    ? "Full Name"
-                    : field.charAt(0).toUpperCase() +
-                      field.slice(1).replace(/([A-Z])/g, " $1")}
-                </Label>
-                <Input
-                  id={field}
-                  type={field === "dob" ? "date" : "text"}
-                  placeholder={`Enter your ${
-                    field === "firstName" ? "full name" : field
-                  }`}
-                  value={formData[field]}
-                  onChange={handleInputChange(field)}
-                  className={errors[field] ? "border border-red-500" : ""}
-                />
-                {errors[field] && (
-                  <span className="text-sm text-red-500">{errors[field]}</span>
-                )}
-              </div>
-            ))}
-            <ButtonT variant="primary" className="w-full mt-4">
-              {loading ? "Updating..." : "Update Profile"}
-            </ButtonT>
-          </div>
+        <h2 className="text-3xl font-bold text-center text-black mb-12">Profile</h2>
+        <form onSubmit={handleSubmit} className="flex flex-col lg:flex-row gap-8 lg:gap-28">
+          <ProfileImageSection
+            photo={photo}
+            setPhoto={setPhoto}
+            setFile={setFile}
+            validationErrors={validationErrors}
+            setPreviousPhotoPath={setPreviousPhotoPath}
+          />
+          <ProfileFormSection
+            formData={formData}
+            handleInputChange={handleInputChange}
+            getFieldError={getFieldError}
+            loading={loading}
+            setShowEmailModal={setShowEmailModal}
+          />
         </form>
       </section>
+      <EmailModal
+        showEmailModal={showEmailModal}
+        setShowEmailModal={setShowEmailModal}
+        newEmail={newEmail}
+        setNewEmail={setNewEmail}
+        handleEmailChange={handleEmailChange}
+      />
     </div>
   );
 }
+
+const ProfileImageSection = ({ photo, setPhoto, setFile, validationErrors, setPreviousPhotoPath }) => (
+  <div className="flex flex-col items-center w-[358px] shrink-0">
+    <img src={photo || "/img/defaultProfileImage.png"} alt="User Avatar" className="rounded-xl object-cover w-[358px] h-[358px] border" />
+    <input
+      id="file-input"
+      type="file"
+      accept="image/*"
+      className="hidden"
+      onChange={(e) => {
+        const f = e.target.files?.[0];
+        if (f) {
+          setFile(f);
+          setPhoto(URL.createObjectURL(f));
+        }
+      }}
+    />
+    <ButtonT variant="primary" className="mt-4 w-[175px] h-[60px]" onClick={() => document.getElementById("file-input")?.click()}>
+      Change photo
+    </ButtonT>
+    {validationErrors
+      .filter((error) => error.field === "file")
+      .map((error, index) => (
+        <p key={index} className="text-red-500 text-xs mt-1">
+          {error.message}
+        </p>
+      ))}
+    <button
+      type="button"
+      onClick={() => {
+        setPhoto("");
+        setFile(null);
+        setPreviousPhotoPath(null);
+      }}
+      className="text-sm mt-2 text-[#2563EB] hover:underline"
+    >
+      Remove photo
+    </button>
+  </div>
+);
+
+const ProfileFormSection = ({ formData, handleInputChange, getFieldError, loading, setShowEmailModal }) => (
+  <div className="w-full max-w-md space-y-6">
+    {["firstName", "dob", "school"].map((field) => (
+      <div key={field}>
+        <Label htmlFor={field}>{field === "dob" ? "Date of Birth" : field === "school" ? "School" : "Full Name"}</Label>
+        <Input
+          id={field}
+          type={field === "dob" ? "date" : "text"}
+          value={formData[field]}
+          onChange={handleInputChange(field)}
+          className={getFieldError(field) ? "border-red-500" : ""}
+        />
+        {getFieldError(field) && <p className="text-red-500 text-xs mt-1">{getFieldError(field)}</p>}
+      </div>
+    ))}
+    <div>
+      <Label htmlFor="email">Email</Label>
+      <div className="flex gap-2 items-center">
+        <Input id="email" type="email" value={formData.email} readOnly disabled className="bg-gray-100 cursor-not-allowed text-gray-500" />
+        <ButtonT variant="ghost" className="!h-[36px] flex items-center justify-center whitespace-nowrap" onClick={() => setShowEmailModal(true)}>
+          Change
+        </ButtonT>
+      </div>
+    </div>
+    <ButtonT variant="primary" className="w-full mt-4">{loading ? "Updating..." : "Update Profile"}</ButtonT>
+  </div>
+);
+
+const EmailModal = ({ showEmailModal, setShowEmailModal, newEmail, setNewEmail, handleEmailChange }) => {
+  const [newEmailError, setNewEmailError] = useState<string | null>(null);
+
+  const handleNewEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const email = e.target.value;
+    setNewEmail(email);
+    setNewEmailError(validateNewEmail(email));
+  };
+
+  const handleSendConfirmation = () => {
+    const error = validateNewEmail(newEmail);
+    if (error) {
+      setNewEmailError(error);
+      return;
+    }
+    handleEmailChange();
+  };
+
+  return (
+    <Dialog open={showEmailModal} onOpenChange={setShowEmailModal}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Change Email</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4">
+          <Label htmlFor="new-email">New Email</Label>
+          <Input
+            id="new-email"
+            type="email"
+            value={newEmail}
+            onChange={handleNewEmailChange}
+            className={newEmailError ? "border-red-500" : ""}
+          />
+          {newEmailError && <p className="text-red-500 text-xs mt-1">{newEmailError}</p>}
+          <ButtonT onClick={handleSendConfirmation} className="w-full mt-2">
+            Send Confirmation
+          </ButtonT>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+};
