@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabaseClient';
+import { getBangkokISOString } from '@/lib/bangkokTime';
 export const runtime = 'nodejs';
 
 export async function POST(req: NextRequest) {
@@ -25,6 +26,9 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'Course name is required' }, { status: 400 });
         }
 
+
+        const bangkok = getBangkokISOString();
+
         const { data, error } = await supabase
             .from('courses')
             .insert([{ 
@@ -38,8 +42,8 @@ export async function POST(req: NextRequest) {
                 video_trailer_url,
                 attachment_url,
                 status: status || 'draft',
-                created_at: created_at || new Date().toISOString(),
-                updated_at: updated_at || new Date().toISOString()
+                created_at: bangkok,
+                updated_at: bangkok
             }])
             .select();
 

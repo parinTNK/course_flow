@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabaseClient";
+import { getBangkokISOString } from "@/lib/bangkokTime";
 
 export async function POST(req: NextRequest) {
   const event = await req.json();
@@ -29,8 +30,8 @@ export async function POST(req: NextRequest) {
           amount: charge.amount / 100,
           payment_date: paymentDate,
           payment_method: paymentMethod,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
+          created_at: getBangkokISOString(),
+          updated_at: getBangkokISOString(),
           status: charge.status,
           charge_id: charge.id,
           failure_message: charge.failure_message || null,

@@ -1,5 +1,6 @@
 import {supabase} from '@/lib/supabaseClient';
 import { NextRequest } from 'next/server';
+import { getBangkokISOString } from '@/lib/bangkokTime';
 
 export async function PUT(
     req: NextRequest,
@@ -38,7 +39,8 @@ export async function PUT(
         if (attachment_url !== undefined) updateData.attachment_url = attachment_url;
         if (status !== undefined) updateData.status = status;
         
-        updateData.updated_at = new Date().toISOString();
+        const bangkok = getBangkokISOString();
+        updateData.updated_at = bangkok;
 
         const { data, error } = await supabase
             .from('courses')
