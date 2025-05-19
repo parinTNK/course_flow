@@ -4,6 +4,7 @@ import { useLearning } from "./context/LearningContext";
 import { useAuth } from "@/app/context/authContext";
 import { useProgress } from "./context/ProgressContext";
 import { supabase } from "@/lib/supabaseClient";
+import { getBangkokISOString } from "@/lib/bangkokTime";
 
 export default function LessonVideoPlayer() {
   const { currentLesson } = useLearning();
@@ -19,7 +20,7 @@ export default function LessonVideoPlayer() {
         user_id: user.user_id,
         sub_lesson_id: currentLesson.id,
         status,
-        updated_at: new Date().toISOString(),
+        updated_at: getBangkokISOString(),
       },
       {
         onConflict: "user_id,sub_lesson_id",
