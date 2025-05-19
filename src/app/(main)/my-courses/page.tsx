@@ -7,12 +7,22 @@ import type { Course } from "@/types/Course";
 import { useAuth } from "@/app/context/authContext";
 import LoadingSpinner from "../../admin/components/LoadingSpinner";
 import { AlertCircle } from "lucide-react";
+import Pagination from "@/app/admin/components/Pagination"; 
 
 const MyCourses: React.FC = () => {
   const [tab, setTab] = useState<"all" | "inprogress" | "completed">("all");
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [limit] = useState(6);
+
+  // Count for all tabs
+  const [allCouresCount, setAllCouresCount] = useState(0);
+  const [inprogressCount, setInprogressCount] = useState(0);
+  const [completedCount, setCompletedCount] = useState(0);
 
   const { user,loading: authLoading } = useAuth();
 
@@ -23,20 +33,25 @@ const MyCourses: React.FC = () => {
       setLoading(true);
       return;
     }
-
+  
     if (!user?.user_id) {
       setCourses([]);
       setLoading(false);
       return;
     }
 
-
     const fetchCourses = async () => {
       setLoading(true);
       setError(null);
       try {
-        const res = await axios.get(`/api/users/${user?.user_id}/courses`);
-        setCourses(res.data);
+        const res = await axios.get(
+          `/api/users/${user?.user_id}/courses?page=${currentPage}&limit=${limit}&tab=${tab}`
+        );
+        setCourses(res.data.data);
+        setTotalPages(res.data.pagination.totalPages);
+        setAllCouresCount(res.data.pagination.allCount || 0);
+        setInprogressCount(res.data.pagination.inprogressCount || 0);
+        setCompletedCount(res.data.pagination.completedCount || 0);
       } catch (err: any) {
         setError(err.message || "Failed to fetch courses");
       } finally {
@@ -44,27 +59,13 @@ const MyCourses: React.FC = () => {
       }
     };
     fetchCourses();
-  }, [user?.user_id, authLoading]);
-
-  console.log(courses);
+  }, [user?.user_id, authLoading, currentPage, limit, tab]);
 
 
-  const filteredCourses = courses.filter((course) => {
-    if (tab === "all") return true;
-    if (tab === "inprogress")
-      return course.progress > 0 && course.progress < 99;
-    if (tab === "completed") return course.progress === 100;
-    return true;
-  });
-
-  const inprogressCount = courses.filter(
-    (course) => course.progress > 0 && course.progress < 99
-  ).length;
-  const completedCount = courses.filter(
-    (course) => course.progress === 100
-  ).length;
-
-  const allCouresCount = courses.length;
+const handleTabChange = (newTab: "all" | "inprogress" | "completed") => {
+  setTab(newTab);
+  setCurrentPage(1);
+};
 
 
   return (
@@ -85,7 +86,7 @@ const MyCourses: React.FC = () => {
                         ? "border-black"
                         : "border-transparent text-gray-400"
                     }`}
-                    onClick={() => setTab("all")}
+                    onClick={() => handleTabChange("all")}
                   >
                     All Courses
                   </button>
@@ -95,7 +96,7 @@ const MyCourses: React.FC = () => {
                         ? "border-black"
                         : "border-transparent text-gray-400"
                     }`}
-                    onClick={() => setTab("inprogress")}
+                    onClick={() => handleTabChange("inprogress")}
                   >
                     Inprogress
                   </button>
@@ -105,7 +106,7 @@ const MyCourses: React.FC = () => {
                         ? "border-black"
                         : "border-transparent text-gray-400"
                     }`}
-                    onClick={() => setTab("completed")}
+                    onClick={() => handleTabChange("completed")}
                   >
                     Completed
                   </button>
@@ -142,16 +143,26 @@ const MyCourses: React.FC = () => {
                         </span>
                       </div>
                     </div>
-                  ) : filteredCourses.length === 0 ? (
+                  ) : courses.length === 0 ? (
                     <div className="col-span-2 text-center text-gray-400 py-20">
                       No courses found.
                     </div>
                   ) : (
-                    filteredCourses.map((course) => (
+                    courses.map((course) => (
                       <CourseCard key={course.id} course={course} />
                     ))
                   )}
                 </div>
+                {/* Pagination */}
+                {!loading && !error && courses.length > 0 && (
+                <div className = "mt-8">
+                  <Pagination
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    onPageChange={setCurrentPage}
+                  />
+                </div>
+                )}
               </section>
             </div>
           </div>
@@ -230,7 +241,7 @@ const Sidebar: React.FC<{
         <div className="flex items-center justify-between bg-gray-100 rounded-lg px-3 py-2 flex-1">
             <span className="text-xs text-gray-400">All Course</span>
             <span className="text-lg font-bold text-gray-700">
-              {inprogressCount}
+              {allCouresCount}
             </span>
           </div>
           <div className="flex items-center justify-between bg-gray-100 rounded-lg px-3 py-2 flex-1">
