@@ -38,6 +38,7 @@ const NavBar: React.FC = () => {
   const handleLogout = async () => {
     try {
       await signOut();
+      document.cookie = "redirecting=; max-age=0; path=/;";
       window.location.href = "/login";
     } catch (error) {
       console.error("Logout error:", error);
@@ -50,7 +51,7 @@ const NavBar: React.FC = () => {
   return (
     <nav className="bg-white fixed w-full h-[88px] z-20 top-0 start-0 border-b border-gray-200 shadow-sm">
       {/* Desktop */}
-      <div className="max-w-screen-xl h-full hidden sm:flex items-center justify-between lg:mx-[120px] mx-6 px-6">
+      <div className=" h-full hidden sm:flex items-center justify-between lg:mx-[120px] mx-6 px-6">
         <Link
           href="/"
           className="text-2xl font-extrabold text-transparent bg-linear1"
