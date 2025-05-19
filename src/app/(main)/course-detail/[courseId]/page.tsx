@@ -9,6 +9,8 @@ import CourseCard from "@/components/CourseCard";
 import CallToAction from "@/components/landing/CallToAction";
 import ConfirmModal from "@/components/ConfirmModal";
 import LoadingSpinner from "@/app/admin/components/LoadingSpinner";
+import { useCustomToast } from "@/components/ui/CustomToast";
+import { ButtonT } from "@/components/ui/ButtonT";
 import { VideoOff } from "lucide-react";
 import {
   Carousel,
@@ -23,19 +25,22 @@ const CourseDetailPage: React.FC = () => {
   const params = useParams();
   const courseId = params?.courseId as string;
 
-  const { user, loading, authStateChanged } = useAuth();
+  const { user, loading } = useAuth();
   const isAuthenticated = !!user;
+
+  const { success } = useCustomToast();
 
   const [courses, setCourses] = useState<any>(null);
   const [modules, setModules] = useState<any[]>([]);
   const [otherCourses, setOtherCourses] = useState<any[]>([]);
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [isFetchingCourseData, setIsFetchingCourseData] = useState(false);
-  const [showModal, setShowModal] = useState(false);
   const [expandedModule, setExpandedModule] = useState<number | null>(null);
-  const [hasFetched, setHasFetched] = useState(false);
+  const [showSubscribeModal, setShowSubscribeModal] = useState(false);
+  const [showWishlistModal, setShowWishlistModal] = useState(false);
+  const [isWishlisted, setIsWishlisted] = useState(false);
 
-  // ✅ Fetch public course data
+  // Fetch course + modules + other courses
   useEffect(() => {
     const fetchCourseData = async () => {
       setIsFetchingCourseData(true);
@@ -45,6 +50,7 @@ const CourseDetailPage: React.FC = () => {
           .select("id, name, summary, detail, video_trailer_url, attachment_url, price")
           .eq("id", courseId)
           .single();
+
         if (courseData) setCourses(courseData);
 
         const { data: moduleData } = await supabase
@@ -52,14 +58,12 @@ const CourseDetailPage: React.FC = () => {
           .select("id, title, order_no, sub_lessons(id, title)")
           .eq("course_id", courseId)
           .order("order_no", { ascending: true });
+
         if (moduleData) setModules(moduleData);
 
         const { data: otherCourseData } = await supabase
           .from("courses")
-          .select(`
-            id, name, summary, price,
-            lessons!inner(id, sub_lessons(count))
-          `)
+          .select("id, name, summary, price, lessons!inner(id, sub_lessons(count))")
           .neq("id", courseId);
 
         if (otherCourseData) {
@@ -76,16 +80,15 @@ const CourseDetailPage: React.FC = () => {
         console.error("Fetch course data failed", err);
       } finally {
         setIsFetchingCourseData(false);
-        setHasFetched(true);
       }
     };
 
-    if (!hasFetched && !loading && courseId) {
+    if (!loading && courseId) {
       fetchCourseData();
     }
-  }, [loading, user, courseId, hasFetched]);
+  }, [loading, courseId]);
 
-  // ✅ Fetch subscription only if logged in
+  // Fetch subscription
   useEffect(() => {
     const fetchSubscription = async () => {
       try {
@@ -95,9 +98,8 @@ const CourseDetailPage: React.FC = () => {
           .eq("course_id", courseId)
           .eq("user_id", user?.user_id)
           .single();
-        if (subscriptionData && !isSubscribed) {
-          setIsSubscribed(true);
-        }
+
+        if (subscriptionData) setIsSubscribed(true);
       } catch (err) {
         console.error("Subscription fetch failed", err);
       }
@@ -106,25 +108,12 @@ const CourseDetailPage: React.FC = () => {
     if (user && courseId) {
       fetchSubscription();
     }
-  }, [user, courseId, isSubscribed]);
+  }, [user, courseId]);
 
-  // ✅ Loading UI
-  if (loading && !authStateChanged) {
+  if (loading || isFetchingCourseData) {
     return (
-      <div className="min-h-screen flex flex-col">
-        <main className="flex-grow flex items-center justify-center">
-          <LoadingSpinner text="Loading user info..." />
-        </main>
-      </div>
-    );
-  }
-
-  if (isFetchingCourseData) {
-    return (
-      <div className="min-h-screen flex flex-col">
-        <main className="flex-grow flex items-center justify-center">
-          <LoadingSpinner text="Loading course details..." />
-        </main>
+      <div className="min-h-screen flex items-center justify-center">
+        <LoadingSpinner text="Loading..." />
       </div>
     );
   }
@@ -132,8 +121,6 @@ const CourseDetailPage: React.FC = () => {
   const toggleModule = (moduleId: number) => {
     setExpandedModule(expandedModule === moduleId ? null : moduleId);
   };
-
-  const loginRedirectUrl = `/login?redirect=/course-detail/${courseId}`;
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -143,9 +130,9 @@ const CourseDetailPage: React.FC = () => {
           <span>Back</span>
         </Link>
 
-        {/* Course Info */}
-        <div className="grid md:grid-cols-3 gap-8 mb-12 relative">
-          {/* Main Content */}
+        {/* Content Grid */}
+        <div className="grid md:grid-cols-3 gap-8 mb-12">
+          {/* Left (Course Content) */}
           <div className="md:col-span-2">
             {courses?.video_trailer_url ? (
               <video className="w-full h-[400px] bg-gray-200 rounded-lg" controls>
@@ -163,14 +150,11 @@ const CourseDetailPage: React.FC = () => {
               <h2 className="text-2xl font-bold mb-4">Course Detail</h2>
               <div className="prose max-w-none text-gray-600">
                 {courses?.detail?.split("\n\n").map((para: string, idx: number) => (
-                  <p key={idx} className="mb-4 whitespace-pre-line">
-                    {para}
-                  </p>
+                  <p key={idx} className="mb-4 whitespace-pre-line">{para}</p>
                 ))}
               </div>
             </div>
 
-            {/* Attach File */}
             {isAuthenticated && isSubscribed && (
               <div className="my-12">
                 <h2 className="text-2xl font-bold mb-4">Attach File</h2>
@@ -198,7 +182,6 @@ const CourseDetailPage: React.FC = () => {
               </div>
             )}
 
-            {/* Module List */}
             <div className="mb-12">
               <h2 className="text-2xl font-bold mb-4">Module Samples</h2>
               <div className="space-y-4">
@@ -231,48 +214,52 @@ const CourseDetailPage: React.FC = () => {
             </div>
           </div>
 
-          {/* Sidebar */}
+          {/* Right (Sidebar) */}
           <div className="md:col-span-1">
             <div className="sticky top-30 p-6 border rounded-lg bg-white z-10">
               <span className="text-orange-500">Course</span>
               <h1 className="text-2xl font-bold mb-2">{courses?.name}</h1>
               <p className="text-gray-600 mb-4">{courses?.summary}</p>
-              <p className="text-2xl font-bold mb-6">THB {courses?.price?.toLocaleString()}</p>
+              <p className="text-2xl font-bold mb-6">
+                THB {courses?.price?.toLocaleString()}
+              </p>
 
               {isAuthenticated ? (
                 isSubscribed ? (
-                  <Link
-                    href={`/course-learning/${courses?.id}/learning`}
-                    className="block w-full py-2 px-4 bg-blue-600 text-white rounded text-center hover:bg-blue-700"
-                  >
-                    Start Learning
+                  <Link href={`/course-learning/${courses?.id}/learning`} className="block w-full">
+                    <ButtonT variant="primary" className="w-full py-1">
+                      Start Learning
+                    </ButtonT>
                   </Link>
                 ) : (
                   <>
-                    <button className="w-full mb-3 py-2 px-4 border border-orange-500 text-orange-500 rounded hover:bg-orange-50">
-                      Add to Wishlist
-                    </button>
-                    <button
-                      className="w-full py-2 px-4 bg-blue-600 text-white rounded hover:bg-blue-700"
-                      onClick={() => setShowModal(true)}
+                    <ButtonT
+                      variant="Secondary"
+                      className="w-full mb-3"
+                      onClick={() => setShowWishlistModal(true)}
+                    >
+                      {isWishlisted ? "Remove from Wishlist" : "Add to Wishlist"}
+                    </ButtonT>
+                    <ButtonT
+                      variant="primary"
+                      className="w-full"
+                      onClick={() => setShowSubscribeModal(true)}
                     >
                       Subscribe This Course
-                    </button>
+                    </ButtonT>
                   </>
                 )
               ) : (
                 <>
-                  <Link
-                    href={loginRedirectUrl}
-                    className="block w-full mb-3 py-2 px-4 border border-orange-500 text-orange-500 rounded hover:bg-orange-50 text-center"
-                  >
-                    Add to Wishlist
+                  <Link href={`/login?redirect=/course-detail/${courseId}`}>
+                    <ButtonT variant="Secondary" className="block w-full mb-3 py-2">
+                      Add to Wishlist
+                    </ButtonT>
                   </Link>
-                  <Link
-                    href={loginRedirectUrl}
-                    className="block w-full py-2 px-4 bg-blue-600 text-white rounded hover:bg-blue-700 text-center"
-                  >
-                    Subscribe This Course
+                  <Link href={`/login?redirect=/course-detail/${courseId}`}>
+                    <ButtonT variant="primary" className="block w-full py-2">
+                      Subscribe This Course
+                    </ButtonT>
                   </Link>
                 </>
               )}
@@ -280,7 +267,6 @@ const CourseDetailPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Other Courses */}
         {!isSubscribed && (
           <div className="mb-12">
             <hr />
@@ -304,23 +290,44 @@ const CourseDetailPage: React.FC = () => {
         )}
       </main>
 
-      {/* Modal */}
-      {isAuthenticated && (
-        <ConfirmModal
-          isOpen={showModal}
-          onClose={() => setShowModal(false)}
-          onConfirm={() => {
-            setShowModal(false);
-            window.location.href = `/payment/${courses?.id}`;
-          }}
-          title="Confirmation"
-          message={`Are you sure you want to subscribe to ${courses?.name} course?`}
-          confirmText="Yes, I want to subscribe"
-          cancelText="No, I don't"
-          confirmButtonClass="bg-blue-600 text-white hover:bg-blue-700"
-          cancelButtonClass="border border-orange-500 text-orange-500 hover:bg-orange-50"
-        />
-      )}
+      {/* Wishlist Modal */}
+      <ConfirmModal
+        isOpen={showWishlistModal}
+        onClose={() => setShowWishlistModal(false)}
+        onConfirm={() => {
+          setIsWishlisted((prev) => !prev);
+          success(
+            !isWishlisted ? "Added to Wishlist" : "Removed from Wishlist"
+          );
+          setShowWishlistModal(false);
+        }}
+        title="Wishlist Confirmation"
+        message={
+          isWishlisted
+            ? `Do you want to remove ${courses?.name} from your Wishlist?`
+            : `Do you want to add ${courses?.name} to your Wishlist?`
+        }
+        confirmText={isWishlisted ? "Remove" : "Add"}
+        cancelText="Cancel"
+        confirmButtonClass="bg-blue-600 text-white hover:bg-blue-700"
+        cancelButtonClass="border border-orange-500 text-orange-500 hover:bg-orange-50"
+      />
+
+      {/* Subscribe Modal */}
+      <ConfirmModal
+        isOpen={showSubscribeModal}
+        onClose={() => setShowSubscribeModal(false)}
+        onConfirm={() => {
+          setShowSubscribeModal(false);
+          router.push(`/payment/${courses?.id}`);
+        }}
+        title="Confirmation"
+        message={`Are you sure you want to subscribe to ${courses?.name} course?`}
+        confirmText="Yes, I want to subscribe"
+        cancelText="No, I don't"
+        confirmButtonClass="bg-blue-600 text-white hover:bg-blue-700"
+        cancelButtonClass="border border-orange-500 text-orange-500 hover:bg-orange-50"
+      />
 
       {!isAuthenticated && <CallToAction />}
     </div>
