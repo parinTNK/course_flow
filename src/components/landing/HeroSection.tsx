@@ -20,7 +20,7 @@ const HeroSection: React.FC = () => {
           </p>
 
           <div className="mt-8">
-            <a href="/courses">
+            <a href="/our-courses">
               <ButtonT
                 variant="primary"
                 className="w-[193px] h-[60px] text-lg font-bold px-8 py-4 flex items-center justify-center whitespace-nowrap"

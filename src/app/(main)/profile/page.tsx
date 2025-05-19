@@ -7,7 +7,6 @@ import NavBar from "@/components/nav";
 import { ButtonT } from "@/components/ui/ButtonT";
 import { supabase } from "@/lib/supabaseClient";
 import { useRouter } from "next/navigation";
-import axios from "axios";
 import { useAuth } from "@/app/context/authContext";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { validateProfileForm, ValidationError, validateNewEmail } from "./utils/validation";
@@ -31,37 +30,23 @@ export default function ProfilePage() {
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [newEmail, setNewEmail] = useState("");
   const toast = useCustomToast();
-  const { fetchUser } = useAuth();
+  const { user, fetchUser } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
-    const initializeUser = async () => {
-      const { data: { user }, error } = await supabase.auth.getUser();
-      if (error || !user?.id) return console.error("❌ Cannot get session user ID", error);
-      setUserId(user.id);
-      fetchProfile(user.id, user.email || "");
-    };
-    initializeUser();
-  }, []);
-
-  const fetchProfile = async (userId: string, authEmail: string) => {
-    try {
-      const res = await axios.get(`/api/users/${userId}/profile`);
-      const profile = res.data?.profile;
-      if (profile) {
-        setFormData({
-          firstName: profile.full_name || "",
-          dob: profile.date_of_birth || "",
-          school: profile.educational_background || "",
-          email: authEmail
-        });
-        setPhoto(profile.profile_picture || "");
-        setPreviousPhotoPath(profile.profile_picture || null);
-      }
-    } catch (err) {
-      console.error("Failed to fetch profile:", err);
+    if (user) {
+      setUserId(user.user_id);
+      setFormData({
+        firstName: user.full_name || "",
+        dob: user.date_of_birth || "",
+        school: user.educational_background || "",
+        email: user.email || "",
+      });
+      setPhoto(user.profile_picture || "");
+      setPreviousPhotoPath(user.profile_picture || null);
     }
-  };
+  }, [user]);
+  
 
   const handleEmailChange = async () => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -136,10 +121,13 @@ export default function ProfilePage() {
 
   const buildPayload = (uploadedImageUrl: string | null): Record<string, any> => {
     const payload: Record<string, any> = {};
+    // Only add fields that have changed
     if (formData.firstName) payload.full_name = formData.firstName;
     if (formData.dob) payload.date_of_birth = formData.dob;
     if (formData.school) payload.educational_background = formData.school;
-    if (uploadedImageUrl) payload.profile_picture = uploadedImageUrl;
+    
+    // Only add profile_picture if it's null or different from the previous one
+    payload.profile_picture = uploadedImageUrl;
     return payload;
   };
 
