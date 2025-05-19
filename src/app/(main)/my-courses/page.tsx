@@ -26,17 +26,9 @@ const MyCourses: React.FC = () => {
 
   const { user,loading: authLoading } = useAuth();
 
-
-
   useEffect(() => {
-    if (authLoading) {
-      setLoading(true);
-      return;
-    }
-  
     if (!user?.user_id) {
       setCourses([]);
-      setLoading(false);
       return;
     }
 
@@ -66,6 +58,14 @@ const handleTabChange = (newTab: "all" | "inprogress" | "completed") => {
   setTab(newTab);
   setCurrentPage(1);
 };
+
+if (authLoading) {
+  return (
+    <div className="min-h-screen flex items-center justify-center">
+      <LoadingSpinner text="Loading..." className = '' size="md" />
+    </div>
+  );
+}
 
 
   return (
