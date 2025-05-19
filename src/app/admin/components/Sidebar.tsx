@@ -63,8 +63,15 @@ export default function Sidebar() {
   return (
     <div className="bg-white w-[240px] h-screen shadow-md flex flex-col border-3 border-gray-200 border-b-0">
       <div className="p-6 pb-12 flex flex-col items-center ">
-        {/* //TODO: fix logo at Admin Panel Control */}
-        <h1 className="text-2xl font-semibold text-blue-600">CourseFlow</h1>
+           <div className="max-w-screen-xl h-full hidden sm:flex items-center justify-between lg:mx-[120px] mx-6 px-6">
+            <Link
+              href="/"
+              className="text-2xl font-extrabold text-transparent bg-linear1"
+              style={{ backgroundClip: "text", WebkitBackgroundClip: "text" }}
+            >
+              CourseFlow
+            </Link>
+          </div>
         <p className="text-sm text-gray-500 mt-1">Admin Panel Control</p>
       </div>
 

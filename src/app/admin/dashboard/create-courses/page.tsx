@@ -11,7 +11,6 @@ function CreateCourse() {
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [success, setSuccess] = useState(false)
 
-  // Form state
   const [formData, setFormData] = useState({
     name: '',
     price: '',
@@ -49,7 +48,6 @@ function CreateCourse() {
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { id, value } = e.target
 
-    // Clear validation error when user starts typing
     if (errors[id]) {
       setErrors(prevErrors => ({
         ...prevErrors,
@@ -67,15 +65,14 @@ function CreateCourse() {
     }))
   }
 
-  // Handle promo code section changes
-  const handlePromoChange = (promoData: any) => {
-    setFormData(prevData => ({
-      ...prevData,
-      promo: {
-        ...promoData
-      }
-    }))
-  }
+  // const handlePromoChange = (promoData: any) => {
+  //   setFormData(prevData => ({
+  //     ...prevData,
+  //     promo: {
+  //       ...promoData
+  //     }
+  //   }))
+  // }
 
   const { success: toastSuccess, error: toastError } = useCustomToast();
 
@@ -93,7 +90,6 @@ function CreateCourse() {
   const validateForm = () => {
     const newErrors: Record<string, string> = {}
 
-    // Validate required fields
     if (!formData.name.trim()) {
       newErrors['course-name'] = 'Please fill out this field'
     }
@@ -122,7 +118,8 @@ function CreateCourse() {
     return Object.keys(newErrors).length === 0
   }
 
-  // Handle form submission
+
+
   const handleSubmit = async (e: React.FormEvent, status: 'draft' | 'published') => {
     e.preventDefault()
 
@@ -132,7 +129,7 @@ function CreateCourse() {
     if (status === 'published' && !validateForm()) return
 
     setIsLoading(true)
-
+    
     try {
       let coverUrl = ''
       if (coverImageFile) {
@@ -150,7 +147,6 @@ function CreateCourse() {
         cover_image_url: coverUrl,
       }
 
-      // Send data to API
       const response = await fetch('/api/admin/courses-create', {
         method: 'POST',
         headers: {
@@ -354,9 +350,8 @@ function CreateCourse() {
               variant="Secondary"
               className="mr-4 w-[169px]"
               onClick={(e) => handleSubmit(e as React.FormEvent, 'draft')}
-
             >
-              Draft
+              {isLoading ? 'Saving...' : 'Draft'}
             </ButtonT>
           </div>
         </form>
