@@ -4,24 +4,16 @@ import { useLearning } from "./context/LearningContext";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { useParams } from "next/navigation";
+import { useProgress } from "./context/ProgressContext";
 
-interface Courses {
-  id: string;
-  name: string;
-  summary: string;
-  detail: string;
-  cover_image_url: string;
-  video_trailer_url: string;
-  total_learning_time: number;
-  status: string;
-}
+type WatchStatus = "not_started" | "in_progress" | "completed";
 
 interface SubLesson {
   id: string;
   title: string;
   video_url: string;
   order_no: number;
-  is_completed?: boolean; // เพิ่มเติมสำหรับติดตามความคืบหน้า
+  watch_status?: WatchStatus;
 }
 
 interface Lesson {
@@ -45,10 +37,27 @@ export default function Sidebar({ setLessons: setParentLessons }: SidebarProps) 
   const [courseTitle, setCourseTitle] = useState("");
   const [courseDescription, setCourseDescription] = useState("");
 
+  // 🧠 ฟังก์ชันเลือก icon ตาม watch_status
+  const getStatusIcon = (status?: WatchStatus) => {
+    switch (status) {
+      case "completed":
+        return <img src="/Vector-2.svg" alt="completed" className="w-5 h-5" />;
+      case "in_progress":
+        return <img src="/Ellipse 9.svg" alt="in progress" className="w-4 h-4" />;
+      default:
+        return <img src="/Frame-7.svg" alt="not started" className="w-5 h-5" />;
+    }
+  };
+
+  const { progressUpdated } = useProgress(); 
+
   useEffect(() => {
     const fetchCourseAndLessons = async () => {
       try {
-        // ดึงข้อมูลคอร์ส
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+
+        // 📌 ดึงข้อมูลคอร์ส
         const { data: courseData, error: courseError } = await supabase
           .from('courses')
           .select('id, name, summary, detail, total_learning_time')
@@ -60,7 +69,7 @@ export default function Sidebar({ setLessons: setParentLessons }: SidebarProps) 
         setCourseTitle(courseData.name);
         setCourseDescription(courseData.summary);
 
-        // ดึงข้อมูลบทเรียนและ sub-lessons
+        // 📌 ดึงบทเรียน + sub_lessons
         const { data: lessonData, error: lessonError } = await supabase
           .from('lessons')
           .select(`
@@ -80,22 +89,50 @@ export default function Sidebar({ setLessons: setParentLessons }: SidebarProps) 
 
         if (lessonError) throw lessonError;
 
-        // จัดเรียง sub_lessons ตาม order_no
         const sortedLessons = lessonData?.map(lesson => ({
           ...lesson,
           sub_lessons: lesson.sub_lessons.sort((a, b) => a.order_no - b.order_no)
         })) || [];
 
-        setLocalLessons(sortedLessons);
-        setParentLessons(sortedLessons); // ส่งข้อมูลกลับไปที่ parent
+        // 📌 ดึง lesson_progress ของ user ปัจจุบัน
+        const { data: progressData, error: progressError } = await supabase
+          .from("lesson_progress")
+          .select("sub_lesson_id, status")
+          .eq("user_id", user.id);
+
+        if (progressError) {
+          console.error("Error fetching lesson_progress:", progressError);
+        }
+
+        // 🧠 map watch_status กลับเข้า sub_lessons
+        const lessonsWithStatus = sortedLessons.map(lesson => ({
+          ...lesson,
+          sub_lessons: lesson.sub_lessons.map(sub => {
+            const match = progressData?.find(p => p.sub_lesson_id === sub.id);
+            return {
+              ...sub,
+              watch_status: match?.status || "not_started",
+            };
+          }),
+        }));
+
+        setLocalLessons(lessonsWithStatus);
+        setParentLessons(lessonsWithStatus);
+
+        // 🎯 คำนวณ courseProgress (% ที่ดูจบแล้ว)
+        const allSubLessons = lessonsWithStatus.flatMap(l => l.sub_lessons);
+        const completedCount = allSubLessons.filter(s => s.watch_status === "completed").length;
+        const progress = Math.round((completedCount / allSubLessons.length) * 100);
+        setCourseProgress(progress);
+
         setLoading(false);
       } catch (error) {
-        console.error('Error fetching data:', error);
+        console.error("Error loading course content:", error);
       }
     };
 
     fetchCourseAndLessons();
-  }, [courseId, setParentLessons]);
+  }, [courseId, setParentLessons, progressUpdated]);
 
   const handleSubLessonClick = (subLesson: SubLesson) => {
     setCurrentLesson(subLesson);
@@ -137,17 +174,7 @@ export default function Sidebar({ setLessons: setParentLessons }: SidebarProps) 
                   className="flex items-center py-1 cursor-pointer hover:bg-gray-50 rounded px-2"
                   onClick={() => handleSubLessonClick(subLesson)}
                 >
-                  <span className={`w-5 h-5 rounded-full ${
-                    subLesson.is_completed 
-                      ? 'bg-green-500 flex items-center justify-center' 
-                      : 'border border-gray-300'
-                  } mr-2`}>
-                    {subLesson.is_completed && (
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-3 h-3 text-white">
-                        <path fillRule="evenodd" d="M19.916 4.626a.75.75 0 01.208 1.04l-9 13.5a.75.75 0 01-1.154.114l-6-6a.75.75 0 011.06-1.06l5.353 5.353 8.493-12.739a.75.75 0 011.04-.208z" clipRule="evenodd" />
-                      </svg>
-                    )}
-                  </span>
+                  <span className="mr-2">{getStatusIcon(subLesson.watch_status)}</span>
                   <span className={`text-sm ${
                     currentLesson?.id === subLesson.id 
                       ? "text-blue-500 font-medium" 
