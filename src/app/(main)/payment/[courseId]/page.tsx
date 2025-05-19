@@ -9,6 +9,7 @@ import axios from "axios";
 import { Course, CardForm } from "@/types/payment";
 import { useAuth } from "@/app/context/authContext";
 import LoadingSpinner from "../../../admin/components/LoadingSpinner";
+import { useCustomToast } from "@/components/ui/CustomToast"
 
 // -------------------- Validate Functions --------------------
 const luhnCheck = (num: string) => {
@@ -54,6 +55,8 @@ export default function PaymentPage() {
   const [error, setError] = useState<string | null>(null);
   const [promoError, setPromoError] = useState<string | null>(null);
   const [promoCode, setPromoCode] = useState("");
+  const [isFetchingCourse, setIsFetchingCourse] = useState(false);
+  const [isFetchingPromo, setIsFetchingPromo] = useState(false);
   const [promoApplied, setPromoApplied] = useState(false);
   const [promoResult, setPromoResult] = useState<null | {
     discountType: string;
@@ -63,7 +66,8 @@ export default function PaymentPage() {
     message: string;
   }>(null);
   const { user,loading: authLoading } = useAuth();
-
+  const { success, error: toastError } = useCustomToast();
+  console.log(authLoading)
 
   // Hooks
   const params = useParams();
@@ -86,6 +90,7 @@ export default function PaymentPage() {
 
   // -------------------- Effects --------------------
   useEffect(() => {
+    setIsFetchingCourse(true);
     const fetchCourse = async () => {
       try {
         const res = await axios.get(`/api/course/${courseId}`);
@@ -94,6 +99,8 @@ export default function PaymentPage() {
         setError(
           err.response?.data?.error || err.message || "Failed to fetch course"
         );
+      }finally {
+        setIsFetchingCourse(false);
       }
     };
     fetchCourse();
@@ -103,6 +110,7 @@ export default function PaymentPage() {
   const handleApplyPromo = async () => {
     setPromoError(null);
     setPromoResult(null);
+    setIsFetchingPromo(true);
     if (!promoCode || !course) return;
     try {
       const res = await axios.post("/api/promocodes/validate", {
@@ -120,6 +128,8 @@ export default function PaymentPage() {
     } catch (err: any) {
       setPromoError("Error validating promo code");
       setPromoApplied(false);
+    }finally {
+      setIsFetchingPromo(false);
     }
   };
 
@@ -202,18 +212,17 @@ export default function PaymentPage() {
 
       const result = res.data;
 
-      if (result.success) {
+      if (result.charge.status === "successful" && (result.charge.paid)) {
         router.push(`/payment/${courseId}/order-completed`);
       } else {
-        router.push(`/payment/${courseId}/order-failed`);
+        router.push(`/payment/${courseId}/order-failed`);  //business logic error go to order failed
       }
     } catch (err: any) {
-      router.push(`/payment/${courseId}/order-failed`);
+      toastError("Unable to process your request due to a system error. Please try again ", err.message); //system error
     }
   };
 
-
-if (authLoading) {
+  if (authLoading || isFetchingCourse || isFetchingPromo) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <LoadingSpinner text="Loading..." className = '' size="md" />
@@ -221,7 +230,6 @@ if (authLoading) {
     );
   }
 
-  // --- ถ้า user ยังไม่มา (เช่น logout) ---
   if (!user) {
     return (
       <div className="min-h-screen flex items-center justify-center">
