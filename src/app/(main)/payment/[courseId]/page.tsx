@@ -58,6 +58,9 @@ export default function PaymentPage() {
   const [isFetchingCourse, setIsFetchingCourse] = useState(false);
   const [isFetchingPromo, setIsFetchingPromo] = useState(false);
   const [promoApplied, setPromoApplied] = useState(false);
+  const [alreadyPurchased, setAlreadyPurchased] = useState<boolean | null>(
+    null
+  );
   const [promoResult, setPromoResult] = useState<null | {
     discountType: string;
     discountValue: number;
@@ -105,6 +108,29 @@ export default function PaymentPage() {
     };
     fetchCourse();
   }, [courseId]);
+
+  useEffect(() => {
+    if (!user || !courseId) return;
+
+    const checkPurchased = async () => {
+      try {
+        const res = await axios.get(
+          `/api/users/${user.user_id}/subscription?courseId=${courseId}`
+        );
+        setAlreadyPurchased(res.data.purchased);
+      } catch (err) {
+        setAlreadyPurchased(false);
+      }
+    };
+
+    checkPurchased();
+  }, [user, courseId]);
+
+  useEffect(() => {
+    if (alreadyPurchased) {
+      router.replace(`/course-detail/${courseId}`);
+    }
+  }, [alreadyPurchased, courseId, router]);
 
   // -------------------- Promo Code Validate --------------------
   const handleApplyPromo = async () => {
@@ -222,20 +248,10 @@ export default function PaymentPage() {
     }
   };
 
-  if (authLoading || isFetchingCourse || isFetchingPromo) {
+  if (authLoading || isFetchingCourse || isFetchingPromo || alreadyPurchased === null) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <LoadingSpinner text="Loading..." className = '' size="md" />
-      </div>
-    );
-  }
-
-  if (!user) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-gray-500 text-lg">
-          Please login to continue.
-        </div>
       </div>
     );
   }
