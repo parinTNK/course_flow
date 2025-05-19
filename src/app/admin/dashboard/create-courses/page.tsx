@@ -118,16 +118,6 @@ function CreateCourse() {
     return Object.keys(newErrors).length === 0
   }
 
-  const validateDraft = () => {
-    const newErrors: Record<string, string> = {}
-
-    if (!formData.name.trim()) {
-      newErrors['course-name'] = 'Please fill out this field'
-    }
-    
-    setErrors(newErrors)
-    return Object.keys(newErrors).length === 0
-  }
 
 
   const handleSubmit = async (e: React.FormEvent, status: 'draft' | 'published') => {
