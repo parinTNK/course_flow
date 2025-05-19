@@ -1,7 +1,7 @@
 'use client'
 import { ButtonT } from '@/components/ui/ButtonT'
 import { PromoCodeSection } from '@/app/admin/components/PromoCodeSection'
-import React, { useState } from 'react'
+import React, { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { useCustomToast } from '@/components/ui/CustomToast';
 
@@ -26,6 +26,24 @@ function CreateCourse() {
       discountAmount: '',
     }
   })
+
+  const [coverImageFile, setCoverImageFile] = useState<File|null>(null)
+  const [coverPreview, setCoverPreview] = useState<string>('')
+
+  const coverRef = useRef<HTMLInputElement>(null)
+
+  const handleCoverClick = () => coverRef.current?.click()
+  const handleCoverChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] ?? null
+    // reject files over 5MB
+    if (file && file.size > 5 * 1024 * 1024) {
+      toastError('Cover image must be less than 5 MB')
+      return
+    }
+    setCoverImageFile(file)
+    setCoverPreview(file ? URL.createObjectURL(file) : '')
+    if (errors.coverImage) setErrors(prev=>{ const u={...prev}; delete u.coverImage; return u })
+  }
 
   // Handle input changes
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -60,6 +78,16 @@ function CreateCourse() {
   }
 
   const { success: toastSuccess, error: toastError } = useCustomToast();
+
+  // Only validate course name for Draft
+  const validateDraft = () => {
+    if (!formData.name.trim()) {
+      setErrors({ 'course-name': 'Please fill out this field' })
+      toastError('Course name is required for draft')
+      return false
+    }
+    return true
+  }
 
   // Form validation
   const validateForm = () => {
@@ -98,19 +126,28 @@ function CreateCourse() {
   const handleSubmit = async (e: React.FormEvent, status: 'draft' | 'published') => {
     e.preventDefault()
 
-    if (status === 'published' && !validateForm()) {
-      return
-    }
+    // Draft: only course-name required
+    if (status === 'draft' && !validateDraft()) return
+    // Publish: run full validation
+    if (status === 'published' && !validateForm()) return
 
     setIsLoading(true)
 
     try {
+      let coverUrl = ''
+      if (coverImageFile) {
+        const fd = new FormData(); fd.append('coverImage', coverImageFile)
+        const res = await fetch('/api/admin/upload-cover', { method:'POST', body: fd })
+        const js = await res.json(); if (!res.ok) throw new Error(js.error)
+        coverUrl = js.url
+      }
       // Prepare data for API
       const courseData = {
         ...formData,
         price: formData.price ? parseFloat(formData.price) : 0,
         total_learning_time: formData.total_learning_time ? parseInt(formData.total_learning_time) : 0,
         status,
+        cover_image_url: coverUrl,
       }
 
       // Send data to API
@@ -129,7 +166,11 @@ function CreateCourse() {
       }
 
       setSuccess(true)
-      toastSuccess('Course created successfully!', 'You can now view the course in the dashboard.', 3000)
+      if (status === 'draft') {
+        toastSuccess('Course saved as draft')
+      } else {
+        toastSuccess('Course published successfully')
+      }
       router.push('/admin/dashboard')
 
     } catch (err) {
@@ -257,14 +298,24 @@ function CreateCourse() {
             <p className="text-xs text-gray-500">
               Supported file types: .jpg, .png, .jpeg. Max file size: 5 MB
             </p>
-            <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center bg-gray-50">
-              <div className="flex flex-col items-center justify-center">
-                <svg className="w-8 h-8 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-                </svg>
-                <p className="mt-2 text-sm text-blue-500">Upload Image</p>
-              </div>
+            <input ref={coverRef} type="file" accept=".jpg,.jpeg,.png" className="hidden" onChange={handleCoverChange} />
+            <div onClick={handleCoverClick} className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center bg-gray-50 cursor-pointer">
+              {coverPreview ? (
+                <img
+                  src={coverPreview}
+                  alt="Cover preview"
+                  className="w-full h-48 object-contain rounded-md"
+                />
+              ) : (
+                <div className="flex flex-col items-center justify-center">
+                  <svg className="w-8 h-8 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+                  </svg>
+                  <p className="mt-2 text-sm text-blue-500">Upload Image</p>
+                </div>
+              )}
             </div>
+            {errors.coverImage && <p className="text-red-500 text-xs">{errors.coverImage}</p>}
           </div>
 
           <div className="space-y-2">

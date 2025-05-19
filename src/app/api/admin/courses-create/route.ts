@@ -1,5 +1,7 @@
-import {supabase} from '@/lib/supabaseClient';
-import { NextRequest } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
+import { NextRequest, NextResponse } from 'next/server';
+import { supabase } from '@/lib/supabaseClient';
+export const runtime = 'nodejs';
 
 export async function POST(req: NextRequest) {
     try {
@@ -20,7 +22,7 @@ export async function POST(req: NextRequest) {
         } = body;
 
         if (!name) {
-            return Response.json({ error: 'Course name is required' }, { status: 400 });
+            return NextResponse.json({ error: 'Course name is required' }, { status: 400 });
         }
 
         const { data, error } = await supabase
@@ -42,15 +44,15 @@ export async function POST(req: NextRequest) {
             .select();
 
         if (error) {
-            return Response.json({ error: error.message }, { status: 500 });
+            return NextResponse.json({ error: error.message }, { status: 500 });
         }
 
-        return Response.json({ 
+        return NextResponse.json({ 
             message: 'Course added successfully', 
             data 
         }, { status: 201 });
     } catch (err) {
-        return Response.json({ 
+        return NextResponse.json({ 
             error: (err as Error).message || 'Internal Server Error' 
         }, { status: 500 });
     }
