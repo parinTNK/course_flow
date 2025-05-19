@@ -16,7 +16,9 @@ type UserType = {
   educational_background: string;
   profile_picture: string;
   date_of_birth: string;
+  email: string;
 };
+
 
 type AuthContextType = {
   user: UserType | null;
@@ -68,10 +70,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         user_id: user.id,
         full_name: profileData.full_name || "User",
         educational_background: profileData.educational_background || "Not provided",
-        profile_picture:
-          profileData.profile_picture || "/img/defaultProfileImage.png",
+        profile_picture: profileData.profile_picture || "/img/defaultProfileImage.png",
         date_of_birth: profileData.date_of_birth || "Not provided",
+        email: user.email || "No email", 
       };
+      
 
       setUser(userProfile);
     } catch (err) {

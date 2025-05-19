@@ -7,6 +7,7 @@ import CourseCard from "@/components/CourseCard";
 import { Course } from "@/types/Course";
 import CallToAction from "@/components/landing/CallToAction";
 import Pagination from "@/app/admin/components/Pagination"; 
+import BackgroundSVGs from "@/components/BackgroundSVGs";
 
 const limit = 12;
 
@@ -47,7 +48,8 @@ const CoursesPage: React.FC = () => {
   }, [page, search]);
 
   return (
-    <div className="min-h-screen flex flex-col bg-white">
+    <div className="min-h-screen flex flex-col bg-transparent">
+      <BackgroundSVGs />
       <NavBar />
       <main className="flex-1 pt-24 px-6 md:px-20 py-10">
         <div className="text-center max-w-4xl mx-auto py-10">

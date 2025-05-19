@@ -22,6 +22,7 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { ButtonT } from "@/components/ui/ButtonT";
 import { useAuth } from "@/app/context/authContext";
 import { supabase } from "@/lib/supabaseClient";
+import { Button } from "./ui/button";
 
 const NavBar: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -142,12 +143,12 @@ const NavBar: React.FC = () => {
 
           {!user ? (
             <Link href="/login">
-              <ButtonT
-                variant="primary"
-                className="font-sans whitespace-nowrap w-[74px] h-[37px] sm:w-[90px] sm:h-[40px] text-sm sm:text-base"
+              <button
+                
+                className="font-sans whitespace-nowrap w-[74px] h-[37px] bg-[var(--blue-500)] hover:bg-blue-700 rounded-[12px] font-bold px-[32px] py-[18px] cursor-pointer flex items-center justify-center text-white text-sm"
               >
                 Log in
-              </ButtonT>
+              </button>
             </Link>
           ) : (
             <DropdownMenu onOpenChange={setIsOpen}>
