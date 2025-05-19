@@ -9,6 +9,8 @@ import CourseCard from "@/components/CourseCard";
 import CallToAction from "@/components/landing/CallToAction";
 import ConfirmModal from "@/components/ConfirmModal";
 import LoadingSpinner from "@/app/admin/components/LoadingSpinner";
+import { useCustomToast } from "@/components/ui/CustomToast";
+import { ButtonT } from "@/components/ui/ButtonT";
 import { VideoOff } from "lucide-react";
 import {
   Carousel,
@@ -25,7 +27,7 @@ const CourseDetailPage: React.FC = () => {
 
   const { user, loading, authStateChanged } = useAuth();
   const isAuthenticated = !!user;
-
+  
   const [courses, setCourses] = useState<any>(null);
   const [modules, setModules] = useState<any[]>([]);
   const [otherCourses, setOtherCourses] = useState<any[]>([]);
@@ -34,8 +36,19 @@ const CourseDetailPage: React.FC = () => {
   const [showModal, setShowModal] = useState(false);
   const [expandedModule, setExpandedModule] = useState<number | null>(null);
   const [hasFetched, setHasFetched] = useState(false);
+  const [showSubscribeModal, setShowSubscribeModal] = useState(false);
+  const [showWishlistModal, setShowWishlistModal] = useState(false);
 
-  // ✅ Fetch public course data
+  // Add to Wishlist
+  const { success } = useCustomToast();
+  const [isWishlisted, setIsWishlisted] = useState(false);
+
+  const handleAddToWishlist = () => {
+    setIsWishlisted(true);
+    success("Add to Wish Successful");
+  };
+
+  // Fetch public course data
   useEffect(() => {
     const fetchCourseData = async () => {
       setIsFetchingCourseData(true);
@@ -56,10 +69,7 @@ const CourseDetailPage: React.FC = () => {
 
         const { data: otherCourseData } = await supabase
           .from("courses")
-          .select(`
-            id, name, summary, price,
-            lessons!inner(id, sub_lessons(count))
-          `)
+          .select("id, name, summary, price, lessons!inner(id, sub_lessons(count))")
           .neq("id", courseId);
 
         if (otherCourseData) {
@@ -85,7 +95,7 @@ const CourseDetailPage: React.FC = () => {
     }
   }, [loading, user, courseId, hasFetched]);
 
-  // ✅ Fetch subscription only if logged in
+  // Fetch subscription
   useEffect(() => {
     const fetchSubscription = async () => {
       try {
@@ -108,7 +118,7 @@ const CourseDetailPage: React.FC = () => {
     }
   }, [user, courseId, isSubscribed]);
 
-  // ✅ Loading UI
+  // Loading
   if (loading && !authStateChanged) {
     return (
       <div className="min-h-screen flex flex-col">
@@ -143,7 +153,7 @@ const CourseDetailPage: React.FC = () => {
           <span>Back</span>
         </Link>
 
-        {/* Course Info */}
+        {/* Grid */}
         <div className="grid md:grid-cols-3 gap-8 mb-12 relative">
           {/* Main Content */}
           <div className="md:col-span-2">
@@ -170,7 +180,7 @@ const CourseDetailPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Attach File */}
+            {/* Attachment */}
             {isAuthenticated && isSubscribed && (
               <div className="my-12">
                 <h2 className="text-2xl font-bold mb-4">Attach File</h2>
@@ -198,7 +208,7 @@ const CourseDetailPage: React.FC = () => {
               </div>
             )}
 
-            {/* Module List */}
+            {/* Modules */}
             <div className="mb-12">
               <h2 className="text-2xl font-bold mb-4">Module Samples</h2>
               <div className="space-y-4">
@@ -214,14 +224,20 @@ const CourseDetailPage: React.FC = () => {
                         </span>
                         {module.title}
                       </span>
-                      <span className={`transform transition-transform ${expandedModule === module.id ? "rotate-180" : ""}`}>
+                      <span
+                        className={`transform transition-transform ${
+                          expandedModule === module.id ? "rotate-180" : ""
+                        }`}
+                      >
                         ▼
                       </span>
                     </button>
                     {expandedModule === module.id && (
                       <ul className="p-4 pt-0 space-y-2 text-gray-600">
                         {module.sub_lessons?.map((sub: any) => (
-                          <li key={sub.id} className="pl-12">• {sub.title}</li>
+                          <li key={sub.id} className="pl-12">
+                            • {sub.title}
+                          </li>
                         ))}
                       </ul>
                     )}
@@ -237,42 +253,47 @@ const CourseDetailPage: React.FC = () => {
               <span className="text-orange-500">Course</span>
               <h1 className="text-2xl font-bold mb-2">{courses?.name}</h1>
               <p className="text-gray-600 mb-4">{courses?.summary}</p>
-              <p className="text-2xl font-bold mb-6">THB {courses?.price?.toLocaleString()}</p>
+              <p className="text-2xl font-bold mb-6">
+                THB {courses?.price?.toLocaleString()}
+              </p>
 
               {isAuthenticated ? (
                 isSubscribed ? (
-                  <Link
-                    href={`/course-learning/${courses?.id}/learning`}
-                    className="block w-full py-2 px-4 bg-blue-600 text-white rounded text-center hover:bg-blue-700"
-                  >
-                    Start Learning
+                  <Link href={`/course-learning/${courses?.id}/learning`} className="block w-full">
+                    <ButtonT variant="primary" className="w-full py-1">
+                      Start Learning
+                    </ButtonT>
                   </Link>
                 ) : (
                   <>
-                    <button className="w-full mb-3 py-2 px-4 border border-orange-500 text-orange-500 rounded hover:bg-orange-50">
-                      Add to Wishlist
-                    </button>
-                    <button
-                      className="w-full py-2 px-4 bg-blue-600 text-white rounded hover:bg-blue-700"
-                      onClick={() => setShowModal(true)}
+                    <ButtonT
+                      variant="Secondary"
+                      className="w-full mb-3"
+                      onClick={() => setShowWishlistModal(true)}
+                    >
+                      {isWishlisted ? "Remove from Wishlist" : "Add to Wishlist"}
+                    </ButtonT>
+
+                    <ButtonT
+                      variant="primary"
+                      className="w-full"
+                      onClick={() => setShowSubscribeModal(true)}
                     >
                       Subscribe This Course
-                    </button>
+                    </ButtonT>
                   </>
                 )
               ) : (
                 <>
-                  <Link
-                    href={loginRedirectUrl}
-                    className="block w-full mb-3 py-2 px-4 border border-orange-500 text-orange-500 rounded hover:bg-orange-50 text-center"
-                  >
-                    Add to Wishlist
+                  <Link href={loginRedirectUrl}>
+                    <ButtonT variant="Secondary" className="block w-full mb-3 py-2">
+                      Add to Wishlist
+                    </ButtonT>
                   </Link>
-                  <Link
-                    href={loginRedirectUrl}
-                    className="block w-full py-2 px-4 bg-blue-600 text-white rounded hover:bg-blue-700 text-center"
-                  >
-                    Subscribe This Course
+                  <Link href={loginRedirectUrl}>
+                    <ButtonT variant="primary" className="block w-full py-2">
+                      Subscribe This Course
+                    </ButtonT>
                   </Link>
                 </>
               )}
@@ -304,23 +325,47 @@ const CourseDetailPage: React.FC = () => {
         )}
       </main>
 
-      {/* Modal */}
-      {isAuthenticated && (
-        <ConfirmModal
-          isOpen={showModal}
-          onClose={() => setShowModal(false)}
-          onConfirm={() => {
-            setShowModal(false);
-            window.location.href = `/payment/${courses?.id}`;
-          }}
-          title="Confirmation"
-          message={`Are you sure you want to subscribe to ${courses?.name} course?`}
-          confirmText="Yes, I want to subscribe"
-          cancelText="No, I don't"
-          confirmButtonClass="bg-blue-600 text-white hover:bg-blue-700"
-          cancelButtonClass="border border-orange-500 text-orange-500 hover:bg-orange-50"
-        />
-      )}
+      {/* Wishlist Modal */}
+      <ConfirmModal
+        isOpen={showWishlistModal}
+        onClose={() => setShowWishlistModal(false)}
+        onConfirm={() => {
+          if (isWishlisted) {
+            setIsWishlisted(false);
+            success("Removed from Wishlist");
+          } else {
+            setIsWishlisted(true);
+            success("Added to Wishlist");
+          }
+          setShowWishlistModal(false);
+        }}
+        title="Wishlist Confirmation"
+        message={
+          isWishlisted
+            ? `Do you want to remove ${courses?.name} from your Wishlist?`
+            : `Do you want to add ${courses?.name} to your Wishlist?`
+        }
+        confirmText={isWishlisted ? "Remove" : "Add"}
+        cancelText="Cancel"
+        confirmButtonClass="bg-blue-600 text-white hover:bg-blue-700"
+        cancelButtonClass="border border-orange-500 text-orange-500 hover:bg-orange-50"
+      />
+
+      {/* Subscribe Modal */}
+      <ConfirmModal
+        isOpen={showSubscribeModal}
+        onClose={() => setShowSubscribeModal(false)}
+        onConfirm={() => {
+          setShowSubscribeModal(false);
+          router.push(`/payment/${courses?.id}`);
+        }}
+        title="Confirmation"
+        message={`Are you sure you want to subscribe to ${courses?.name} course?`}
+        confirmText="Yes, I want to subscribe"
+        cancelText="No, I don't"
+        confirmButtonClass="bg-blue-600 text-white hover:bg-blue-700"
+        cancelButtonClass="border border-orange-500 text-orange-500 hover:bg-orange-50"
+      />
 
       {!isAuthenticated && <CallToAction />}
     </div>
