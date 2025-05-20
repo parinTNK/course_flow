@@ -1,17 +1,21 @@
 "use client";
 import { useState, useEffect } from "react";
 import { signInWithEmail } from "./utils/auth";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { validateEmail, validatePassword } from "./utils/validation";
 import { useCustomToast } from "@/components/ui/CustomToast";
 import { supabase } from "@/lib/supabaseClient";
+import LoadingSpinner from "../../admin/components/LoadingSpinner";
 
 export default function LoginPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const toast = useCustomToast();
+  const searchParams = useSearchParams();
+  const redirectUrl = searchParams.get("redirectUrl") || "/";
+  const [checkingSession, setCheckingSession] = useState(true);
 
   const [form, setForm] = useState({
     email: "",
@@ -19,15 +23,30 @@ export default function LoginPage() {
   });
 
   useEffect(() => {
+    let isMounted = true;
+
     const checkToken = async () => {
-      const { data } = await supabase.auth.getSession();
-      if (data.session) {
-        router.push("/");
+      try {
+        const { data } = await supabase.auth.getSession();
+        if (data.session && isMounted) {
+          router.push(redirectUrl);
+        }
+      } catch (error) {
+        console.error("Session check error:", error);
+      } finally {
+        if (isMounted) setCheckingSession(false);
       }
     };
 
     checkToken();
-  }, [router]);
+
+    return () => {
+      isMounted = false;
+    };
+  }, [router, redirectUrl]);
+  if (checkingSession) {
+    return <LoadingSpinner text="loading..." className="mt-40" size="lg" />;
+  }
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -56,20 +75,14 @@ export default function LoginPage() {
       const result = await signInWithEmail(form.email, form.password);
 
       if (result.success && result.data) {
-        console.log(
-          "All localStorage keys after login:",
-          Object.keys(localStorage)
-        );
-
-        if (result.data.session) {
-          localStorage.setItem("user_uid", result.data.user.id);
-
-          if (result.data.user.user_metadata?.role === "admin") {
-            localStorage.setItem("isAdmin", "true");
-          } else {
-            localStorage.setItem("isAdmin", "false");
-          }
-        }
+        const userData = {
+          user_uid: result.data.user.id,
+          isAdmin:
+            result.data.user.user_metadata?.role === "admin" ? "true" : "false",
+        };
+        Object.entries(userData).forEach(([key, value]) => {
+          localStorage.setItem(key, value);
+        });
 
         toast.success("Success", "You have been logged in successfully!");
 
@@ -78,7 +91,9 @@ export default function LoginPage() {
           password: "",
         });
 
-        router.push("/");
+        document.cookie = "redirecting=; max-age=0; path=/;";
+
+        window.location.href = redirectUrl;
       } else if (result.error) {
         console.error("Login failed:", result.error);
         setError(result.error);
