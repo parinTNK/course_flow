@@ -117,8 +117,13 @@ export default function ProfilePage() {
     return publicData?.publicUrl || null;
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+
+    // Ensure the clicked button is the "Update Profile" button
+    const target = (e.nativeEvent as SubmitEvent).submitter as HTMLButtonElement;
+    if (target?.textContent !== "Update Profile") return;
+
     const errors = validate();
     setValidationErrors(errors);
     if (errors.length > 0 || !userId) return;
