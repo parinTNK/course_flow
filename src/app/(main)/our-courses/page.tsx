@@ -8,6 +8,7 @@ import { Course } from "@/types/Course";
 import CallToAction from "@/components/landing/CallToAction";
 import Pagination from "@/app/admin/components/Pagination"; 
 import BackgroundSVGs from "@/components/BackgroundSVGs";
+import LoadingSpinner from "@/app/admin/components/LoadingSpinner";
 
 const limit = 12;
 
@@ -70,7 +71,9 @@ const CoursesPage: React.FC = () => {
 
         <div className="max-w-7xl mx-auto grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 mb-10">
           {loading ? (
-            <div className="col-span-3 text-center text-gray-400 py-20">Loading...</div>
+            <div className="col-span-3 flex flex-col items-center justify-center py-20">
+              <LoadingSpinner text="Loading courses..." size="md" />
+            </div>
           ) : error ? (
             <div className="col-span-3 text-center text-red-500 py-20">{error}</div>
           ) : courses.length === 0 ? (
