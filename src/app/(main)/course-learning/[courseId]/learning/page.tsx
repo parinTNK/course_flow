@@ -12,6 +12,7 @@ import { supabase } from "@/lib/supabaseClient";
 import { useRouter } from "next/navigation";
 import { ProgressProvider } from "@/components/learning/context/ProgressContext";
 import LessonVideoPlayer from "@/components/learning/SubLessonVideoPlayer";
+import { ButtonT } from "@/components/ui/ButtonT";
 
 interface SubLesson {
   id: string;
@@ -36,6 +37,24 @@ function CourseContent() {
   const [lessons, setLessons] = useState<Lesson[]>([]);
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [loading, setLoading] = useState(true);
+
+  const scrollToLessonSection = () => {
+    const checkAndScroll = () => {
+      const el = document.getElementById("lesson-section");
+      if (!el) return;
+
+      const rect = el.getBoundingClientRect();
+      if (rect.height < 100) {
+        setTimeout(checkAndScroll, 100);
+      } else {
+        const yOffset = -128;
+        const y = rect.top + window.pageYOffset + yOffset;
+        window.scrollTo({ top: y, behavior: "smooth" });
+      }
+    };
+
+    setTimeout(checkAndScroll, 50);
+  };
 
   useEffect(() => {
     const checkSubscription = async () => {
@@ -76,7 +95,9 @@ function CourseContent() {
   }, [lessons, currentLesson, setCurrentLesson]);
 
   useEffect(() => {
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    if (currentLesson) {
+      scrollToLessonSection();
+    }
   }, [currentLesson?.id]);
 
   const findSubLessonIndex = () => {
@@ -90,31 +111,39 @@ function CourseContent() {
   };
 
   const handlePrev = () => {
+    if (isFirstSubLesson()) return;
     const found = findSubLessonIndex();
     if (!found) return;
     const { lesson, index } = found;
+
     if (index > 0) {
       setCurrentLesson(lesson.sub_lessons[index - 1]);
+      scrollToLessonSection();
     } else {
       const currentLessonIndex = lessons.findIndex(l => l.id === lesson.id);
       if (currentLessonIndex > 0) {
         const prevLesson = lessons[currentLessonIndex - 1];
         setCurrentLesson(prevLesson.sub_lessons[prevLesson.sub_lessons.length - 1]);
+        scrollToLessonSection();
       }
     }
   };
 
   const handleNext = () => {
+    if (isLastSubLesson()) return;
     const found = findSubLessonIndex();
     if (!found) return;
     const { lesson, index } = found;
+
     if (index < lesson.sub_lessons.length - 1) {
       setCurrentLesson(lesson.sub_lessons[index + 1]);
+      scrollToLessonSection();
     } else {
       const currentLessonIndex = lessons.findIndex(l => l.id === lesson.id);
       if (currentLessonIndex < lessons.length - 1) {
         const nextLesson = lessons[currentLessonIndex + 1];
         setCurrentLesson(nextLesson.sub_lessons[0]);
+        scrollToLessonSection();
       }
     }
   };
@@ -142,42 +171,51 @@ function CourseContent() {
   }
 
   return (
-    <div className="flex min-h-screen bg-gray-50 pt-44 max-w-screen-xl mx-auto px-4">
-      <div className="sticky top-16">
-        <Sidebar setLessons={setLessons} />
+    <div className="flex flex-col md:flex-row min-h-screen bg-gray-50 pt-24 md:pt-32 pb-10 max-w-screen-xl mx-auto px-4">
+      <div className="md:sticky md:top-16 md:w-[260px] w-full mb-4 md:mb-0">
+        <Sidebar setLessons={setLessons} scrollToVideo={scrollToLessonSection} />
       </div>
 
-      <main className="flex-1 p-6 max-w-[calc(100%-280px)] transition-all duration-500 ease-in-out">
-        <h1 className="text-2xl font-bold mb-6">
-          {currentLesson?.title || (lessons[0]?.sub_lessons[0]?.title)}
-        </h1>
+      <main className="flex-1 w-full md:p-6 md:max-w-[calc(100%-280px)]">
+        <div id="lesson-section">
+          <h1 className="text-2xl font-bold mb-6">
+            {currentLesson?.title || lessons[0]?.sub_lessons[0]?.title}
+          </h1>
+          <LessonVideoPlayer />
+        </div>
 
-        <LessonVideoPlayer />
         <LessonContent />
         <Assignment />
 
-        <div className="flex justify-between items-center mt-8 pt-4 border-t border-gray-200">
+        <div className="flex flex-col sm:flex-row justify-between gap-4 mt-8 pt-4 border-t border-gray-200 w-full">
           <button
-            className="flex items-center px-4 py-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors disabled:opacity-50"
+            className="px-4 py-2 rounded-lg text-[#2F5FAC] font-semibold hover:text-blue-600 transition-colors w-full sm:w-auto sm:self-start disabled:opacity-50"
             onClick={handlePrev}
             disabled={isFirstSubLesson()}
           >
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 mr-2">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" />
-            </svg>
-            Previous Lesson
+            <div className="flex items-center justify-center">
+              <svg className="w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" />
+              </svg>
+              Previous Lesson
+            </div>
           </button>
 
-          <button
-            className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
-            onClick={handleNext}
-            disabled={isLastSubLesson()}
-          >
-            Next Lesson
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 ml-2">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" />
-            </svg>
-          </button>
+          <div className="w-full sm:w-auto sm:self-end">
+            <ButtonT
+              variant="primary"
+              className="w-full sm:w-auto justify-center disabled:opacity-50"
+              onClick={handleNext}
+              disabled={isLastSubLesson()}
+            >
+              <div className="flex items-center justify-center">
+                Next Lesson
+                <svg className="w-5 h-5 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" />
+                </svg>
+              </div>
+            </ButtonT>
+          </div>
         </div>
       </main>
     </div>

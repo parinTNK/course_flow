@@ -28,7 +28,7 @@ export default function LessonVideoPlayer() {
     );
 
     if (status === "completed") {
-      refreshProgress(); // 🔁 trigger Sidebar reload
+      refreshProgress(); //trigger Sidebar reload
     }
   };
 
@@ -41,7 +41,10 @@ export default function LessonVideoPlayer() {
   }
 
   return (
-    <div className="aspect-video bg-black rounded-lg overflow-hidden mb-6">
+    <div
+      id="lesson-video"
+      className="aspect-video bg-black rounded-lg overflow-hidden mb-6 scroll-mt-[88px]"
+    >
       <video
         ref={videoRef}
         controls

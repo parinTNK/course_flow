@@ -3,6 +3,7 @@ type ButtonProps = {
     onClick?: (event?: React.MouseEvent<HTMLButtonElement>) => void;
     children: React.ReactNode;
     className?: string;
+    disabled?: boolean;
   };
   
   function ButtonT({
@@ -10,6 +11,7 @@ type ButtonProps = {
     onClick,
     children,
     className = "",
+    disabled = false,
   }: ButtonProps) {
   
     const variantStyles = {
@@ -20,8 +22,9 @@ type ButtonProps = {
   
     return (
       <button 
-        className={`${variantStyles[variant]} ${className}`}
+        className={`${variantStyles[variant]} ${disabled ? "opacity-50 cursor-not-allowed" : ""} ${className}`}
         onClick={onClick}
+        disabled={disabled}
       >
         {children}
       </button>
