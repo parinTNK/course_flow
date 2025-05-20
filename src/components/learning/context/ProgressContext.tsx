@@ -12,7 +12,6 @@ export function ProgressProvider({ children }: { children: ReactNode }) {
   const [progressUpdated, setProgressUpdated] = useState(false);
 
   const refreshProgress = useCallback(() => {
-    // flip ค่า เพื่อให้ useEffect ของ Sidebar trigger
     setProgressUpdated((prev) => !prev);
   }, []);
 

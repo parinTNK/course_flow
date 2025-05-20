@@ -7,6 +7,7 @@ import { useParams } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import LoadingSpinner from "@/app/admin/components/LoadingSpinner";
 import { useCustomToast } from "@/components/ui/CustomToast";
+import { getBangkokISOString } from "@/lib/bangkokTime";
 
 export default function Assignment() {
   const { currentLesson, setCurrentLesson } = useLearning();
@@ -46,7 +47,7 @@ export default function Assignment() {
   }, [courseId, currentLesson?.id, setCurrentLesson]);
 
   useEffect(() => {
-    const fetchAssignment = async () => {
+    const fetchAssignmentData = async () => {
       if (!currentLesson?.id) return;
 
       setIsLoading(true);
@@ -70,16 +71,16 @@ export default function Assignment() {
       }
     };
 
-    fetchAssignment();
+    fetchAssignmentData();
   }, [currentLesson?.id]);
 
   useEffect(() => {
-    const checkSubmission = async () => {
+    const checkExistingSubmission = async () => {
       if (!user?.user_id || !assignment?.id) return;
 
       const { data, error } = await supabase
         .from("submissions")
-        .select("id, answer, created_at")
+        .select("id, answer, created_at, updated_at")
         .eq("user_id", user.user_id)
         .eq("assignment_id", assignment.id)
         .single();
@@ -89,10 +90,10 @@ export default function Assignment() {
         return;
       }
 
-      if (data) {
+      if (data && data.answer && data.answer.trim() !== "") {
         setAssignmentStatus("submitted");
         setAssignmentAnswer(data.answer);
-        setSubmittedAt(data.created_at);
+        setSubmittedAt(data.updated_at); 
       } else {
         setAssignmentStatus("pending");
         setAssignmentAnswer("");
@@ -100,47 +101,86 @@ export default function Assignment() {
       }
     };
 
-    checkSubmission();
+
+    checkExistingSubmission();
   }, [user?.user_id, assignment?.id]);
 
   const handleSubmit = async () => {
-    try {
-      if (!user?.user_id) return;
+  const now = getBangkokISOString();
+  try {
+    if (!user?.user_id) return;
 
-      if (!assignment?.id) {
-        error("Assignment not found");
-        return;
-      }
-
-      if (!assignmentAnswer.trim()) {
-        error("Answer is required", "Please type your answer before submitting.");
-        return;
-      }
-
-      const { data, error: submitError } = await supabase
-        .from("submissions")
-        .insert([{ assignment_id: assignment.id, user_id: user.user_id, answer: assignmentAnswer, status: "submitted", grade: null }])
-        .select()
-        .single();
-
-      if (submitError) throw submitError;
-
-      setAssignmentStatus("submitted");
-      setSubmittedAt(data.created_at);
-
-      success("Submission Successful", "Your answer has been saved.");
-    } catch (err) {
-      console.error(err);
-      error("Submission Failed", "Please try again or check your input.");
+    if (!assignment?.id) {
+      error("Assignment not found");
+      return;
     }
-  };
+
+    if (!assignmentAnswer.trim()) {
+      error("Answer is required", "Please type your answer before submitting.");
+      return;
+    }
+
+    const { data: existingSubmission, error: checkError } = await supabase
+      .from("submissions")
+      .select("id")
+      .eq("assignment_id", assignment.id)
+      .eq("user_id", user.user_id)
+      .single();
+
+    if (checkError && checkError.code !== "PGRST116") {
+      throw checkError;
+    }
+
+    if (existingSubmission) {
+      const { error: updateError } = await supabase
+        .from("submissions")
+        .update({
+          answer: assignmentAnswer,
+          updated_at: now,
+          submission_date: now,
+          status: "submitted",
+        })
+        .eq("id", existingSubmission.id);
+
+      if (updateError) throw updateError;
+    } else {
+      const { error: insertError } = await supabase
+        .from("submissions")
+        .insert([{
+          assignment_id: assignment.id,
+          user_id: user.user_id,
+          answer: assignmentAnswer,
+          status: "submitted",
+          grade: null,
+          created_at: now,
+          updated_at: now,
+          submission_date: now,
+        }]);
+
+      if (insertError) throw insertError;
+    }
+
+    setAssignmentStatus("submitted");
+    setSubmittedAt(now);
+    success("Submission Successful", "Your answer has been saved.");
+
+  } catch (err) {
+    console.error("❌ Submission Error:", err);
+    error("Submission Failed", "Please try again or check your input.");
+  }
+};
 
   const handleReset = async () => {
+    const now = getBangkokISOString();
     if (!user?.user_id || !assignment?.id) return;
 
     const { error: resetError } = await supabase
       .from("submissions")
-      .delete()
+      .update({
+        answer: "",
+        updated_at: now,
+        status: "pending",
+      })
       .eq("user_id", user.user_id)
       .eq("assignment_id", assignment.id);
 
@@ -148,6 +188,9 @@ export default function Assignment() {
       setAssignmentStatus("pending");
       setAssignmentAnswer("");
       setSubmittedAt(null);
+      success("Answer Cleared", "You can now submit a new answer.");
+    } else {
+    console.error("❌ Reset error:", resetError);
     }
   };
 
@@ -196,7 +239,7 @@ export default function Assignment() {
             <p className="font-medium mb-2">Your Answer:</p>
             <p className="text-gray-700 whitespace-pre-line">{assignmentAnswer}</p>
             {submittedAt && (
-              <p className="text-xs text-gray-500 mt-2">Submit Date: {new Date(submittedAt).toLocaleString()}</p>
+              <p className="text-xs text-gray-500 mt-2">Update At: {new Date(submittedAt).toLocaleString()}</p>
             )}
           </div>
 
