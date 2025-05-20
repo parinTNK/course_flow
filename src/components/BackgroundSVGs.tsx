@@ -50,6 +50,9 @@ const BackgroundSVGs = () => (
         <circle cx="5.5" cy="5.5" r="4" stroke="#2F5FAC" strokeWidth="3" />
       </svg>
     </div>
+    <div className="absolute top-[25%] left-[15%]">
+      <img src="/Group 5.svg" alt="icon"/>
+    </div>
   </div>
 );
 

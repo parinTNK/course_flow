@@ -5,6 +5,15 @@ export async function GET(
   req: NextRequest,
   { params }: { params: { userId: string } }
 ) {
+  const url = new URL(req.url);
+  const page = parseInt(url.searchParams.get("page") || "1", 10);
+  const limit = parseInt(url.searchParams.get("limit") || "6", 10);
+  const searchTerm = url.searchParams.get("search") || "";
+  const tab = url.searchParams.get("tab") || "all";
+
+  const from = (page - 1) * limit;
+  const to = from + limit - 1;
+
   const userId = params.userId;
 
   if (!userId) {
@@ -12,7 +21,8 @@ export async function GET(
   }
 
   try {
-    const { data: subscriptions, error: subError } = await supabase
+
+    let query = supabase
       .from("subscriptions")
       .select(
         `
@@ -31,20 +41,74 @@ export async function GET(
           cover_image_url,
           status
         )
-      `
+      `,
+        { count: "exact" }
       )
       .eq("user_id", userId);
+
+
+    if (tab === "inprogress") {
+      query = query.gt("progress", 0).lt("progress", 99);
+    } else if (tab === "completed") {
+      query = query.eq("progress", 100);
+    }
+
+
+    query = query.range(from, to);
+
+    const { data: subscriptions, error: subError, count: tabCount } = await query;
 
     if (subError) {
       return Response.json({ error: subError.message }, { status: 500 });
     }
 
-    const courseIds = (subscriptions || [])
+    let filteredSubscriptions = subscriptions || [];
+    if (searchTerm) {
+      filteredSubscriptions = filteredSubscriptions.filter((row) => {
+        const courseObj = Array.isArray(row.courses)
+          ? row.courses[0]
+          : row.courses;
+        return courseObj?.name
+          ?.toLowerCase()
+          .includes(searchTerm.toLowerCase());
+      });
+    }
+
+    const courseIds = filteredSubscriptions
       .map((row) => row.course_id)
       .filter(Boolean);
 
     if (courseIds.length === 0) {
-      return Response.json([]);
+      const { count: allCount } = await supabase
+        .from("subscriptions")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", userId);
+
+      const { count: inprogressCount } = await supabase
+        .from("subscriptions")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", userId)
+        .gt("progress", 0)
+        .lt("progress", 99);
+
+      const { count: completedCount } = await supabase
+        .from("subscriptions")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", userId)
+        .eq("progress", 100);
+
+      return Response.json({
+        data: [],
+        pagination: {
+          totalItems: 0,
+          totalPages: 0,
+          currentPage: page,
+          limit,
+          allCount: allCount || 0,
+          inprogressCount: inprogressCount || 0,
+          completedCount: completedCount || 0,
+        },
+      });
     }
 
     const { data: lessons, error: lessonError } = await supabase
@@ -61,17 +125,69 @@ export async function GET(
       lessonCountMap[row.course_id] = (lessonCountMap[row.course_id] || 0) + 1;
     });
 
-    const courses = (subscriptions || [])
-      .filter((row) => row.courses)
-      .map((row) => ({
-        subscriptions_id: row.id,
-        progress: row.progress,
-        ...row.courses,
-        lessons: lessonCountMap[row.course_id] || 0,
-      }));
 
-      
-    return Response.json(courses);
+    const courses = filteredSubscriptions
+      .filter((row) => {
+        if (Array.isArray(row.courses)) {
+          return row.courses.length > 0;
+        }
+        return !!row.courses;
+      })
+      .map((row) => {
+        const courseObj = Array.isArray(row.courses)
+          ? row.courses[0]
+          : row.courses;
+        return {
+          subscriptions_id: row.id,
+          progress: row.progress,
+          ...courseObj,
+          lessons: lessonCountMap[row.course_id] || 0,
+        };
+      });
+
+    const { count: allCount } = await supabase
+      .from("subscriptions")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", userId);
+
+    const { count: inprogressCount } = await supabase
+      .from("subscriptions")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", userId)
+      .gt("progress", 0)
+      .lt("progress", 99);
+
+    const { count: completedCount } = await supabase
+      .from("subscriptions")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", userId)
+      .eq("progress", 100);
+
+    let total = 0;
+    if (searchTerm) {
+      total = filteredSubscriptions.length;
+    } else if (tab === "all") {
+      total = allCount || 0;
+    } else if (tab === "inprogress") {
+      total = inprogressCount || 0;
+    } else if (tab === "completed") {
+      total = completedCount || 0;
+    }
+
+    const totalPages = Math.ceil(total / limit);
+
+    return Response.json({
+      data: courses,
+      pagination: {
+        totalItems: total,
+        totalPages: totalPages,
+        currentPage: page,
+        limit,
+        allCount: allCount || 0,
+        inprogressCount: inprogressCount || 0,
+        completedCount: completedCount || 0,
+      },
+    });
   } catch (err) {
     return Response.json(
       { error: (err as Error).message || "Unknown error" },
