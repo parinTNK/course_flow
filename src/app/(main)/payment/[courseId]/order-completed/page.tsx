@@ -2,6 +2,7 @@
 
 import { useRouter,useParams } from "next/navigation";
 import {ButtonT} from "@/components/ui/ButtonT";
+import BackgroundSVGs from "@/components/BackgroundSVGs";
 
 export default function PaymentCompletedPage() {
   const router = useRouter();
@@ -10,7 +11,8 @@ export default function PaymentCompletedPage() {
 
 
   return (
-    <div className="flex items-center justify-center mt-70">
+    <div className="flex items-center justify-center md:mt-60 mt-30 mb-10">
+      <BackgroundSVGs />
       <div className="bg-white rounded-2xl shadow-lg px-10 py-10 md:max-w-1/2 mx-4 w-full flex flex-col items-center">
         <div className = "flex flex-col items-center gap-5 mb-6">
             <img src="/payment-completed.svg" alt="payment successfully" className="w-[65px] h-[65px]" />

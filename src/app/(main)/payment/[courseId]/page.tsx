@@ -10,6 +10,7 @@ import { Course, CardForm } from "@/types/payment";
 import { useAuth } from "@/app/context/authContext";
 import LoadingSpinner from "../../../admin/components/LoadingSpinner";
 import { useCustomToast } from "@/components/ui/CustomToast"
+import { useCheckPurchased } from "@/hooks/useCheckPurchased";
 
 // -------------------- Validate Functions --------------------
 const luhnCheck = (num: string) => {
@@ -56,11 +57,8 @@ export default function PaymentPage() {
   const [promoError, setPromoError] = useState<string | null>(null);
   const [promoCode, setPromoCode] = useState("");
   const [isFetchingCourse, setIsFetchingCourse] = useState(false);
-  const [isFetchingPromo, setIsFetchingPromo] = useState(false);
   const [promoApplied, setPromoApplied] = useState(false);
-  const [alreadyPurchased, setAlreadyPurchased] = useState<boolean | null>(
-    null
-  );
+
   const [promoResult, setPromoResult] = useState<null | {
     discountType: string;
     discountValue: number;
@@ -70,8 +68,6 @@ export default function PaymentPage() {
   }>(null);
   const { user,loading: authLoading } = useAuth();
   const { success, error: toastError } = useCustomToast();
-  console.log(authLoading)
-
   // Hooks
   const params = useParams();
   const router = useRouter();
@@ -90,6 +86,7 @@ export default function PaymentPage() {
 
   // Derived
   const courseId = params.courseId as string;
+  const alreadyPurchased = useCheckPurchased(courseId);
 
   // -------------------- Effects --------------------
   useEffect(() => {
@@ -109,34 +106,16 @@ export default function PaymentPage() {
     fetchCourse();
   }, [courseId]);
 
-  useEffect(() => {
-    if (!user || !courseId) return;
-
-    const checkPurchased = async () => {
-      try {
-        const res = await axios.get(
-          `/api/users/${user.user_id}/subscription?courseId=${courseId}`
-        );
-        setAlreadyPurchased(res.data.purchased);
-      } catch (err) {
-        setAlreadyPurchased(false);
-      }
-    };
-
-    checkPurchased();
-  }, [user, courseId]);
-
-  useEffect(() => {
-    if (alreadyPurchased) {
-      router.replace(`/course-detail/${courseId}`);
-    }
-  }, [alreadyPurchased, courseId, router]);
+  // useEffect(() => {
+  //   if (alreadyPurchased) {
+  //     router.replace(`/course-detail/${courseId}`);
+  //   }
+  // }, [alreadyPurchased, courseId, router]);
 
   // -------------------- Promo Code Validate --------------------
   const handleApplyPromo = async () => {
     setPromoError(null);
     setPromoResult(null);
-    setIsFetchingPromo(true);
     if (!promoCode || !course) return;
     try {
       const res = await axios.post("/api/promocodes/validate", {
@@ -155,7 +134,6 @@ export default function PaymentPage() {
       setPromoError("Error validating promo code");
       setPromoApplied(false);
     }finally {
-      setIsFetchingPromo(false);
     }
   };
 
@@ -172,8 +150,10 @@ export default function PaymentPage() {
     }
   }
 
-  const total = (course?.price ?? 0) - discount;
-
+  const displayDiscount = Math.round(discount * 100) / 100;
+  const rawTotal = (course?.price ?? 0) - discount;
+  const total = Math.round(rawTotal * 100) / 100; // 2 ตำแหน่งทศนิยม
+  
   // -------------------- Omise Token --------------------
   const createOmiseToken = async (cardData: any) => {
     return new Promise<string>((resolve, reject) => {
@@ -247,8 +227,16 @@ export default function PaymentPage() {
       toastError("Unable to process your request due to a system error. Please try again ", err.message); //system error
     }
   };
+  
+  if (alreadyPurchased === true) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh]">
+        <div className="text-red-500">You have already purchased this course</div>
+      </div>
+    );
+  }
 
-  if (authLoading || isFetchingCourse || isFetchingPromo || alreadyPurchased === null) {
+  if (authLoading || isFetchingCourse || alreadyPurchased === null) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <LoadingSpinner text="Loading..." className = '' size="md" />
@@ -265,7 +253,7 @@ export default function PaymentPage() {
           <div className="max-w-5xl mx-auto">
             <button
               className="text-sm text-blue-600 mb-8 flex items-center gap-1 hover:underline cursor-pointer"
-              onClick={() => window.history.back()}
+              onClick={() => router.replace(`/course-detail/${courseId}`)}
             >
               &larr; Back
             </button>
@@ -490,8 +478,8 @@ export default function PaymentPage() {
                         <div className="flex justify-between text-sm mb-1">
                           <span className="">Discount</span>
                           <span className="text-[#9B2FAC]">
-                            {discount !== 0 ? <span> - </span> : ""}
-                            {discount.toLocaleString("en-US", {
+                            {displayDiscount !== 0 ? <span> - </span> : ""}
+                            {displayDiscount.toLocaleString("en-US", {
                               minimumFractionDigits: 2,
                             })}
                           </span>
@@ -524,7 +512,12 @@ export default function PaymentPage() {
                               formRef.current.requestSubmit();
                             }
                           } else {
-                            router.push(`/payment/${courseId}/qr-code`);
+                            const params = new URLSearchParams({
+                              promoCode: promoCode || "",
+                              amount: total.toString(),
+                              courseName: course?.name || "",
+                            });
+                            router.push(`/payment/${courseId}/qr-code?${params.toString()}`);
                           }
                         }}
                       >

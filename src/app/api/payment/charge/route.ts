@@ -12,7 +12,6 @@ export async function POST(req: NextRequest) {
 
     const charge = event.data;
     const paymentDate = getBangkokISOString(charge.paid_at)
-    console.log("Payment Date:", paymentDate)
 
     let paymentMethod = "Unknown";
     if (charge.source && charge.source.type === "promptpay") {
