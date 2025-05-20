@@ -36,18 +36,31 @@ const CourseCard: React.FC<CourseCardProps> = ({ course }) => {
       }}
     >
       <div className="w-full h-[180px] rounded-t-xl overflow-hidden">
+        {course.cover_image_url ? (
         <img
           src={course.cover_image_url}
           alt={course.name}
           className="w-full h-full object-cover"
         />
+      ) : (
+        <div className="w-full h-full bg-gray-100 flex items-center justify-center text-gray-400 text-sm">
+          No Image
+        </div>
+      )}
       </div>
       <div className="p-4 flex flex-col gap-2 flex-1">
         <span className="text-[14px] text-orange-500 font-semibold">
           Course
         </span>
         <h3 className="font-semibold text-lg">{course.name}</h3>
-        <p className="text-gray-500 text-[15px] line-clamp-2">
+        <p 
+          className="text-gray-500 text-[15px] overflow-hidden text-ellipsis break-words"
+          style={{
+            display: "-webkit-box",
+            WebkitLineClamp: 2,
+            WebkitBoxOrient: "vertical",
+          }}      
+        >
           {course.summary}
         </p>
       </div>
