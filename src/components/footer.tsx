@@ -19,13 +19,13 @@ const Footer: React.FC = () => {
         {/* Center: Navigation Links */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-8">
           <Link
-            href="/courses"
+            href="/our-courses"
             className="text-[#C0C9E3] text-base hover:text-white transition"
           >
             All Courses
           </Link>
           <Link
-            href="/bundles"
+            href="/our-courses"
             className="text-[#C0C9E3] text-base hover:text-white transition"
           >
             Bundle Package

@@ -143,6 +143,7 @@ export default function ProfilePage() {
         } else {
           updateProfileState(uploadedImageUrl);
           toast.success("Success", "Profile updated successfully!");
+          window.dispatchEvent(new Event("profileUpdated")); // Notify NavBar
         }
       }
     } catch (err: any) {
@@ -173,11 +174,21 @@ export default function ProfilePage() {
     fetchUser();
   };
 
+  useEffect(() => {
+    const handleProfileUpdate = () => {
+      fetchUser();
+    };
+
+    window.addEventListener("profileUpdated", handleProfileUpdate);
+    return () => {
+      window.removeEventListener("profileUpdated", handleProfileUpdate);
+    };
+  }, [fetchUser]);
+
   return (
-    <div className="min-h-screen flex flex-col relative">
+    <div className="flex flex-col relative py-28 mt-10 overflow-y-hidden">
       <BackgroundSVGs />
-      <NavBar />
-      <section className="flex-1 bg-transparent flex flex-col items-center justify-center py-20 mt-15">
+      <section className="flex-1 bg-transparent flex flex-col items-center justify-center">
         <h2 className="text-3xl font-bold text-center text-black mb-12">
           Profile
         </h2>

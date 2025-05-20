@@ -21,12 +21,12 @@ import {
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { ButtonT } from "@/components/ui/ButtonT";
 import { useAuth } from "@/app/context/authContext";
-import { supabase } from "@/lib/supabaseClient";
-import { Button } from "./ui/button";
+import { useRouter } from "next/navigation";
 
 const NavBar: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
   const { user, loading, fetchUser } = useAuth();
+  const router = useRouter();
 
   const menuItems = [
     { icon: User, label: "Profile", href: "/profile" },
@@ -102,7 +102,7 @@ const NavBar: React.FC = () => {
                 {menuItems.map(({ icon: Icon, label, href }) => (
                   <DropdownMenuItem
                     key={label}
-                    onClick={() => (window.location.href = href)}
+                    onClick={() => router.push(href)}
                     className="px-4 py-2 hover:bg-gray-100 flex items-center space-x-3 text-[#646D89] cursor-pointer"
                   >
                     <Icon className="w-5 h-5 text-[#8DADE0]" />
@@ -170,7 +170,7 @@ const NavBar: React.FC = () => {
                 {menuItems.map(({ icon: Icon, label, href }) => (
                   <DropdownMenuItem
                     key={label}
-                    onClick={() => (window.location.href = href)}
+                    onClick={() => router.push(href)}
                     className="px-4 py-2 hover:bg-gray-100 flex items-center space-x-3 text-[#646D89] cursor-pointer"
                   >
                     <Icon className="w-5 h-5 text-[#8DADE0]" />
