@@ -1,10 +1,12 @@
 "use client";
 
+import * as Accordion from "@radix-ui/react-accordion";
 import { useLearning } from "./context/LearningContext";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { useParams } from "next/navigation";
 import { useProgress } from "./context/ProgressContext";
+import { ChevronDownIcon } from "lucide-react";
 
 type WatchStatus = "not_started" | "in_progress" | "completed";
 
@@ -26,9 +28,10 @@ interface Lesson {
 
 interface SidebarProps {
   setLessons: (lessons: Lesson[]) => void;
+  scrollToVideo: () => void;
 }
 
-export default function Sidebar({ setLessons: setParentLessons }: SidebarProps) {
+export default function Sidebar({ setLessons: setParentLessons, scrollToVideo }: SidebarProps) {
   const { courseId } = useParams();
   const { currentLesson, setCurrentLesson } = useLearning();
   const [loading, setLoading] = useState(true);
@@ -36,8 +39,8 @@ export default function Sidebar({ setLessons: setParentLessons }: SidebarProps) 
   const [courseProgress, setCourseProgress] = useState(0);
   const [courseTitle, setCourseTitle] = useState("");
   const [courseDescription, setCourseDescription] = useState("");
+  const { progressUpdated } = useProgress();
 
-  // 🧠 ฟังก์ชันเลือก icon ตาม watch_status
   const getStatusIcon = (status?: WatchStatus) => {
     switch (status) {
       case "completed":
@@ -49,28 +52,22 @@ export default function Sidebar({ setLessons: setParentLessons }: SidebarProps) 
     }
   };
 
-  const { progressUpdated } = useProgress(); 
-
   useEffect(() => {
     const fetchCourseAndLessons = async () => {
       try {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
 
-        // 📌 ดึงข้อมูลคอร์ส
-        const { data: courseData, error: courseError } = await supabase
+        const { data: courseData } = await supabase
           .from('courses')
-          .select('id, name, summary, detail, total_learning_time')
+          .select('id, name, summary')
           .eq('id', courseId)
           .single();
-
-        if (courseError) throw courseError;
 
         setCourseTitle(courseData.name);
         setCourseDescription(courseData.summary);
 
-        // 📌 ดึงบทเรียน + sub_lessons
-        const { data: lessonData, error: lessonError } = await supabase
+        const { data: lessonData } = await supabase
           .from('lessons')
           .select(`
             id,
@@ -87,24 +84,16 @@ export default function Sidebar({ setLessons: setParentLessons }: SidebarProps) 
           .eq('course_id', courseId)
           .order('order_no');
 
-        if (lessonError) throw lessonError;
-
-        const sortedLessons = lessonData?.map(lesson => ({
+        const sortedLessons = lessonData.map(lesson => ({
           ...lesson,
-          sub_lessons: lesson.sub_lessons.sort((a, b) => a.order_no - b.order_no)
-        })) || [];
+          sub_lessons: lesson.sub_lessons.sort((a, b) => a.order_no - b.order_no),
+        }));
 
-        // 📌 ดึง lesson_progress ของ user ปัจจุบัน
-        const { data: progressData, error: progressError } = await supabase
+        const { data: progressData } = await supabase
           .from("lesson_progress")
           .select("sub_lesson_id, status")
           .eq("user_id", user.id);
 
-        if (progressError) {
-          console.error("Error fetching lesson_progress:", progressError);
-        }
-
-        // 🧠 map watch_status กลับเข้า sub_lessons
         const lessonsWithStatus = sortedLessons.map(lesson => ({
           ...lesson,
           sub_lessons: lesson.sub_lessons.map(sub => {
@@ -119,11 +108,9 @@ export default function Sidebar({ setLessons: setParentLessons }: SidebarProps) 
         setLocalLessons(lessonsWithStatus);
         setParentLessons(lessonsWithStatus);
 
-        // 🎯 คำนวณ courseProgress (% ที่ดูจบแล้ว)
         const allSubLessons = lessonsWithStatus.flatMap(l => l.sub_lessons);
         const completedCount = allSubLessons.filter(s => s.watch_status === "completed").length;
-        const progress = Math.round((completedCount / allSubLessons.length) * 100);
-        setCourseProgress(progress);
+        setCourseProgress(Math.round((completedCount / allSubLessons.length) * 100));
 
         setLoading(false);
       } catch (error) {
@@ -136,58 +123,61 @@ export default function Sidebar({ setLessons: setParentLessons }: SidebarProps) 
 
   const handleSubLessonClick = (subLesson: SubLesson) => {
     setCurrentLesson(subLesson);
+    setTimeout(() => {
+      scrollToVideo();
+    }, 150);
   };
 
-  if (loading) {
-    return <div className="p-4">Loading...</div>;
-  }
+  if (loading) return <div className="p-4">Loading...</div>;
 
   return (
-    <div className="w-64 bg-white border-r p-4 min-h-screen">
+    <div className="w-full md:w-64 bg-white border-r p-4 md:min-h-screen">
       <div className="mb-6">
         <span className="text-sm text-orange-500">Course</span>
         <h2 className="text-lg font-bold mb-2">{courseTitle}</h2>
         <p className="text-sm text-gray-500 mb-4">{courseDescription}</p>
-        <div className="w-full bg-gray-200 rounded-full h-2">
-          <div 
-            className="bg-blue-500 h-2 rounded-full transition-all duration-300" 
+        <div className="w-full bg-gray-200 rounded-full h-2 mb-1">
+          <div
+            className="bg-blue-500 h-2 rounded-full transition-all duration-300"
             style={{ width: `${courseProgress}%` }}
           />
         </div>
         <span className="text-xs text-gray-500">{courseProgress}% Complete</span>
       </div>
-      
-      <div className="space-y-2">
+
+      <Accordion.Root type="multiple" className="space-y-2">
         {localLessons.map((lesson, index) => (
-          <div key={lesson.id} className="mb-4">
-            <div className="flex items-center mb-2 cursor-pointer hover:bg-gray-50 p-2 rounded">
-              <span className="text-gray-500 text-sm mr-2">
-                {String(index + 1).padStart(2, '0')}
-              </span>
-              <span className="font-medium">{lesson.title}</span>
-            </div>
-            
-            <ul className="ml-6 space-y-2">
-              {lesson.sub_lessons.map((subLesson) => (
-                <li 
-                  key={subLesson.id} 
-                  className="flex items-center py-1 cursor-pointer hover:bg-gray-50 rounded px-2"
+          <Accordion.Item key={lesson.id} value={lesson.id} className="border-b pb-2">
+            <Accordion.Header>
+              <Accordion.Trigger className="flex justify-between items-center w-full py-2 px-2 hover:bg-gray-100 rounded text-left font-medium">
+                <div className="flex items-center space-x-2">
+                  <span className="text-sm text-gray-500">
+                    {String(index + 1).padStart(2, "0")}
+                  </span>
+                  <span>{lesson.title}</span>
+                </div>
+                <ChevronDownIcon className="transition-transform duration-200 AccordionChevron" />
+              </Accordion.Trigger>
+            </Accordion.Header>
+            <Accordion.Content className="mt-2 ml-6 space-y-2">
+              {lesson.sub_lessons.map(subLesson => (
+                <button
+                  key={subLesson.id}
                   onClick={() => handleSubLessonClick(subLesson)}
+                  className={`flex items-center w-full text-left text-sm p-2 rounded hover:bg-gray-100 ${
+                    currentLesson?.id === subLesson.id
+                      ? "text-blue-600 font-semibold bg-blue-50"
+                      : "text-gray-700"
+                  }`}
                 >
                   <span className="mr-2">{getStatusIcon(subLesson.watch_status)}</span>
-                  <span className={`text-sm ${
-                    currentLesson?.id === subLesson.id 
-                      ? "text-blue-500 font-medium" 
-                      : "text-gray-700"
-                  }`}>
-                    {subLesson.title}
-                  </span>
-                </li>
+                  {subLesson.title}
+                </button>
               ))}
-            </ul>
-          </div>
+            </Accordion.Content>
+          </Accordion.Item>
         ))}
-      </div>
+      </Accordion.Root>
     </div>
   );
 }
