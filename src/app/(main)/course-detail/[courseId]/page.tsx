@@ -63,7 +63,7 @@ const CourseDetailPage: React.FC = () => {
 
         const { data: otherCourseData } = await supabase
           .from("courses")
-          .select("id, name, summary, price, lessons!inner(id, sub_lessons(count))")
+          .select("id, name, summary, price, cover_image_url, lessons!inner(id, sub_lessons(count))")
           .neq("id", courseId);
 
         if (otherCourseData) {
@@ -148,7 +148,7 @@ const CourseDetailPage: React.FC = () => {
 
             <div className="my-12">
               <h2 className="text-2xl font-bold mb-4">Course Detail</h2>
-              <div className="prose max-w-none text-gray-600">
+              <div className="prose max-w-none text-gray-600 break-words">
                 {courses?.detail?.split("\n\n").map((para: string, idx: number) => (
                   <p key={idx} className="mb-4 whitespace-pre-line">{para}</p>
                 ))}
@@ -219,7 +219,15 @@ const CourseDetailPage: React.FC = () => {
             <div className="sticky top-30 p-6 border rounded-lg bg-white z-10">
               <span className="text-orange-500">Course</span>
               <h1 className="text-2xl font-bold mb-2">{courses?.name}</h1>
-              <p className="text-gray-600 mb-4">{courses?.summary}</p>
+              <p 
+                className="text-gray-600 mb-4 overflow-hidden text-ellipsis break-words"
+                style={{
+                  display: "-webkit-box",
+                  WebkitLineClamp: 2,
+                  WebkitBoxOrient: "vertical",
+                }}    
+              >
+                {courses?.summary}</p>
               <p className="text-2xl font-bold mb-6">
                 THB {courses?.price?.toLocaleString()}
               </p>
