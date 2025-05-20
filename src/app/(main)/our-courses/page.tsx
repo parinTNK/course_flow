@@ -6,7 +6,7 @@ import NavBar from "@/components/nav";
 import CourseCard from "@/components/CourseCard";
 import { Course } from "@/types/Course";
 import CallToAction from "@/components/landing/CallToAction";
-import Pagination from "@/app/admin/components/Pagination"; 
+import Pagination from "@/app/admin/components/Pagination";
 import BackgroundSVGs from "@/components/BackgroundSVGs";
 import LoadingSpinner from "@/app/admin/components/LoadingSpinner";
 
@@ -15,22 +15,22 @@ const limit = 12;
 const fetchCoursesData = async (
   page: number,
   search: string,
-  setCourses: Function,
-  setTotalPages: Function,
-  setError: Function,
-  setLoading: Function
+  setCourses: (courses: Course[]) => void,
+  setTotalPages: (pages: number) => void,
+  setError: (err: string | null) => void,
+  setLoading: (loading: boolean) => void
 ) => {
   setLoading(true);
   setError(null);
   try {
-    const res = await axios.get("/api/courses-list", {
-      params: { page, limit, search },
+    const res = await axios.get("/api/courses-our-courses", {
+      params: { page, limit, search, status: "published" },
     });
     const data = res.data;
-    setCourses(data.courses);
-    setTotalPages(data.pagination.totalPages);
+    setCourses(data.courses || []);
+    setTotalPages(data.pagination?.totalPages || 1);
   } catch (err: any) {
-    setError(err.message || "Failed to fetch courses.");
+    setError(err?.response?.data?.error || err.message || "Failed to fetch courses.");
   } finally {
     setLoading(false);
   }
