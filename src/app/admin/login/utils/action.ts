@@ -3,6 +3,7 @@
 import { supabase } from "@/lib/supabaseClient";
 import { validateLoginForm, translateAuthError } from "./validations";
 import { UserCredentials, AdminLoginResponse, AdminSessionResponse, AdminProfile } from "../type";
+import "../type";
 
 export async function adminLogin(credentials: UserCredentials): Promise<AdminLoginResponse> {
 
@@ -35,7 +36,8 @@ export async function adminLogin(credentials: UserCredentials): Promise<AdminLog
       };
     }
 
-    const userRole = data.user.user_metadata?.role;
+    const userRole = data.user.user_metadata?.role || 
+                data.user.raw_user_meta_data?.role;
     
     if (userRole !== "admin") {
       

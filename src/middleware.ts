@@ -1,11 +1,15 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { createMiddlewareClient } from '@supabase/auth-helpers-nextjs';
+import './app/admin/login/type';
 
 export async function middleware(request: NextRequest) {
   try {
     const response = NextResponse.next();
     const path = request.nextUrl.pathname;
+    if (path.startsWith('/admin/dashboard')) {
+      return response;
+    }
     const publicPathsSet = new Set(['/', '/login', '/register', '/our-courses','/course-detail/[courseId]']);
 
     const protectedPathsSet = new Set([ '/my-courses', '/profile', '/my-wishlist', '/my-assignments','/payment/[courseId]','/course-learn/[courseId]/learning']);
@@ -81,15 +85,32 @@ export async function middleware(request: NextRequest) {
         return redirectResponse;
       }
       
-      const isAdminRoute = path.startsWith('/admin') && !path.startsWith('/admin/login');
-      
-      if (isAdminRoute) {
-        const userRole = session?.user?.user_metadata?.role;
-        
-        if (userRole !== 'admin') {
-          return NextResponse.redirect(new URL('/admin/login', request.url));
-        }
-      }
+       const isAdminRoute = path.startsWith('/admin') && !path.startsWith('/admin/login');
+
+if (isAdminRoute) {
+  const hasAuthCookie = request.cookies.has('supabase-auth-token');
+  
+  if (request.nextUrl.searchParams.has('t') && hasAuthCookie) {
+    return response;
+  }
+  
+  const redirectAttempts = request.cookies.get('admin_redirect')?.value;
+  const attempts = redirectAttempts ? parseInt(redirectAttempts) : 0;
+  
+  if (attempts > 3) {
+    response.cookies.set('admin_redirect', '0', { path: '/' });
+    return response;
+  }
+  
+  response.cookies.set('admin_redirect', String(attempts + 1), { path: '/' });
+  
+  const userRole = session?.user?.user_metadata?.role || 
+                  session?.user?.raw_user_meta_data?.role;
+  
+  if (!session || userRole !== 'admin') {
+    return NextResponse.redirect(new URL('/admin/login', request.url));
+  }
+}
       
       return response;
     } catch (sessionError) {
