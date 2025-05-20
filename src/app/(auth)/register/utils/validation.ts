@@ -12,22 +12,49 @@ export function validateRegisterForm(data: {
 }): ValidationError[] {
   const errors: ValidationError[] = [];
   
-  // Name validation
+  // Name validation (aligned with profile)
+  const nameHasNumber = /[0-9]/;
+  const nameHasSpecialChar = /[^A-Za-z0-9' -]/;
+
   if (!data.name?.trim()) {
     errors.push({
       field: 'name',
       message: 'please enter your name',
     });
-  } else if (data.name.length < 2) {
-    errors.push({
-      field: 'name',
-      message: 'name must be at least 2 characters long',
-    });
-  } else if (data.name.length > 100) {
-    errors.push({
-      field: 'name',
-      message: 'name cannot exceed 100 characters',
-    });
+  } else {
+    const hasNumber = nameHasNumber.test(data.name);
+    const hasSpecialChar = nameHasSpecialChar.test(data.name);
+
+    if (data.name.length < 2) {
+      errors.push({
+        field: 'name',
+        message: 'name must be at least 2 characters long',
+      });
+    }
+
+    if (data.name.length > 100) {
+      errors.push({
+        field: 'name',
+        message: 'name cannot exceed 100 characters',
+      });
+    }
+
+    if (hasNumber && hasSpecialChar) {
+      errors.push({
+        field: 'name',
+        message: 'name must not contain both numbers and special characters',
+      });
+    } else if (hasNumber) {
+      errors.push({
+        field: 'name',
+        message: 'name must not contain numbers',
+      });
+    } else if (hasSpecialChar) {
+      errors.push({
+        field: 'name',
+        message: 'name must not contain special characters like %^&*',
+      });
+    }
   }
   
   // Date of birth validation
