@@ -81,7 +81,7 @@ const CoursesPage: React.FC = () => {
                 key={course.id}
                 course={{
                   ...course,
-                  cover_image_url: course.cover_image_url,
+                  cover_image_url: course.image_url,
                   lessons: course.lessons || [],
                 }}
               />
