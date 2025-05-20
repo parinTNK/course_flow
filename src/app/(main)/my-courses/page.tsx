@@ -7,7 +7,8 @@ import type { Course } from "@/types/Course";
 import { useAuth } from "@/app/context/authContext";
 import LoadingSpinner from "../../admin/components/LoadingSpinner";
 import { AlertCircle } from "lucide-react";
-import Pagination from "@/app/admin/components/Pagination"; 
+import Pagination from "@/app/admin/components/Pagination";
+import BackgroundSVGs from "@/components/BackgroundSVGs";
 
 const MyCourses: React.FC = () => {
   const [tab, setTab] = useState<"all" | "inprogress" | "completed">("all");
@@ -24,7 +25,7 @@ const MyCourses: React.FC = () => {
   const [inprogressCount, setInprogressCount] = useState(0);
   const [completedCount, setCompletedCount] = useState(0);
 
-  const { user,loading: authLoading } = useAuth();
+  const { user, loading: authLoading } = useAuth();
 
   useEffect(() => {
     if (!user?.user_id) {
@@ -53,23 +54,22 @@ const MyCourses: React.FC = () => {
     fetchCourses();
   }, [user?.user_id, authLoading, currentPage, limit, tab]);
 
+  const handleTabChange = (newTab: "all" | "inprogress" | "completed") => {
+    setTab(newTab);
+    setCurrentPage(1);
+  };
 
-const handleTabChange = (newTab: "all" | "inprogress" | "completed") => {
-  setTab(newTab);
-  setCurrentPage(1);
-};
-
-if (authLoading) {
-  return (
-    <div className="min-h-screen flex items-center justify-center">
-      <LoadingSpinner text="Loading..." className = '' size="md" />
-    </div>
-  );
-}
-
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <LoadingSpinner text="Loading..." className="" size="md" />
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen flex flex-col bg-gray-50">
+    <div className="min-h-screen flex flex-col">
+      <BackgroundSVGs />
       <main className="flex-1 pt-30">
         <div className="container mx-auto px-4 py-8">
           <div className="flex flex-col gap-8 max-w-6xl mx-auto">
@@ -129,7 +129,11 @@ if (authLoading) {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {loading ? (
                     <div className="col-span-2 flex flex-col items-center justify-center py-20">
-                      <LoadingSpinner text="Loading courses..." className = '' size="md" />
+                      <LoadingSpinner
+                        text="Loading courses..."
+                        className=""
+                        size="md"
+                      />
                     </div>
                   ) : error ? (
                     <div className="col-span-2 flex flex-col items-center justify-center py-20">
@@ -155,13 +159,13 @@ if (authLoading) {
                 </div>
                 {/* Pagination */}
                 {!loading && !error && courses.length > 0 && (
-                <div className = "mt-8">
-                  <Pagination
-                    currentPage={currentPage}
-                    totalPages={totalPages}
-                    onPageChange={setCurrentPage}
-                  />
-                </div>
+                  <div className="mt-8">
+                    <Pagination
+                      currentPage={currentPage}
+                      totalPages={totalPages}
+                      onPageChange={setCurrentPage}
+                    />
+                  </div>
                 )}
               </section>
             </div>
@@ -191,7 +195,14 @@ const Sidebar: React.FC<{
   inprogressCount: number | undefined;
   completedCount: number | undefined;
   variant: "desktop" | "mobile";
-}> = ({ name, avatarUrl, allCouresCount, inprogressCount, completedCount, variant }) => {
+}> = ({
+  name,
+  avatarUrl,
+  allCouresCount,
+  inprogressCount,
+  completedCount,
+  variant,
+}) => {
   if (variant === "desktop") {
     return (
       <aside className="hidden md:flex w-full md:w-1/3 flex-col items-center">
@@ -205,7 +216,7 @@ const Sidebar: React.FC<{
           />
           <h2 className="mt-4 text-xl text-gray-800">{name}</h2>
           <div className="flex justify-between w-full mt-6 gap-2">
-          <div className="flex flex-col bg-gray-200 gap-4 p-4 rounded-[8px] w-1/3">
+            <div className="flex flex-col bg-gray-200 gap-4 p-4 rounded-[8px] w-1/3">
               <div className="text-sm text-gray-700">All Course</div>
               <div className="text-xl font-bold">{allCouresCount}</div>
             </div>
@@ -238,7 +249,7 @@ const Sidebar: React.FC<{
           <span className="text-[17px] font-medium text-[#444]">{name}</span>
         </div>
         <div className="flex gap-3">
-        <div className="flex items-center justify-between bg-gray-100 rounded-lg px-3 py-2 flex-1">
+          <div className="flex items-center justify-between bg-gray-100 rounded-lg px-3 py-2 flex-1">
             <span className="text-xs text-gray-400">All Course</span>
             <span className="text-lg font-bold text-gray-700">
               {allCouresCount}
