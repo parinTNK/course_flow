@@ -64,7 +64,8 @@ const CourseDetailPage: React.FC = () => {
         const { data: otherCourseData } = await supabase
           .from("courses")
           .select("id, name, summary, price, cover_image_url, lessons!inner(id, sub_lessons(count))")
-          .neq("id", courseId);
+          .neq("id", courseId)
+          .eq("status", "published");
 
         if (otherCourseData) {
           const formatted = otherCourseData.map((course: any) => {
