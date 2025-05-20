@@ -68,7 +68,7 @@ const MyCourses: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="flex flex-col">
       <BackgroundSVGs />
       <main className="flex-1 pt-30">
         <div className="container mx-auto px-4 py-8">

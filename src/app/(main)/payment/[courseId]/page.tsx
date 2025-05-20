@@ -258,7 +258,7 @@ export default function PaymentPage() {
 
   // -------------------- Render --------------------
   return (
-    <div className="min-h-screen flex flex-col bg-gray-50">
+    <div className="flex flex-col mt-18">
       <Script src="https://cdn.omise.co/omise.js" strategy="afterInteractive" />
       <main className="pt-20">
         <div className="container mx-auto px-4 py-8 ">
