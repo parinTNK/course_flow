@@ -7,6 +7,10 @@ export const validateProfileForm = (formData: any, file: File | null): Validatio
   const errors: ValidationError[] = [];
   const nameRegex = /^[A-Za-z' -]{3,100}$/;
   const nameSpecialCharRegex = /^[A-Za-z' -]*$/;
+  const nameNumberRegex = /^[^0-9]*$/;
+  // Add regex to check for both numbers and special characters
+  const nameHasNumber = /[0-9]/;
+  const nameHasSpecialChar = /[^A-Za-z0-9' -]/;
   const schoolSpecialCharRegex = /^[A-Za-z0-9' -]*$/;
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   const today = new Date().toISOString().split("T")[0];
@@ -14,25 +18,40 @@ export const validateProfileForm = (formData: any, file: File | null): Validatio
   minAgeDate.setFullYear(minAgeDate.getFullYear() - 6);
   const minAgeDateString = minAgeDate.toISOString().split("T")[0];
 
-  if (formData.firstName && formData.firstName.length < 3) {
-    errors.push({
-      field: "firstName",
-      message: "Name must be at least 3 characters long",
-    });
-  }
+  if (formData.firstName) {
+    const hasNumber = nameHasNumber.test(formData.firstName);
+    const hasSpecialChar = nameHasSpecialChar.test(formData.firstName);
 
-  if (formData.firstName && formData.firstName.length > 100) {
-    errors.push({
-      field: "firstName",
-      message: "Name must not exceed 100 characters",
-    });
-  }
+    if (formData.firstName.length < 2) {
+      errors.push({
+        field: "firstName",
+        message: "Name must be at least 2 characters long",
+      });
+    }
 
-  if (formData.firstName && !nameSpecialCharRegex.test(formData.firstName)) {
-    errors.push({
-      field: "firstName",
-      message: "Name must not contain special characters like %^&*",
-    });
+    if (formData.firstName.length > 100) {
+      errors.push({
+        field: "firstName",
+        message: "Name must not exceed 100 characters",
+      });
+    }
+
+    if (hasNumber && hasSpecialChar) {
+      errors.push({
+        field: "firstName",
+        message: "Name must not contain both numbers and special characters",
+      });
+    } else if (hasNumber) {
+      errors.push({
+        field: "firstName",
+        message: "Name must not contain numbers",
+      });
+    } else if (hasSpecialChar) {
+      errors.push({
+        field: "firstName",
+        message: "Name must not contain special characters like %^&*",
+      });
+    }
   }
 
   if (formData.school && !schoolSpecialCharRegex.test(formData.school)) {

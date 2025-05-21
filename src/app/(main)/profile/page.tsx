@@ -21,6 +21,7 @@ import {
 } from "./utils/validation";
 import { useCustomToast } from "@/components/ui/CustomToast";
 import BackgroundSVGs from "@/components/BackgroundSVGs";
+import LoadingSpinner from "@/app/admin/components/LoadingSpinner";
 
 interface FormData {
   firstName: string;
@@ -46,6 +47,7 @@ export default function ProfilePage() {
     []
   );
   const [loading, setLoading] = useState(false);
+  const [emailLoading, setEmailLoading] = useState(false); // add state
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [newEmail, setNewEmail] = useState("");
   const toast = useCustomToast();
@@ -67,22 +69,26 @@ export default function ProfilePage() {
   }, [user]);
 
   const handleEmailChange = async () => {
+    setEmailLoading(true); // start spinner
     const {
       data: { session },
     } = await supabase.auth.getSession();
     if (!session) {
       toast.error("Error", "No active session. Please sign in again.");
+      setEmailLoading(false);
       return;
     }
 
     const { error } = await supabase.auth.updateUser({ email: newEmail });
     if (error) {
       toast.error("Error", "Email update failed. Please try again.");
+      setEmailLoading(false);
       return;
     }
 
     toast.success("Success", "Confirmation email sent successfully!");
     setShowEmailModal(false);
+    setEmailLoading(false);
   };
 
   const validate = (): ValidationError[] => validateProfileForm(formData, file);
@@ -188,6 +194,15 @@ export default function ProfilePage() {
   return (
     <div className="flex flex-col relative py-28 mt-10 overflow-y-hidden">
       <BackgroundSVGs />
+      {/* Loading overlay when updating profile or changing email */}
+      {(loading || emailLoading) && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/70">
+          <LoadingSpinner
+            text={loading ? "Updating profile..." : "Updating email..."}
+            size="md"
+          />
+        </div>
+      )}
       <section className="flex-1 bg-transparent flex flex-col items-center justify-center">
         <h2 className="text-3xl font-bold text-center text-black mb-12">
           Profile
@@ -218,6 +233,7 @@ export default function ProfilePage() {
         newEmail={newEmail}
         setNewEmail={setNewEmail}
         handleEmailChange={handleEmailChange}
+        emailLoading={emailLoading} // pass prop
       />
     </div>
   );
@@ -338,6 +354,7 @@ const EmailModal = ({
   newEmail,
   setNewEmail,
   handleEmailChange,
+  emailLoading, // receive prop
 }) => {
   const [newEmailError, setNewEmailError] = useState<string | null>(null);
 
@@ -364,18 +381,28 @@ const EmailModal = ({
         </DialogHeader>
         <div className="space-y-4">
           <Label htmlFor="new-email">New Email</Label>
+          {emailLoading && (
+            <div className="flex justify-center">
+              <LoadingSpinner size="sm" text="" />
+            </div>
+          )}
           <Input
             id="new-email"
             type="email"
             value={newEmail}
             onChange={handleNewEmailChange}
             className={newEmailError ? "border-red-500" : ""}
+            disabled={emailLoading}
           />
           {newEmailError && (
             <p className="text-red-500 text-xs mt-1">{newEmailError}</p>
           )}
-          <ButtonT onClick={handleSendConfirmation} className="w-full mt-2">
-            Send Confirmation
+          <ButtonT
+            onClick={handleSendConfirmation}
+            className="w-full mt-2"
+            disabled={emailLoading}
+          >
+            {emailLoading ? "Sending..." : "Send Confirmation"}
           </ButtonT>
         </div>
       </DialogContent>

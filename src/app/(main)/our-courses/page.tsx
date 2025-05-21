@@ -6,30 +6,31 @@ import NavBar from "@/components/nav";
 import CourseCard from "@/components/CourseCard";
 import { Course } from "@/types/Course";
 import CallToAction from "@/components/landing/CallToAction";
-import Pagination from "@/app/admin/components/Pagination"; 
+import Pagination from "@/app/admin/components/Pagination";
 import BackgroundSVGs from "@/components/BackgroundSVGs";
+import LoadingSpinner from "@/app/admin/components/LoadingSpinner";
 
 const limit = 12;
 
 const fetchCoursesData = async (
   page: number,
   search: string,
-  setCourses: Function,
-  setTotalPages: Function,
-  setError: Function,
-  setLoading: Function
+  setCourses: (courses: Course[]) => void,
+  setTotalPages: (pages: number) => void,
+  setError: (err: string | null) => void,
+  setLoading: (loading: boolean) => void
 ) => {
   setLoading(true);
   setError(null);
   try {
-    const res = await axios.get("/api/courses-list", {
-      params: { page, limit, search },
+    const res = await axios.get("/api/courses-our-courses", {
+      params: { page, limit, search, status: "published" },
     });
     const data = res.data;
-    setCourses(data.courses);
-    setTotalPages(data.pagination.totalPages);
+    setCourses(data.courses || []);
+    setTotalPages(data.pagination?.totalPages || 1);
   } catch (err: any) {
-    setError(err.message || "Failed to fetch courses.");
+    setError(err?.response?.data?.error || err.message || "Failed to fetch courses.");
   } finally {
     setLoading(false);
   }
@@ -70,7 +71,9 @@ const CoursesPage: React.FC = () => {
 
         <div className="max-w-7xl mx-auto grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 mb-10">
           {loading ? (
-            <div className="col-span-3 text-center text-gray-400 py-20">Loading...</div>
+            <div className="col-span-3 flex flex-col items-center justify-center py-20">
+              <LoadingSpinner text="Loading courses..." size="md" />
+            </div>
           ) : error ? (
             <div className="col-span-3 text-center text-red-500 py-20">{error}</div>
           ) : courses.length === 0 ? (
