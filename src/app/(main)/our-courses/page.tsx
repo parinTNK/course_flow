@@ -8,6 +8,7 @@ import CallToAction from "@/components/landing/CallToAction";
 import Pagination from "@/app/admin/components/Pagination";
 import BackgroundSVGs from "@/components/BackgroundSVGs";
 import LoadingSpinner from "@/app/admin/components/LoadingSpinner";
+import { Search } from "lucide-react";
 
 const limit = 12;
 
@@ -29,7 +30,9 @@ const fetchCoursesData = async (
     setCourses(data.courses || []);
     setTotalPages(data.pagination?.totalPages || 1);
   } catch (err: any) {
-    setError(err?.response?.data?.error || err.message || "Failed to fetch courses.");
+    setError(
+      err?.response?.data?.error || err.message || "Failed to fetch courses."
+    );
   } finally {
     setLoading(false);
   }
@@ -42,40 +45,60 @@ const CoursesPage: React.FC = () => {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const SEARCH_PLACEHOLDER = "Search...";
+  const [isInputFocused, setIsInputFocused] = useState(false);
 
   useEffect(() => {
-    fetchCoursesData(page, search, setCourses, setTotalPages, setError, setLoading);
+    fetchCoursesData(
+      page,
+      search,
+      setCourses,
+      setTotalPages,
+      setError,
+      setLoading
+    );
   }, [page, search]);
 
   return (
-    <div className="min-h-screen flex flex-col bg-transparent">
+    <div className="min-h-screen flex flex-col bg-transparent overflow-x-hidden">
       <BackgroundSVGs />
-      <main className="flex-1 pt-24 px-6 md:px-20 py-10">
+      <main className="flex-1 py-24">
         <div className="text-center max-w-4xl mx-auto py-10">
-          <h1 className="text-3xl md:text-4xl font-semibold mt-10">Our Courses</h1>
-          <div className="mt-6 max-w-md mx-auto">
-            <input
-              type="text"
-              placeholder=" Search..."
-              className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:outline-none"
-              value={search}
-              onChange={(e) => {
-                setSearch(e.target.value);
-                setPage(1);
-              }}
-            />
+          <h1 className="text-3xl md:text-4xl font-medium sm:mt-10 mb-10 sm:mb-15">
+            Our Courses
+          </h1>
+          <div className="mt-6 mx-auto w-[343px] md:w-[357px]">
+            <div className="flex items-center w-full rounded-lg border border-gray-300 px-4 py-2 bg-white shadow sm:mb-14">
+              <Search className="w-5 h-5 text-gray-500 mr-2" />
+              <input
+                type="text"
+                placeholder={isInputFocused ? "" : SEARCH_PLACEHOLDER}
+                className="w-full outline-none text-gray-700 placeholder-gray-400 bg-transparent h-[30px]"
+                value={search}
+                onChange={(e) => {
+                  setSearch(e.target.value);
+                  setPage(1);
+                }}
+                onFocus={() => setIsInputFocused(true)}
+                onBlur={() => setIsInputFocused(false)}
+              />
+            </div>
           </div>
         </div>
 
-        <div className="max-w-7xl mx-auto grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 mb-10">
+        <div className="flex flex-wrap justify-center gap-x-6 gap-y-10 w-full overflow-x-hidden">
           {loading ? (
             <div className="col-span-3 flex flex-col items-center justify-center py-20">
               <LoadingSpinner text="Loading courses..." size="md" />
             </div>
           ) : error ? (
-            <div className="col-span-3 text-center text-red-500 py-20">{error}</div>
+            <div className="col-span-3 text-center text-red-500 py-20">
+              {error}
+            </div>
           ) : courses.length === 0 ? (
-            <div className="col-span-3 text-center text-gray-400 py-20">No courses found.</div>
+            <div className="col-span-3 text-center text-gray-400 py-20">
+              No courses found.
+            </div>
           ) : (
             courses.map((course) => (
               <CourseCard
