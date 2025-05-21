@@ -6,6 +6,7 @@ import { adminLogin } from "./utils/action";
 import { supabase } from "@/lib/supabaseClient";
 import { UserCredentials, LoginState } from "./type";
 import { useCustomToast } from "@/components/ui/CustomToast";
+import "./type";
 
 const AdminLogin = () => {
   const [credentials, setCredentials] = useState<UserCredentials>({
@@ -23,37 +24,40 @@ const AdminLogin = () => {
 
   useEffect(() => {
     const checkExistingSession = async () => {
-      const token = localStorage.getItem("admin_token");
+      try {
+        const { data, error } = await supabase.auth.getSession();
+        console.log("Session data:", data);
 
-      if (token) {
-        try {
-          const { data, error } = await supabase.auth.getSession();
+        if (data.session && !error) {
+          const { data: userData } = await supabase.auth.getUser();
+          console.log("User data:", userData);
 
-          if (data.session && !error) {
-            const { data: userData } = await supabase.auth.getUser();
-            const userRole = userData.user?.user_metadata?.role;
+          const userRole =
+            userData.user?.user_metadata?.role ||
+            userData.user?.raw_user_meta_data?.role;
 
-            if (userRole === "admin") {
-              router.push("/admin/dashboard");
-            } else {
-              localStorage.removeItem("admin_token");
-              toast.warning(
-                "Access Denied",
-                "You do not have permission to access the admin panel."
-              );
-            }
+          console.log("User role:", userRole);
+
+          if (userRole === "admin") {
+            const dashboardUrl = `${
+              window.location.origin
+            }/admin/dashboard?t=${Date.now()}`;
+            window.location.replace(dashboardUrl);
           } else {
-            localStorage.removeItem("admin_token");
+            await supabase.auth.signOut();
+            toast.warning(
+              "Access Denied",
+              "You do not have permission to access the admin panel."
+            );
           }
-        } catch (err) {
-          console.error("Error checking session:", err);
-          localStorage.removeItem("admin_token");
         }
+      } catch (err) {
+        console.error("Error checking session:", err);
       }
     };
 
     checkExistingSession();
-  }, [router]);
+  }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -68,32 +72,63 @@ const AdminLogin = () => {
     setLoginState({ loading: true, error: null });
 
     try {
-      const result = await adminLogin(credentials);
+      await supabase.auth.signOut();
+      localStorage.clear();
 
-      if (!result.success) {
+      console.log("Starting login process...");
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: credentials.email,
+        password: credentials.password,
+      });
+
+      console.log("Supabase auth response:", data);
+      console.log("Supabase auth error:", error);
+
+      if (error) {
         setLoginState({
           loading: false,
-          error: result.error || "Login failed",
+          error: error.message || "Login failed",
         });
-        toast.error("Login failed", result.error || "");
+        toast.error("Login failed", error.message || "");
         return;
       }
-      if (result.session) {
-        localStorage.setItem("admin_token", result.session.access_token);
-        localStorage.setItem(
-          "admin_refresh_token",
-          result.session.refresh_token
+
+      if (!data.user) {
+        setLoginState({
+          loading: false,
+          error: "User not found",
+        });
+        toast.error("Login failed", "User not found");
+        return;
+      }
+
+      const userRole =
+        data.user.user_metadata?.role || data.user.raw_user_meta_data?.role;
+
+      console.log("User role:", userRole);
+      if (userRole !== "admin") {
+        setLoginState({
+          loading: false,
+          error: "You are not authorized to access this page",
+        });
+        toast.error(
+          "Access denied",
+          "You are not authorized to access the admin panel"
         );
-        localStorage.setItem("admin_user_id", result.userId || "");
-        localStorage.setItem("admin_email", result.email || "");
-        localStorage.setItem(
-          "admin_expires_at",
-          String(result.session.expires_at)
-        );
+        await supabase.auth.signOut();
+        return;
       }
 
       toast.success("Login successful", "Welcome to the admin panel");
-      router.push("/admin/dashboard");
+
+      setTimeout(() => {
+        try {
+          const dashboardUrl = `${
+            window.location.origin
+          }/admin/dashboard?t=${Date.now()}`;
+          window.location.replace(dashboardUrl);
+        } catch (navigateError) {}
+      }, 1000);
     } catch (error: any) {
       console.error("Login error:", error);
       setLoginState({
