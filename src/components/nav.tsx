@@ -28,6 +28,17 @@ const NavBar: React.FC = () => {
   const { user, loading, fetchUser } = useAuth();
   const router = useRouter();
 
+  // Check user role on first load and logout if admin
+  useEffect(() => {
+    if (user?.role === "admin") {
+      (async () => {
+        await signOut();
+        document.cookie = "redirecting=; max-age=0; path=/;";
+        window.location.href = "/login";
+      })();
+    }
+  }, [user]);
+
   const menuItems = [
     { icon: User, label: "Profile", href: "/profile" },
     { icon: BookText, label: "My Courses", href: "/my-courses" },
@@ -145,7 +156,6 @@ const NavBar: React.FC = () => {
           {!user ? (
             <Link href="/login">
               <button
-                
                 className="font-sans whitespace-nowrap w-[74px] h-[37px] bg-[var(--blue-500)] hover:bg-blue-700 rounded-[12px] font-bold px-[32px] py-[18px] cursor-pointer flex items-center justify-center text-white text-sm"
               >
                 Log in

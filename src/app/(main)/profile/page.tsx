@@ -54,6 +54,14 @@ export default function ProfilePage() {
   const { user, fetchUser } = useAuth();
   const router = useRouter();
 
+  // Redirect to "landing page" if user is not logged in
+  useEffect(() => {
+    if (user === null) {
+      router.replace("/");
+    }
+  }, [user, router]);
+
+  // Fetch user data from Supabase
   useEffect(() => {
     if (user) {
       setUserId(user.user_id);
@@ -180,6 +188,7 @@ export default function ProfilePage() {
     fetchUser();
   };
 
+  // Handle profile update event --> re-fetch user data
   useEffect(() => {
     const handleProfileUpdate = () => {
       fetchUser();
