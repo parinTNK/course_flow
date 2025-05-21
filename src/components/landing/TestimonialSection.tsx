@@ -10,51 +10,51 @@ import {
   CarouselPrevious,
 } from "@/components/ui/carousel";
 
-// Sample data with image URLs
+
 const testimonials = [
-  {
-    name: "Saiful Islam",
-    role: "Student",
-    message:
-      "Start with something simple and small, then expand over time. If people call it a ‘toy’ you.",
-    image: "https://i.pravatar.cc/150?img=47",
-  },
-  {
-    name: "Jack Matthews",
-    role: "Mentor",
-    message:
-      "Excellent support and beautiful user experience. This platform streamlined everything I needed.",
-    image: "https://i.pravatar.cc/150?img=48",
-  },
-  {
-    name: "Emma Liu",
-    role: "Student",
-    message:
-      "A delightful experience learning online. Lessons are clear and progress tracking is intuitive.",
-    image: "https://i.pravatar.cc/150?img=49",
-  },
-  {
-    name: "AAAA",
-    role: "Student",
-    message:
-      "A delightful experience learning online. Lessons are clear and progress tracking is intuitive.",
-    image: "https://i.pravatar.cc/150?img=50",
-  },
-  {
-    name: "BBBBBBB",
-    role: "Student",
-    message:
-      "A delightful experience learning online. Lessons are clear and progress tracking is intuitive.",
-    image: "https://i.pravatar.cc/150?img=51",
-  },
-  {
-    name: "CCCCCC",
-    role: "Student",
-    message:
-      "A delightful experience learning online. Lessons are clear and progress tracking is intuitive.",
-    image: "https://i.pravatar.cc/150?img=52",
-  },
-  // Add more as needed
+{
+  name: "Lena Torres",
+  role: "Instructor",
+  message:
+    "Creating and sharing lessons has never been easier. I love how responsive and flexible the platform is.",
+  image: "https://i.pravatar.cc/150?img=47",
+},
+{
+  name: "Noah Bennett",
+  role: "Student",
+  message:
+    "This platform gave me the confidence to pursue topics I once thought were too hard. Now I enjoy learning every day.",
+  image: "https://i.pravatar.cc/150?img=48",
+},
+{
+  name: "Priya Mehra",
+  role: "Mentor",
+  message:
+    "Helping students feels more impactful when the tools are this well-designed. Highly recommended.",
+  image: "https://i.pravatar.cc/150?img=49",
+},
+{
+  name: "Marco Silva",
+  role: "Student",
+  message:
+    "The bite-sized lessons and interactive features kept me hooked. Learning has never been this fun.",
+  image: "https://i.pravatar.cc/150?img=50",
+},
+{
+  name: "Chloe Andersen",
+  role: "Student",
+  message:
+    "I love how the platform adapts to my pace. It's like having a personal tutor available anytime.",
+  image: "https://i.pravatar.cc/150?img=51",
+},
+{
+  name: "Jinwoo Park",
+  role: "Student",
+  message:
+    "From the first click, everything felt intuitive. I’ve finally found a place where I enjoy studying.",
+  image: "https://i.pravatar.cc/150?img=52",
+}
+
 ];
 
 const TestimonialSection: React.FC = () => {
