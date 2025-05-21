@@ -207,13 +207,13 @@ const Sidebar: React.FC<{
     return (
       <aside className="hidden md:flex w-full md:w-1/3 flex-col items-center">
         <div className="bg-white rounded-xl shadow p-6 w-full flex flex-col items-center sticky top-24">
-          <img
-            src={avatarUrl}
-            alt="Profile"
-            width={80}
-            height={80}
-            className="rounded-full"
-          />
+          <div className="w-[120px] h-[120px] rounded-full overflow-hidden flex items-center justify-center">
+            <img
+              src={avatarUrl}
+              alt="Profile"
+              className="w-full h-full"
+            />
+          </div>
           <h2 className="mt-4 text-xl text-gray-800">{name}</h2>
           <div className="flex justify-between w-full mt-6 gap-2">
             <div className="flex flex-col bg-gray-200 gap-4 p-4 rounded-[8px] w-1/3">
@@ -239,13 +239,13 @@ const Sidebar: React.FC<{
     <aside className="w-full flex flex-col items-center md:hidden">
       <div className="bg-white shadow p-4 w-full">
         <div className="flex items-center gap-3 mb-4">
-          <img
-            src={avatarUrl}
-            alt="Profile"
-            width={36}
-            height={36}
-            className="rounded-full"
-          />
+          <div className="w-[40px] h-[40px] rounded-full overflow-hidden flex items-center justify-center">
+            <img
+              src={avatarUrl}
+              alt="Profile"
+              className="w-full h-full"
+            />
+          </div>
           <span className="text-[17px] font-medium text-[#444]">{name}</span>
         </div>
         <div className="flex gap-3">
