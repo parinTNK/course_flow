@@ -49,7 +49,7 @@ function HeroImage() {
 
 function HeroSection() {
   return (
-    <section className="relative bg-[#EAF1FF] w-full mt-20 overflow-hidden">
+    <section className="relative bg-[#EAF1FF] w-full mt-10 overflow-hidden">
       <HeroBackground />
       <div className="relative z-10 max-w-screen-xl mx-auto px-6 py-16 flex flex-col md:flex-row items-center justify-between gap-10">
         {/* Left Content */}

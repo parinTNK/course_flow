@@ -60,7 +60,7 @@ const NavBar: React.FC = () => {
   const avatarUrl = user?.profile_picture || "/img/defaultProfileImage.png";
 
   return (
-    <nav className="bg-white fixed w-full h-[88px] z-20 top-0 start-0 border-b border-gray-200 shadow-sm">
+    <nav className="bg-white fixed w-full h-[56px] sm:h-[88px] z-20 top-0 start-0 border-b border-gray-200 shadow-sm">
       {/* Desktop */}
       <div className=" h-full hidden sm:flex items-center justify-between lg:mx-[120px] mx-6 px-6">
         <Link
