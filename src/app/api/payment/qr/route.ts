@@ -8,8 +8,8 @@ const omise = Omise({
 
 export async function POST(req: NextRequest) {
   try {
-    const { amount, courseId, userId } = await req.json();
-
+    const body = await req.json();
+    const { amount, courseId, userId, courseName, userName, promoCode } = body;
     const source = await omise.sources.create({
       type: "promptpay",
       amount: amount * 100,
@@ -20,8 +20,8 @@ export async function POST(req: NextRequest) {
       amount: amount * 100,
       currency: "thb",
       source: source.id,
-      description: `Purchase course ${courseId} by user ${userId}`,
-      metadata: { courseId, userId },
+      description: `Purchase: "${courseName}" by ${userName}` + (promoCode ? ` | Promo: ${promoCode}` : ""),
+      metadata: { courseId, courseName, userId, userName, promoCode },
     });
 
     if (
