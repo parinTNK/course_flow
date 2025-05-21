@@ -17,8 +17,8 @@ type UserType = {
   profile_picture: string;
   date_of_birth: string;
   email: string;
+  role?: "admin" | "user";
 };
-
 
 type AuthContextType = {
   user: UserType | null;
@@ -73,6 +73,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         profile_picture: profileData.profile_picture || "/img/defaultProfileImage.png",
         date_of_birth: profileData.date_of_birth || "Not provided",
         email: user.email || "No email", 
+        role: user.user_metadata?.role, // Add role from user_metadata
       };
       
 
