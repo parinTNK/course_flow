@@ -1,4 +1,4 @@
-'use client";'
+"use client";
 import React from "react";
 import { BookOpen, Clock } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -27,7 +27,8 @@ const CourseCard: React.FC<CourseCardProps> = ({ course }) => {
         focus:outline-none
         focus:ring-2
         focus:ring-blue-300
-      "
+        w-[343px] h-[431px] md:w-[357px] md:h-[475px]"
+        
       onClick={handleClick}
       role="button" // support accessibility
       tabIndex={0} //  support accessibility
@@ -35,7 +36,7 @@ const CourseCard: React.FC<CourseCardProps> = ({ course }) => {
         if (e.key === "Enter" || e.key === " ") handleClick(); //support accessibility
       }}
     >
-      <div className="w-full h-[180px] rounded-t-xl overflow-hidden">
+      <div className="w-full h-[240px] rounded-t-xl overflow-hidden">
         {course.cover_image_url ? (
         <img
           src={course.cover_image_url}
