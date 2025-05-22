@@ -18,37 +18,66 @@ export const validateProfileForm = (formData: any, file: File | null): Validatio
   minAgeDate.setFullYear(minAgeDate.getFullYear() - 6);
   const minAgeDateString = minAgeDate.toISOString().split("T")[0];
 
-  if (formData.firstName) {
-    const hasNumber = nameHasNumber.test(formData.firstName);
-    const hasSpecialChar = nameHasSpecialChar.test(formData.firstName);
+  if (formData.name) {
+    const name = formData.name;
+    const hasNumber = nameHasNumber.test(name);
+    const hasSpecialChar = nameHasSpecialChar.test(name);
 
-    if (formData.firstName.length < 2) {
+    if (name.trim().length === 0) {
       errors.push({
-        field: "firstName",
+        field: "name",
+        message: "Name cannot be only spaces",
+      });
+    }
+
+    if (name.startsWith(" ")) {
+      errors.push({
+        field: "name",
+        message: "Name must not start with a space",
+      });
+    }
+
+    if (name.endsWith(" ")) {
+      errors.push({
+        field: "name",
+        message: "Name must not end with a space",
+      });
+    }
+
+    if (/\s{2,}/.test(name)) {
+      errors.push({
+        field: "name",
+        message: "Name cannot have double spaces",
+      });
+    }
+
+    if (name.length < 2) {
+      errors.push({
+        field: "name",
         message: "Name must be at least 2 characters long",
       });
     }
 
-    if (formData.firstName.length > 100) {
+    if (name.length > 100) {
       errors.push({
-        field: "firstName",
+        field: "name",
         message: "Name must not exceed 100 characters",
       });
     }
 
     if (hasNumber && hasSpecialChar) {
       errors.push({
-        field: "firstName",
+        field: "name",
         message: "Name must not contain both numbers and special characters",
       });
     } else if (hasNumber) {
       errors.push({
-        field: "firstName",
+        field: "name",
         message: "Name must not contain numbers",
       });
     } else if (hasSpecialChar) {
       errors.push({
-        field: "firstName",
+        field: "name",
         message: "Name must not contain special characters like %^&*",
       });
     }
@@ -57,7 +86,7 @@ export const validateProfileForm = (formData: any, file: File | null): Validatio
   if (formData.school && !schoolSpecialCharRegex.test(formData.school)) {
     errors.push({
       field: "school",
-      message: "School must not contain special characters like %^&*",
+      message: "Education Background must not contain special characters like %^&*",
     });
   }
 

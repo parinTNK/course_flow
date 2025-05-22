@@ -3,7 +3,6 @@
 import React, { useEffect, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import NavBar from "@/components/nav";
 import { ButtonT } from "@/components/ui/ButtonT";
 import { supabase } from "@/lib/supabaseClient";
 import { useRouter } from "next/navigation";
@@ -24,7 +23,7 @@ import BackgroundSVGs from "@/components/BackgroundSVGs";
 import LoadingSpinner from "@/app/admin/components/LoadingSpinner";
 
 interface FormData {
-  firstName: string;
+  name: string;
   dob: string;
   school: string;
   email: string;
@@ -38,7 +37,7 @@ export default function ProfilePage() {
     null
   );
   const [formData, setFormData] = useState<FormData>({
-    firstName: "",
+    name: "",
     dob: "",
     school: "",
     email: "",
@@ -51,22 +50,22 @@ export default function ProfilePage() {
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [newEmail, setNewEmail] = useState("");
   const toast = useCustomToast();
-  const { user, fetchUser } = useAuth();
+  const { user, fetchUser, loading: authLoading } = useAuth(); // add loading from context if available
   const router = useRouter();
 
-  // Redirect to "landing page" if user is not logged in
+  // Redirect to "landing page" if user is not logged in but not when auth is loading from profile update
   useEffect(() => {
-    if (user === null) {
+    if (user === null && !authLoading) {
       router.replace("/");
     }
-  }, [user, router]);
+  }, [user, router, authLoading]);
 
   // Fetch user data from Supabase
   useEffect(() => {
     if (user) {
       setUserId(user.user_id);
       setFormData({
-        firstName: user.full_name || "",
+        name: user.full_name || "",
         dob: user.date_of_birth || "",
         school: user.educational_background || "",
         email: user.email || "",
@@ -142,6 +141,17 @@ export default function ProfilePage() {
     setValidationErrors(errors);
     if (errors.length > 0 || !userId) return;
 
+    // Check if any field or image has changed
+    const isNameChanged = formData.name !== (user?.full_name || "");
+    const isDobChanged = formData.dob !== (user?.date_of_birth || "");
+    const isSchoolChanged = formData.school !== (user?.educational_background || "");
+    const isImageChanged = !!file;
+
+    if (!isNameChanged && !isDobChanged && !isSchoolChanged && !isImageChanged) {
+      toast.info("No changes", "No changes detected to update.");
+      return;
+    }
+
     setLoading(true);
     try {
       const uploadedImageUrl = await uploadImage();
@@ -172,7 +182,7 @@ export default function ProfilePage() {
   ): Record<string, any> => {
     const payload: Record<string, any> = {};
     // Only add fields that have changed
-    if (formData.firstName) payload.full_name = formData.firstName;
+    if (formData.name) payload.full_name = formData.name;
     if (formData.dob) payload.date_of_birth = formData.dob;
     if (formData.school) payload.educational_background = formData.school;
 
@@ -201,7 +211,7 @@ export default function ProfilePage() {
   }, [fetchUser]);
 
   return (
-    <div className="flex flex-col relative py-28 mt-10 overflow-y-hidden">
+    <div className="flex flex-col relative py-10 sm:mb-26 sm:py-28 mt-13 sm:mt-16 overflow-y-hidden">
       <BackgroundSVGs />
       {/* Loading overlay when updating profile or changing email */}
       {(loading || emailLoading) && (
@@ -212,13 +222,21 @@ export default function ProfilePage() {
           />
         </div>
       )}
-      <section className="flex-1 bg-transparent flex flex-col items-center justify-center">
-        <h2 className="text-3xl font-bold text-center text-black mb-12">
+      <section
+        className="
+          flex-1 bg-transparent flex flex-col items-center justify-center px-4 md:px-0
+          md:w-full md:max-w-6xl md:mx-auto
+        "
+      >
+        <h2 className="text-[28px] md:text-[36px] font-medium text-center text-black mb-8 sm:mb-18">
           Profile
         </h2>
         <form
           onSubmit={handleSubmit}
-          className="flex flex-col lg:flex-row gap-8 lg:gap-28"
+          className="
+            flex flex-col items-center w-full gap-6
+            md:flex-row md:items-start md:justify-center md:gap-[119px]
+          "
         >
           <ProfileImageSection
             photo={photo}
@@ -254,53 +272,59 @@ const ProfileImageSection = ({
   setFile,
   validationErrors,
   setPreviousPhotoPath,
-}) => (
-  <div className="flex flex-col items-center w-[358px] shrink-0">
-    <img
-      src={photo || "/img/defaultProfileImage.png"}
-      alt="User Avatar"
-      className="rounded-xl object-cover w-[358px] h-[358px] border"
-    />
-    <input
-      id="file-input"
-      type="file"
-      accept="image/*"
-      className="hidden"
-      onChange={(e) => {
-        const f = e.target.files?.[0];
-        if (f) {
-          setFile(f);
-          setPhoto(URL.createObjectURL(f));
-        }
-      }}
-    />
-    <ButtonT
-      variant="primary"
-      className="mt-4 w-[175px] h-[60px]"
-      onClick={() => document.getElementById("file-input")?.click()}
-    >
-      Change photo
-    </ButtonT>
-    {validationErrors
-      .filter((error) => error.field === "file")
-      .map((error, index) => (
-        <p key={index} className="text-red-500 text-xs mt-1">
-          {error.message}
-        </p>
-      ))}
-    <button
-      type="button"
-      onClick={() => {
-        setPhoto("");
-        setFile(null);
-        setPreviousPhotoPath(null);
-      }}
-      className="text-sm mt-2 text-[#2563EB] hover:underline"
-    >
-      Remove photo
-    </button>
-  </div>
-);
+}) => {
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    if (f) {
+      setFile(f);
+      setPhoto(URL.createObjectURL(f));
+    }
+  };
+
+  const handleRemovePhoto = () => {
+    setPhoto("");
+    setFile(null);
+    setPreviousPhotoPath(null);
+  };
+
+  return (
+    <div className="flex flex-col items-center">
+      <img
+        src={photo || "/img/defaultProfileImage.png"}
+        alt="User Avatar"
+        className="rounded-xl object-cover w-[343px] h-[343px] md:w-[358px] md:h-[358px] md:mx-0 border"
+      />
+      <input
+        id="file-input"
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={handleFileChange}
+      />
+      <ButtonT
+        variant="primary"
+        className="text-[16px] font-bold mt-4 w-[175px] h-[48px] md:h-[60px]"
+        onClick={() => document.getElementById("file-input")?.click()}
+      >
+        Change photo
+      </ButtonT>
+      {validationErrors
+        .filter((error) => error.field === "file")
+        .map((error, index) => (
+          <p key={index} className="text-red-500 text-xs mt-1">
+            {error.message}
+          </p>
+        ))}
+      <button
+        type="button"
+        onClick={handleRemovePhoto}
+        className="text-[16px] font-bold mt-5 text-[var(--blue-500)] hover:underline"
+      >
+        Remove photo
+      </button>
+    </div>
+  );
+};
 
 const ProfileFormSection = ({
   formData,
@@ -309,22 +333,27 @@ const ProfileFormSection = ({
   loading,
   setShowEmailModal,
 }) => (
-  <div className="w-full max-w-md space-y-6">
-    {["firstName", "dob", "school"].map((field) => (
+  <div
+    className="
+      w-full max-w-[453px] space-y-10
+      md:w-[453px] md:max-w-[453px] md:ml-0
+    "
+  >
+    {["name", "dob", "school"].map((field) => (
       <div key={field}>
-        <Label htmlFor={field} className="mb-2">
+        <Label htmlFor={field} className="mb-1 text-[16px] font-normal">
           {field === "dob"
             ? "Date of Birth"
             : field === "school"
-            ? "School"
-            : "Full Name"}
+            ? "Education Background"
+            : "Name"}
         </Label>
         <Input
           id={field}
           type={field === "dob" ? "date" : "text"}
           value={formData[field]}
           onChange={handleInputChange(field)}
-          className={getFieldError(field) ? "border-red-500" : ""}
+          className={`${getFieldError(field) ? "border-red-500" : ""} w-full h-[48px]`}
         />
         {getFieldError(field) && (
           <p className="text-red-500 text-xs mt-1">{getFieldError(field)}</p>
@@ -332,7 +361,7 @@ const ProfileFormSection = ({
       </div>
     ))}
     <div>
-      <Label htmlFor="email">Email</Label>
+      <Label htmlFor="email" className="mb-2 text-[16px] font-normal">Email</Label>
       <div className="flex gap-2 items-center">
         <Input
           id="email"
@@ -340,18 +369,18 @@ const ProfileFormSection = ({
           value={formData.email}
           readOnly
           disabled
-          className="bg-gray-100 cursor-not-allowed text-gray-500"
+          className="bg-gray-100 cursor-not-allowed text-gray-500 w-full h-[48px]"
         />
         <ButtonT
           variant="ghost"
-          className="!h-[36px] flex items-center justify-center whitespace-nowrap"
+          className="!h-[48px] flex items-center justify-center whitespace-nowrap"
           onClick={() => setShowEmailModal(true)}
         >
           Change
         </ButtonT>
       </div>
     </div>
-    <ButtonT variant="primary" className="w-full mt-4">
+    <ButtonT variant="primary" className="w-full h-[48px]">
       {loading ? "Updating..." : "Update Profile"}
     </ButtonT>
   </div>
@@ -363,24 +392,62 @@ const EmailModal = ({
   newEmail,
   setNewEmail,
   handleEmailChange,
-  emailLoading, // receive prop
+  emailLoading,
 }) => {
+  const [confirmEmail, setConfirmEmail] = useState("");
   const [newEmailError, setNewEmailError] = useState<string | null>(null);
+  const [confirmEmailError, setConfirmEmailError] = useState<string | null>(null);
+  const [showErrors, setShowErrors] = useState(false);
 
   const handleNewEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const email = e.target.value;
     setNewEmail(email);
-    setNewEmailError(validateNewEmail(email));
+    if (showErrors) {
+      setNewEmailError(validateNewEmail(email));
+      if (confirmEmail && email !== confirmEmail) {
+        setConfirmEmailError("Emails do not match.");
+      } else {
+        setConfirmEmailError(null);
+      }
+    }
+  };
+
+  const handleConfirmEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const confirm = e.target.value;
+    setConfirmEmail(confirm);
+    if (showErrors) {
+      if (newEmail !== confirm) {
+        setConfirmEmailError("Emails do not match.");
+      } else {
+        setConfirmEmailError(null);
+      }
+    }
   };
 
   const handleSendConfirmation = () => {
-    const error = validateNewEmail(newEmail);
-    if (error) {
-      setNewEmailError(error);
-      return;
+    setShowErrors(true);
+    const emailErr = validateNewEmail(newEmail);
+    setNewEmailError(emailErr);
+    let confirmErr = null;
+    if (!confirmEmail) {
+      confirmErr = "Please confirm your new email.";
+    } else if (newEmail !== confirmEmail) {
+      confirmErr = "Emails do not match.";
     }
+    setConfirmEmailError(confirmErr);
+
+    if (emailErr || confirmErr) return;
     handleEmailChange();
   };
+
+  React.useEffect(() => {
+    if (!showEmailModal) {
+      setShowErrors(false);
+      setNewEmailError(null);
+      setConfirmEmailError(null);
+      setConfirmEmail("");
+    }
+  }, [showEmailModal]);
 
   return (
     <Dialog open={showEmailModal} onOpenChange={setShowEmailModal}>
@@ -400,11 +467,25 @@ const EmailModal = ({
             type="email"
             value={newEmail}
             onChange={handleNewEmailChange}
-            className={newEmailError ? "border-red-500" : ""}
+            className={showErrors && newEmailError ? "border-red-500" : ""}
             disabled={emailLoading}
+            autoComplete="off"
           />
-          {newEmailError && (
+          {showErrors && newEmailError && (
             <p className="text-red-500 text-xs mt-1">{newEmailError}</p>
+          )}
+          <Label htmlFor="confirm-email">Confirm New Email</Label>
+          <Input
+            id="confirm-email"
+            type="email"
+            value={confirmEmail}
+            onChange={handleConfirmEmailChange}
+            className={showErrors && confirmEmailError ? "border-red-500" : ""}
+            disabled={emailLoading}
+            autoComplete="off"
+          />
+          {showErrors && confirmEmailError && (
+            <p className="text-red-500 text-xs mt-1">{confirmEmailError}</p>
           )}
           <ButtonT
             onClick={handleSendConfirmation}
