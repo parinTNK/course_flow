@@ -215,6 +215,7 @@ export default function PaymentPage() {
         courseName: course?.name,
         userName: user?.full_name,
         expectedAmount: total,
+        promoCode: promoCode,
       });
 
       const result = res.data;

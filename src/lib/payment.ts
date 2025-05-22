@@ -45,7 +45,7 @@ export async function validateAndCalculatePayment({
       ) {
         if (promo.discount_type === "THB") {
           discount = promo.discount_value;
-        } else if (promo.discount_type === "PERCENT") {
+        } else if (promo.discount_type === "percentage") {
           discount = (finalAmount * promo.discount_percentage) / 100;
         }
         promoMeta = promo;
