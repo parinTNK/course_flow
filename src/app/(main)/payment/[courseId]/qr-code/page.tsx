@@ -121,7 +121,7 @@ export default function QRCodePage() {
     <div className="my-40 flex flex-col items-center justify-center px-2 md:px-0">
       <div className="w-full max-w-md md:max-w-lg mx-auto">
         <button
-          className="text-sm text-blue-600 mb-4 flex items-center gap-1 hover:underline cursor-pointer"
+          className="text-[16px] text-[#2F5FAC] mb-8 flex items-center gap-2 hover:underline cursor-pointer font-semibold"
           onClick={() => router.replace(`/payment/${courseId}`)}
         >
           &larr; Back
