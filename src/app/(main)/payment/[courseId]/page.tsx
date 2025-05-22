@@ -9,7 +9,7 @@ import axios from "axios";
 import { Course, CardForm } from "@/types/payment";
 import { useAuth } from "@/app/context/authContext";
 import LoadingSpinner from "../../../admin/components/LoadingSpinner";
-import { useCustomToast } from "@/components/ui/CustomToast"
+import { useCustomToast } from "@/components/ui/CustomToast";
 import { useCheckPurchased } from "@/hooks/useCheckPurchased";
 
 // -------------------- Validate Functions --------------------
@@ -66,8 +66,8 @@ export default function PaymentPage() {
     promoCodeId: string;
     message: string;
   }>(null);
-  const { user,loading: authLoading } = useAuth();
-  const { success, error: toastError } = useCustomToast();
+  const { user, loading: authLoading } = useAuth();
+  const { success: toastSuccess, error: toastError } = useCustomToast();
   // Hooks
   const params = useParams();
   const router = useRouter();
@@ -99,7 +99,7 @@ export default function PaymentPage() {
         setError(
           err.response?.data?.error || err.message || "Failed to fetch course"
         );
-      }finally {
+      } finally {
         setIsFetchingCourse(false);
       }
     };
@@ -133,14 +133,15 @@ export default function PaymentPage() {
     } catch (err: any) {
       setPromoError("Error validating promo code");
       setPromoApplied(false);
-    }finally {
+    } finally {
     }
   };
 
   // -------------------- Discount Calculation --------------------
   let discount = 0;
   if (promoResult) {
-    if (promoResult.discountType === "THB") { //Clean code need to change to constant or enum
+    if (promoResult.discountType === "THB") {
+      //Clean code need to change to constant or enum
       discount = promoResult.discountValue;
     } else if (promoResult.discountType === "percentage") {
       discount =
@@ -153,7 +154,7 @@ export default function PaymentPage() {
   const displayDiscount = Math.round(discount * 100) / 100;
   const rawTotal = (course?.price ?? 0) - discount;
   const total = Math.round(rawTotal * 100) / 100; // 2 ตำแหน่งทศนิยม
-  
+
   // -------------------- Omise Token --------------------
   const createOmiseToken = async (cardData: any) => {
     return new Promise<string>((resolve, reject) => {
@@ -213,33 +214,42 @@ export default function PaymentPage() {
         userId: user?.user_id,
         courseName: course?.name,
         userName: user?.full_name,
-        promoCode: promoCode,
+        expectedAmount: total,
       });
 
       const result = res.data;
 
-      if (result.charge.status === "successful" && (result.charge.paid)) {
+      if (result.charge.status === "successful" && result.charge.paid) {
         router.push(`/payment/${courseId}/order-completed`);
       } else {
-        router.push(`/payment/${courseId}/order-failed`);  //business logic error go to order failed
+        router.push(`/payment/${courseId}/order-failed`); //business logic error go to order failed
       }
     } catch (err: any) {
-      toastError("Unable to process your request due to a system error. Please try again ", err.message); //system error
+      if (err.response && err.response.status === 409) {
+        toastError(
+          err.response.data.message +
+            ` (Correct price: ${err.response.data.correctAmount} THB)`
+        );
+        return;
+      }
+      toastError(
+        "Unable to process your request due to a system error. Please try again ",
+        err.message
+      ); //system error
     }
   };
-  
-  if (alreadyPurchased === true) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh]">
-        <div className="text-red-500">You have already purchased this course</div>
-      </div>
-    );
-  }
+
+  useEffect(() => {
+    if (alreadyPurchased === true) {
+      toastSuccess("You have already purchased this course");
+      router.replace(`/course-detail/${courseId}`);
+    }
+  }, [alreadyPurchased, courseId, router]);
 
   if (authLoading || isFetchingCourse || alreadyPurchased === null) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <LoadingSpinner text="Loading..." className = '' size="md" />
+        <LoadingSpinner text="Loading..." className="" size="md" />
       </div>
     );
   }
@@ -263,7 +273,9 @@ export default function PaymentPage() {
                 <h1 className="text-4xl font-semibold mb-10">
                   Enter payment info to start <br /> your subscription
                 </h1>
-                <p className="text-gray-500 mb-6 text-[16px]">Select payment method</p>
+                <p className="text-gray-500 mb-6 text-[16px]">
+                  Select payment method
+                </p>
                 <div className="flex flex-col md:flex-row gap-6">
                   <div className="space-y-4 ">
                     {/* Card Payment */}
@@ -423,9 +435,7 @@ export default function PaymentPage() {
                   {/* Order Summary */}
                   <div className="w-full md:w-[350px]">
                     <div className="bg-white rounded-xl shadow p-6">
-                      <h2 className="text-sm mb-4 text-[#F47E20]">
-                        Summary
-                      </h2>
+                      <h2 className="text-sm mb-4 text-[#F47E20]">Summary</h2>
                       <div className="mb-2">
                         <div className="text-[16px] text-[#646D89] mb-2">
                           Subscription
@@ -515,9 +525,10 @@ export default function PaymentPage() {
                             const params = new URLSearchParams({
                               promoCode: promoCode || "",
                               amount: total.toString(),
-                              courseName: course?.name || "",
                             });
-                            router.push(`/payment/${courseId}/qr-code?${params.toString()}`);
+                            router.push(
+                              `/payment/${courseId}/qr-code?${params.toString()}`
+                            );
                           }
                         }}
                       >

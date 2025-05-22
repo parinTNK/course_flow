@@ -7,31 +7,32 @@ import axios from "axios";
 import { useAuth } from "@/app/context/authContext";
 import LoadingSpinner from "../../../../admin/components/LoadingSpinner";
 import { useCheckPurchased } from "@/hooks/useCheckPurchased";
+import { useCustomToast } from "@/components/ui/CustomToast";
 
 export default function QRCodePage() {
   const params = useParams();
   const router = useRouter();
   const courseId = params.courseId as string;
   const searchParams = useSearchParams();
-  
+
   const [qrImage, setQrImage] = useState<string | null>(null);
   const [chargeId, setChargeId] = useState<string | null>(null);
   const [status, setStatus] = useState<string>("pending");
   const [error, setError] = useState<string | null>(null);
 
-  const [courseName, setCourseName] = useState<string>("");
   const [amount, setAmount] = useState<number | null>(null);
   const [promoCode, setPromoCode] = useState<string>("");
 
-  const { user,loading: authLoading } = useAuth();
+  const [isPaymentCompleted, setIsPaymentCompleted] = useState(false);
+
+  const { user, loading: authLoading } = useAuth();
   const alreadyPurchased = useCheckPurchased(courseId);
+  const { success: toastSuccess, error: toastError } = useCustomToast();
 
   useEffect(() => {
     setAmount(Number(searchParams.get("amount")));
     setPromoCode(searchParams.get("promoCode") || "");
-    setCourseName(searchParams.get("courseName") || "");
   }, [searchParams]);
-
 
   useEffect(() => {
     const createQR = async () => {
@@ -40,17 +41,24 @@ export default function QRCodePage() {
       setError(null);
       try {
         const res = await axios.post("/api/payment/qr", {
-          amount: amount,
           courseId: courseId,
           userId: user?.user_id,
-          courseName: courseName,
           userName: user?.full_name,
           promoCode: promoCode,
+          expectedAmount: amount,
         });
         setQrImage(res.data.qr_image);
         setChargeId(res.data.charge.id);
         setStatus(res.data.charge.status);
       } catch (err: any) {
+        if (err.response && err.response.status === 409) {
+          toastError(
+            err.response.data.message +
+              ` (Correct price: ${err.response.data.correctAmount} THB)`
+          );
+          router.replace(`/payment/${courseId}`);
+          return;
+        }
         setError(
           err.response?.data?.message ||
             err.message ||
@@ -58,31 +66,31 @@ export default function QRCodePage() {
         );
       }
     };
-    if (amount) createQR();;
+    if (amount) createQR();
   }, [amount, alreadyPurchased]);
-  
 
   useEffect(() => {
     if (!chargeId) return;
     const interval = setInterval(async () => {
       try {
-        const res = await axios.get(`/api/payment/qr-status?chargeId=${chargeId}`);
+        const res = await axios.get(
+          `/api/payment/qr-status?chargeId=${chargeId}`
+        );
         setStatus(res.data.status);
         if (res.data.status === "successful") {
           clearInterval(interval);
+          setIsPaymentCompleted(true);
           router.push(`/payment/${courseId}/order-completed`);
         }
         if (res.data.status === "failed") {
           clearInterval(interval);
           router.push(`/payment/${courseId}/order-failed`);
         }
-      } catch (err) {
-      }
+      } catch (err) {}
     }, 3000);
 
     return () => clearInterval(interval);
   }, [chargeId, courseId, router]);
-
 
   const handleSaveQR = () => {
     if (!qrImage) return;
@@ -100,14 +108,13 @@ export default function QRCodePage() {
     );
   }
 
-  if (alreadyPurchased === true) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh]">
-        <div className="text-red-500">You have already purchased this course</div>
-      </div>
-    );
-  }
-  
+  useEffect(() => {
+    if (alreadyPurchased === true && !isPaymentCompleted) {
+      toastSuccess("You have already purchased this course");
+      router.replace(`/course-detail/${courseId}`);
+    }
+  }, [alreadyPurchased, courseId, router, isPaymentCompleted]);
+
   if (!qrImage || !amount || !chargeId || alreadyPurchased === null) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -115,7 +122,6 @@ export default function QRCodePage() {
       </div>
     );
   }
-
 
   return (
     <div className="my-40 flex flex-col items-center justify-center px-2 md:px-0">
