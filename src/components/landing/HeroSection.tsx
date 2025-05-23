@@ -1,79 +1,73 @@
 
-import React, { useMemo } from "react";
+import React from "react";
 import Image from "next/image";
 import { ButtonT } from "../ui/ButtonT";
 
-// Helper to determine objectPosition based on window width
-function getObjectPosition() {
-  if (typeof window !== "undefined" && window.innerWidth >= 1024) {
-    return "right";
-  }
-  return "center";
-}
-
-// Background image as a separate component
-function HeroBackground() {
-  const objectPosition = useMemo(getObjectPosition, []);
-  return (
-    <div className="absolute right-0 top-0 h-full w-full z-1 pointer-events-none">
-      <Image
-        src="/img/HeroBG.png"
-        alt=""
-        fill
-        style={{
-          objectFit: "cover",
-          objectPosition,
-        }}
-        className="select-none"
-        priority
-      />
-    </div>
-  );
-}
-
-// Hero image as a separate component
-function HeroImage() {
-  return (
-    <div className="w-full flex justify-center">
-      <Image
-        src="/img/Hero.png"
-        alt="Virtual Classroom"
-        width={500}
-        height={400}
-        className="w-full h-auto max-w-md md:max-w-lg"
-        priority
-      />
-    </div>
-  );
-}
-
 function HeroSection() {
   return (
-    <section className="relative bg-[#EAF1FF] w-full mt-20 overflow-hidden">
-      <HeroBackground />
-      <div className="relative z-10 max-w-screen-xl mx-auto px-6 py-16 flex flex-col md:flex-row items-center justify-between gap-10">
-        {/* Left Content */}
-        <div className="w-full md:max-w-xl text-left">
-          <h1 className="text-4xl sm:text-5xl font-semibold text-[#1A1A1A] leading-tight">
+    <section className="relative bg-[#EAF1FF] w-full max-h-[700px] overflow-hidden mt-[40px] md:mt-[88px]">
+      {/* Background SVG */}
+      <div
+        className="
+          absolute -bottom-[80px] md:bottom-0 -right-[40px] md:left-[320px]
+          w-[550px] h-[500px]
+          sm:w-[800px] sm:h-[650px]
+          md:w-[1200px] md:h-[700px]
+          transition-all duration-700 ease-in-out
+          z-0
+        "
+      >
+        <Image
+          src="/img/HeroBG.png"
+          alt="Hero Background"
+          fill
+          className="object-cover object-right select-none"
+          priority
+        />
+      </div>
+
+      {/* Foreground Content */}
+      <div className="relative z-10 max-w-[1111px] mx-[16px]  md:mx-[160px] py-[80px] flex flex-col md:flex-row items-center justify-between gap-[48px]">
+        {/* Left Text Content */}
+        <div className="text-left max-w-[643px]">
+          <h1 className="text-[36px] md:text-[66px] font-medium text-[#1A1A1A] leading-tight">
             Best Virtual <br className="hidden sm:block" />
-            Classroom Software
+            Classroom&nbsp;Software
           </h1>
-          <p className="text-[#6B7280] mt-6 text-lg">
-            Welcome to Schooler! The one-stop online class management system
-            that caters to all your educational needs!
+
+          <p className="text-[#6B7280] mt-[16px] sm:mt-[24px] text-[16px] sm:text-[18px]">
+            Welcome to Schooler! The one-stop online class management system that caters to all your educational needs!
           </p>
-          <div className="mt-8">
+          <div className="mt-[32px] sm:mt-[48px]">
             <a href="/our-courses">
               <ButtonT
                 variant="primary"
-                className="w-[193px] h-[60px] text-lg font-bold px-8 py-4 flex items-center justify-center whitespace-nowrap"
+                className="text-[16px] font-bold px-[32px] py-[16px] w-[200px] h-[60px] flex items-center justify-center"
               >
                 Explore Courses
               </ButtonT>
             </a>
           </div>
         </div>
-        <HeroImage />
+
+        {/* Right Illustration */}
+        <div
+          className="
+            w-[280px] h-[280px]
+            sm:w-[380px] sm:h-[380px]
+            md:w-[452px] md:h-[448px]
+            transition-all duration-700 ease-in-out
+          "
+        >
+          <Image
+            src="/img/Hero.png"
+            alt="Virtual Classroom Illustration"
+            width={452}
+            height={448}
+            className="w-full h-full object-contain"
+            priority
+          />
+        </div>
       </div>
     </section>
   );
