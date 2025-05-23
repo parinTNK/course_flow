@@ -30,7 +30,7 @@ export default function DashboardPage() {
 
   const handleEditCourse = useCallback(
     (id: string) => {
-      alert(`Edit course ${id} functionality to be implemented`);
+      router.push(`/admin/dashboard/edit-courses/${id}`);
     },
     [router]
   );

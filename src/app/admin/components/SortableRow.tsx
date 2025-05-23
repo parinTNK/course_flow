@@ -7,8 +7,8 @@ import { Lesson } from '@/types/courseAdmin';
 
 interface SortableRowProps {
   lesson: Lesson;
-  onDelete: (id: number) => void;
-  onEdit: (id: number) => void;
+  onDelete: (id: number | string) => void;
+  onEdit: (id: number | string) => void;
 }
 
 export function SortableRow({ lesson, onDelete, onEdit }: SortableRowProps) {
@@ -37,10 +37,10 @@ export function SortableRow({ lesson, onDelete, onEdit }: SortableRowProps) {
         </div>
       </td>
       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-        {lesson.name}
+        {lesson.name || lesson.title || ''}
       </td>
       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-        {lesson.subLessons.length}
+        {lesson.subLessons?.length || lesson.sub_lessons?.length || lesson.sub_lessons_attributes?.length || 0}
       </td>
       <td className="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
         <button

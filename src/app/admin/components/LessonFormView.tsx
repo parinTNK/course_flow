@@ -8,13 +8,18 @@ import { SortableSubLessonItem } from './SortableSubLessonItem'; // Adjusted imp
 
 interface LessonFormViewProps {
   courseName: string;
-  currentEditingLesson: { id: number | null; name: string; subLessons: SubLesson[] };
+  currentEditingLesson: { 
+    id: number | string | null; 
+    name: string; 
+    title?: string; // Add database field name
+    subLessons: SubLesson[] 
+  };
   setCurrentEditingLessonName: (name: string) => void;
   handleSaveNewLesson: () => void;
   handleCancelAddLesson: () => void;
   handleAddSubLesson: () => void;
-  handleRemoveSubLesson: (id: number) => void;
-  handleSubLessonNameChange: (id: number, newName: string) => void;
+  handleRemoveSubLesson: (id: number | string) => void;
+  handleSubLessonNameChange: (id: number | string, newName: string) => void;
   handleDragEndSubLessons: (event: DragEndEvent) => void;
   dndSensors: any; // Type properly
 }
@@ -60,8 +65,10 @@ export const LessonFormView: React.FC<LessonFormViewProps> = ({
               type="text"
               className="w-full px-4 py-2 border border-gray-300 rounded-md"
               placeholder="Enter lesson name"
-              value={currentEditingLesson.name}
-              onChange={(e) => setCurrentEditingLessonName(e.target.value)}
+              value={currentEditingLesson.name || currentEditingLesson.title || ''}
+              onChange={(e) => {
+                setCurrentEditingLessonName(e.target.value);
+              }}
             />
           </div>
           <div>
