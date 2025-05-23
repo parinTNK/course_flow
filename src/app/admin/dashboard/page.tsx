@@ -102,7 +102,7 @@ export default function DashboardPage() {
         )}
 
         {courses.length > 0 && (
-          <div className="mt-4">
+          <div className="">
             <Pagination
               currentPage={currentPage}
               totalPages={totalPages}

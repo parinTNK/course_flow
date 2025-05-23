@@ -61,7 +61,7 @@ export default function Sidebar() {
   };
 
   return (
-    <div className="bg-white w-[240px] h-screen shadow-md flex flex-col border-3 border-gray-200 border-b-0">
+    <div className="bg-white w-[240px] h-screen shadow-md flex flex-col border-3 border-gray-200 border-b-0 border-t-0">
       <div className="p-6 pb-12 flex flex-col items-center ">
            <div className="max-w-screen-xl h-full hidden sm:flex items-center justify-between lg:mx-[120px] mx-6 px-6">
             <Link
