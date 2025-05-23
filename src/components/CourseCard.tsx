@@ -2,10 +2,10 @@
 import React from "react";
 import { BookOpen, Clock } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { Course } from "../types/Course";
+import { CourseSummary } from "../types/Course";
 
 type CourseCardProps = {
-  course: Course;
+  course: CourseSummary;
 };
 
 const CourseCard: React.FC<CourseCardProps> = ({ course }) => {
@@ -17,7 +17,7 @@ const CourseCard: React.FC<CourseCardProps> = ({ course }) => {
 
   return (
     <div
-      className="bg-white rounded-xl shadow flex flex-col h-full
+      className="bg-white rounded-xl shadow flex flex-col
       cursor-pointer
         transition
         duration-200
@@ -55,13 +55,7 @@ const CourseCard: React.FC<CourseCardProps> = ({ course }) => {
         </span>
         <h3 className="font-semibold text-lg">{course.name}</h3>
         <p 
-          className="text-gray-500 text-[15px] overflow-hidden text-ellipsis break-words"
-          style={{
-            display: "-webkit-box",
-            WebkitLineClamp: 2,
-            WebkitBoxOrient: "vertical",
-          }}      
-        >
+          className="text-gray-500 text-[15px] line-clamp-2 break-words">
           {course.summary}
         </p>
       </div>
