@@ -5,7 +5,7 @@ import Link from "next/link";
 
 const Footer: React.FC = () => {
   return (
-<footer className="bg-[#112B55] text-white px-6 sm:px-20 lg:px-40 h-[17rem] sm:h-[10rem] py-8">
+<footer className="bg-[#112B55] text-white px-[16px] sm:px-[80px] lg:px-[160px] h-[17rem] sm:h-[10rem] py-8">
 
 <div className="max-w-screen-xl mx-auto h-full flex flex-col sm:flex-row justify-between items-start sm:items-center text-center sm:text-left gap-8">        {/* Left: Logo */}
         <Link

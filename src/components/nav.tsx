@@ -62,7 +62,7 @@ const NavBar: React.FC = () => {
   return (
     <nav className="bg-white fixed w-full h-[56px] sm:h-[88px] z-20 top-0 start-0 border-b border-gray-200 shadow-sm">
       {/* Desktop */}
-      <div className=" h-full hidden sm:flex items-center justify-between lg:mx-[120px] mx-6 px-6">
+      <div className=" h-full hidden sm:flex items-center justify-between mx-[80px] lg:mx-[160px]">
         <Link
           href="/"
           className="text-2xl font-extrabold text-transparent bg-linear1"
@@ -136,7 +136,7 @@ const NavBar: React.FC = () => {
       </div>
 
       {/* Mobile */}
-      <div className="sm:hidden flex justify-between items-center h-full px-6">
+      <div className="sm:hidden flex justify-between items-center h-full mx-[16px]">
         <Link
           href="/"
           className="text-xl font-extrabold text-transparent bg-linear1"

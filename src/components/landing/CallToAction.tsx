@@ -6,12 +6,12 @@ import { ButtonT } from "../ui/ButtonT";
 
 const CallToAction = () => {
   return (
-    <section className="bg-gradient-to-r from-[#1E4FF5] to-[#2F80ED] w-full py-16">
-      <div className="max-w-screen-xl mx-auto flex flex-col lg:flex-row items-center justify-between px-6 lg:px-20 gap-10 text-center lg:text-left">
+    <section className="bg-gradient-to-r from-[#1E4FF5] to-[#71afff] w-full lg:max-h-[500px]">
+      <div className="max-w-screen-xl mx-auto flex flex-col lg:flex-row justify-between px-6 lg:px-20 gap-10 text-center lg:text-left">
         
         {/* Left: Text and Button */}
-        <div className="flex-1">
-          <h2 className="text-3xl lg:text-5xl font-semibold text-white mb-6">
+        <div className="flex-1 mt-[64px] lg:mt-[125px]">
+          <h2 className="text-[24px] lg:text-[36px] font-medium text-white mb-10">
             Want to start learning?
           </h2>
           <a href="/register">
@@ -25,19 +25,21 @@ const CallToAction = () => {
         </div>
 
         {/* Right: Illustration */}
-        <div className="flex-1 max-w-[500px] w-full">
-          <Image
-            src="/img/Learning.png"
-            alt="Learning"
-            width={500}
-            height={500}
-            className="w-full h-auto"
-            priority
-          />
-        </div>
+<div className="flex-1 max-w-[500px] w-full flex items-end justify-center lg:justify-end mb-20 lg:mb-1 lg:mt-10">
+  <Image
+    src="/img/Learning.png"
+    alt="Learning"
+    width={592}
+    height={448}
+    className="w-[303px] h-[234px] lg:w-[592px] lg:h-[448px]"
+    priority
+  />
+</div>
+
       </div>
     </section>
   );
 };
+
 
 export default CallToAction;
