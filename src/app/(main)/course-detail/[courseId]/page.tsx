@@ -10,6 +10,7 @@ import CallToAction from "@/components/landing/CallToAction";
 import ConfirmModal from "@/components/ConfirmModal";
 import LoadingSpinner from "@/app/admin/components/LoadingSpinner";
 import { useCustomToast } from "@/components/ui/CustomToast";
+import { getBangkokISOString } from "@/lib/bangkokTime";
 import { ButtonT } from "@/components/ui/ButtonT";
 import { VideoOff } from "lucide-react";
 import {
@@ -111,7 +112,24 @@ const CourseDetailPage: React.FC = () => {
     }
   }, [user, courseId]);
 
-  if (loading || isFetchingCourseData) {
+  // Fetch wishlist
+  useEffect(() => {
+    const fetchWishlist = async () => {
+      if (!user || !courseId) return;
+    
+      const { data, error } = await supabase
+      .from("wishlist")
+      .select("id")
+      .eq("user_id", user.user_id)
+      .eq("course_id", courseId)
+      .single();
+      if (data) setIsWishlisted(true);
+    };
+
+    fetchWishlist();
+  }, [user, courseId]);
+
+   if (loading || isFetchingCourseData) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <LoadingSpinner text="Loading..." />
@@ -303,12 +321,32 @@ const CourseDetailPage: React.FC = () => {
       <ConfirmModal
         isOpen={showWishlistModal}
         onClose={() => setShowWishlistModal(false)}
-        onConfirm={() => {
-          setIsWishlisted((prev) => !prev);
-          success(
-            !isWishlisted ? "Added to Wishlist" : "Removed from Wishlist"
-          );
+        onConfirm={async () => {
           setShowWishlistModal(false);
+          if (!user || !courses) return;
+          try {
+            if (!isWishlisted) {
+              const { error } = await supabase.from("wishlist").insert({
+                user_id: user.user_id,
+                course_id: courses.id,
+                created_at: getBangkokISOString(),
+              });
+              if (error) throw error;
+              setIsWishlisted(true);
+              success("Added to Wishlist");
+            } else {
+              const { error } = await supabase
+                .from("wishlist")
+                .delete()
+                .eq("user_id", user.user_id)
+                .eq("course_id", courses.id);
+              if (error) throw error;
+              setIsWishlisted(false);
+              success("Removed from Wishlist");
+            }
+          } catch (err: any) {
+            console.error("Wishlist error:", err.message);
+          }
         }}
         title="Wishlist Confirmation"
         message={
