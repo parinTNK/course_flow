@@ -62,7 +62,7 @@ const CoursesPage: React.FC = () => {
   return (
     <div className="min-h-screen flex flex-col bg-transparent overflow-x-hidden">
       <BackgroundSVGs />
-      <main className="flex-1 py-24">
+      <main className="flex-1 pt-24 pb-10">
         <div className="text-center max-w-4xl mx-auto py-10">
           <h1 className="text-3xl md:text-4xl font-medium sm:mt-10 mb-10 sm:mb-15">
             Our Courses
@@ -86,7 +86,7 @@ const CoursesPage: React.FC = () => {
           </div>
         </div>
 
-        <div className="flex flex-wrap justify-center gap-x-6 gap-y-10 w-full overflow-x-hidden">
+        <div className="flex flex-wrap justify-center gap-x-6 gap-y-10 w-full overflow-x-hidden pb-10">
           {loading ? (
             <div className="col-span-3 flex flex-col items-center justify-center py-20">
               <LoadingSpinner text="Loading courses..." size="md" />
