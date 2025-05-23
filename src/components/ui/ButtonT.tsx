@@ -30,18 +30,5 @@ type ButtonProps = {
       </button>
     );
   }
-  
-  function Buttons() {
-    return (
-      <div className="flex flex-col gap-4">
-        <ButtonT variant="primary">Primary</ButtonT>
-        <ButtonT variant="primary" className="w-[200px]">Primary</ButtonT>
-        <ButtonT variant="Secondary">Secondary</ButtonT>
-        <ButtonT variant="Secondary" className="!bg-[var(--orange-100)]">Secondary2</ButtonT>
-  
-      </div>
-    );
-  }
-  
-  export default Buttons;
+
   export { ButtonT };

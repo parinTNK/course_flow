@@ -8,8 +8,7 @@ interface CoursesTableProps {
   onDeleteCourse: (id: string) => void;
   formatDate: (dateString: string) => string;
   isLoading: boolean;
-  // Remove pagination props
-  currentPage: number; // Keep this to calculate row numbers
+  currentPage: number;
 }
 
 const CoursesTable: React.FC<CoursesTableProps> = ({
@@ -74,7 +73,6 @@ const CoursesTable: React.FC<CoursesTableProps> = ({
           </tbody>
         </table>
       </div>
-      {/* Remove Pagination component from here */}
     </div>
   );
 };
