@@ -1,50 +1,46 @@
-import React, { useState } from "react";
+import React from "react";
+import * as Accordion from "@radix-ui/react-accordion";
+import { ChevronDownIcon } from "lucide-react";
+import { Lesson, SubLesson } from "@/types/Course";
 
-interface Module {
-    id: number;
-    title: string;
-    order_no: number;
-    sub_lessons: any[];
-}
-
-interface CourseModulesProps {
-    modules: Module[];
-}
-
-export const CourseModules: React.FC<CourseModulesProps> = ({ modules }) => {
-    const [expandedModule, setExpandedModule] = useState<number | null>(null);
-
-    const toggleModule = (moduleId: number) => {
-        setExpandedModule(expandedModule === moduleId ? null : moduleId);
-    };
-
-    return (
-        <div className="space-y-4">
-            {modules.map((module) => (
-                <div key={module.id} className="border rounded-lg">
-                    <button
-                        className="w-full p-4 text-left flex items-center justify-between"
-                        onClick={() => toggleModule(module.id)}
-                    >
-                        <span className="flex items-center">
-                            <span className="text-gray-500 mr-4">{String(module.order_no).padStart(2, '0')}</span>
-                            {module.title}
-                        </span>
-                        <span className={`transform transition-transform ${expandedModule === module.id ? 'rotate-180' : ''}`}>
-                            ▼
-                        </span>
-                    </button>
-                    {expandedModule === module.id && module.title.length > 0 && (
-                        <div className="p-4 pt-0">
-                            <ul className="space-y-2 text-gray-600">
-                                {module.sub_lessons?.map((sub: any) => (
-                                    <li key={sub.id} className="pl-12">• {sub.title}</li>
-                                ))}
-                            </ul>
-                        </div>
-                    )}
-                </div>
-            ))}
-        </div>
-    );
+type Props = {
+  modules: Lesson[];
 };
+
+export default function CourseModules({ modules }: Props) {
+  return (
+    <div className="mb-12">
+      <h2 className="text-2xl font-bold mb-4">Module Samples</h2>
+      <Accordion.Root type="single" collapsible className="space-y-4">
+        {modules.map((module) => (
+          <Accordion.Item
+            key={module.id}
+            value={module.id}
+            className="border rounded-lg overflow-hidden"
+          >
+            <Accordion.Header asChild>
+              <Accordion.Trigger className="w-full p-4 flex justify-between items-center text-left hover:bg-gray-50 transition">
+                <span className="flex items-center">
+                  <span className="text-gray-500 mr-4">
+                    {String(module.order_no).padStart(2, "0")}
+                  </span>
+                  {module.title}
+                </span>
+                <ChevronDownIcon
+                  className="h-5 w-5 text-gray-400 transition-transform duration-200"
+                  aria-hidden
+                />
+              </Accordion.Trigger>
+            </Accordion.Header>
+
+            <Accordion.Content className="px-6 py-2 text-gray-600 bg-gray-50 space-y-2">
+              {module.sub_lessons?.map((sub: SubLesson) => (
+                <div key={sub.id} className="pl-6">• {sub.title}</div>
+              ))}
+            </Accordion.Content>
+          </Accordion.Item>
+        ))}
+      </Accordion.Root>
+    </div>
+  );
+}
