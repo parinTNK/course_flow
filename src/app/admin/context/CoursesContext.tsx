@@ -50,9 +50,9 @@ export const CoursesProvider = ({ children }: { children: ReactNode }) => {
     totalItems: 0,
     totalPages: 0,
     currentPage: 1,
-    limit: 10,
+    limit: 9,
   });
-  const coursesPerPage = 8;
+  const coursesPerPage = 9;
 
   const fetchCourses = useCallback(async () => {
     setIsLoading(true);
