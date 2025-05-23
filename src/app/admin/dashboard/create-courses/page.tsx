@@ -69,6 +69,8 @@ function CreateCourse() {
           dndSensors={lessonManagement.sensors}
         />
       )}
+
+      test
     </div>
   );
 }
