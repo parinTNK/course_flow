@@ -1,22 +1,29 @@
-import React from 'react';
-import { ButtonT } from '@/components/ui/ButtonT';
+import React,{ useState, useEffect, useRef, useCallback, useMemo} from "react";
+import { ButtonT } from "@/components/ui/ButtonT";
 import { Button } from "@/components/ui/button";
-import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
-import { Command, CommandInput, CommandList, CommandItem } from "@/components/ui/command";
+import {
+  Popover,
+  PopoverTrigger,
+  PopoverContent,
+} from "@/components/ui/popover";
+import {
+  Command,
+  CommandInput,
+  CommandList,
+  CommandItem,
+} from "@/components/ui/command";
 import { Checkbox } from "@/components/ui/checkbox";
 import { X } from "lucide-react";
+import axios from "axios";
+import { useRouter } from "next/navigation";
+import { useCustomToast } from "@/components/ui/CustomToast";
 
-const allCoursesOption = { id: "all", name: "All courses" };
-const coursesList = [
-  allCoursesOption,
-  { id: "1", name: "Service Design Essentials" },
-  { id: "2", name: "Software Developer" },
-  { id: "7", name: "UX/UI Design Beginer" },
-  { id: "3", name: "Product Design for Business 101" },
-  { id: "4", name: "Product Design for Business 201" },
-  { id: "5", name: "Product Design for Business 301" },
-  { id: "6", name: "Product Design for Business 401" },
-];
+
+interface Course {
+  id: string;
+  name: string;
+  price?: number;
+}
 
 interface PromoCodeFormViewProps {
   formData: {
@@ -27,15 +34,15 @@ interface PromoCodeFormViewProps {
     course_ids: string[];
   };
   isLoading: boolean;
-  handleInputChange: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => void;
+  handleInputChange: (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+  ) => void;
   handleDiscountTypeChange: (type: string) => void;
-  handleCoursesChange?: (e: React.ChangeEvent<HTMLSelectElement>) => void; // ไม่ใช้ select แล้ว
+  handleCoursesChange?: (e: React.ChangeEvent<HTMLSelectElement>) => void;
   handleCancel: () => void;
   handleSubmit: (e: React.FormEvent) => void;
-  setFormData?: any; // เพิ่มถ้าต้องการ set state จาก parent
+  setFormData?: any;
 }
-
-const inputBoxWidth = "w-full"; // ใช้กับทั้ง input และ popover
 
 const PromoCodeFormView: React.FC<PromoCodeFormViewProps> = ({
   formData,
@@ -46,49 +53,94 @@ const PromoCodeFormView: React.FC<PromoCodeFormViewProps> = ({
   handleSubmit,
   setFormData,
 }) => {
-  const [popoverOpen, setPopoverOpen] = React.useState(false);
+  const [coursesList, setCoursesList] = useState<Course[]>([]);
+  const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(false);
 
-  // เลือก/ไม่เลือกคอร์ส
-  const handleToggleCourse = (id: string) => {
-    if (!setFormData) return;
-    setFormData((prev: any) => {
-      if (id === "all") {
-        return {
-          ...prev,
-          course_ids: prev.course_ids.includes("all") ? [] : ["all"],
-        };
+  const [popoverOpen, setPopoverOpen] = useState(false);
+  const triggerRef = useRef<HTMLDivElement>(null);
+  const [triggerWidth, setTriggerWidth] = useState<number>(0);
+
+  const { success: toastSuccess, error: toastError } = useCustomToast();
+
+  useEffect(() => {
+    const fetchCourses = async () => {
+      setLoading(true);    
+      setError(null);        
+      try {
+        const res = await axios.get("/api/course");
+        setCoursesList([
+          { id: "all", name: "All Courses" },
+          ...(res.data || []),
+        ]);
+      } catch (err) {
+        setCoursesList([{ id: "all", name: "All Courses" }]);
+        setError(`เกิดข้อผิดพลาดในการโหลดข้อมูล ${err.message}`);
+      }finally {
+        setLoading(false);
       }
-      const filtered = prev.course_ids.filter((cid: string) => cid !== "all");
-      const exists = filtered.includes(id);
-      return {
-        ...prev,
-        course_ids: exists
-          ? filtered.filter((cid: string) => cid !== id)
-          : [...filtered, id],
-      };
-    });
-  };
+    };
+    fetchCourses();
+  }, []);
+
+
+  useEffect(() => {
+    if (triggerRef.current) {
+      setTriggerWidth(triggerRef.current.offsetWidth);
+    }
+  }, [popoverOpen]);
+
+  const handleToggleCourse = useCallback(
+    (courseId: string) => {
+      if (!setFormData) {
+        return;
+      }
+      const currentIds = formData.course_ids || [];
+      let newIds: string[] = [];
+
+      if (currentIds.includes(courseId)) {
+        // ถ้าเลือกอยู่แล้ว ให้ยกเลิก
+        newIds = currentIds.filter((id: string) => id !== courseId);
+      } else {
+        // ถ้ายังไม่เลือก ให้เพิ่มเข้าไป
+        newIds = [...currentIds, courseId];
+      }
+      setFormData((prev: any) => {
+        const updated = { ...prev, course_ids: newIds };
+        return updated;
+      });
+    },
+    [formData.course_ids, setFormData]
+  )
 
   // ลบ tag
-  const handleRemoveTag = (id: string) => {
-    if (!setFormData) return;
-    setFormData((prev: any) => ({
-      ...prev,
-      course_ids: prev.course_ids.filter((cid: string) => cid !== id),
-    }));
-  };
+  const handleRemoveTag = useCallback(
+    (id: string) => {
+      if (!setFormData) return;
 
-  // แสดงชื่อคอร์สที่เลือก (ยกเว้น all)
-  const selectedCourses = coursesList.filter(
-    (c) => c.id !== "all" && formData.course_ids.includes(c.id)
+      setFormData((prev: any) => ({
+        ...prev,
+        course_ids: prev.course_ids.filter((cid: string) => cid !== id),
+      }));
+    },
+    [setFormData]
   );
+
+  // แสดงชื่อคอร์สที่เลือก
+  const getSelectedCoursesDisplay = useMemo(() => {
+    return coursesList.filter((c) => formData.course_ids?.includes(c.id));
+  }, [formData.course_ids]);
 
   return (
     <>
       <div className="flex justify-between items-center mb-8 bg-white px-8 py-6 border-b-3 border-gray-200">
         <h1 className="text-3xl font-semibold text-gray-800">Add Promo code</h1>
         <div className="flex items-center space-x-4">
-          <ButtonT variant="Secondary" className="w-[149px] h-[32px]" onClick={handleCancel}>
+          <ButtonT
+            variant="Secondary"
+            className="w-[149px] h-[32px]"
+            onClick={handleCancel}
+          >
             Cancel
           </ButtonT>
           <ButtonT
@@ -97,7 +149,7 @@ const PromoCodeFormView: React.FC<PromoCodeFormViewProps> = ({
             disabled={isLoading}
             onClick={handleSubmit}
           >
-            {isLoading ? 'Creating...' : 'Create'}
+            {isLoading ? "Creating..." : "Create"}
           </ButtonT>
         </div>
       </div>
@@ -105,11 +157,19 @@ const PromoCodeFormView: React.FC<PromoCodeFormViewProps> = ({
       <div className="bg-geay-50 flex-1 h-screen">
         <form className="space-y-6" onSubmit={handleSubmit}>
           <div className="px-24 py-14 mx-10 border-b-3 rounded-2xl bg-white">
+            {/* Debug info */}
+            {/* <div className="mb-4 p-2 bg-gray-100 rounded text-xs">
+              Debug - Selected course_ids: {JSON.stringify(formData.course_ids)}
+            </div> */}
+
             {/* 2 columns */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Promo code */}
               <div>
-                <label htmlFor="promo-code" className="block text-sm font-medium mb-2">
+                <label
+                  htmlFor="promo-code"
+                  className="block text-sm font-medium mb-2"
+                >
                   Set promo code <span className="text-red-500">*</span>
                 </label>
                 <input
@@ -125,8 +185,12 @@ const PromoCodeFormView: React.FC<PromoCodeFormViewProps> = ({
               </div>
               {/* Minimum purchase */}
               <div>
-                <label htmlFor="min-purchase" className="block text-sm font-medium mb-2">
-                  Minimum purchase amount (THB) <span className="text-red-500">*</span>
+                <label
+                  htmlFor="min-purchase"
+                  className="block text-sm font-medium mb-2"
+                >
+                  Minimum purchase amount (THB){" "}
+                  <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="number"
@@ -148,23 +212,27 @@ const PromoCodeFormView: React.FC<PromoCodeFormViewProps> = ({
                 Select discount type <span className="text-red-500">*</span>
               </label>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Fixed */}
+                {/* Fixed amount */}
                 <label className="flex items-center gap-2">
                   <input
                     type="radio"
                     name="discount_type"
-                    checked={formData.discount_type === "fixed"}
-                    onChange={() => handleDiscountTypeChange("fixed")}
+                    checked={formData.discount_type === "Fixed amount"}
+                    onChange={() => handleDiscountTypeChange("Fixed amount")}
                     className="accent-blue-600"
                   />
                   <span>Fixed amount (THB)</span>
                   <input
                     type="number"
                     name="discount_value"
-                    value={formData.discount_type === "fixed" ? formData.discount_value : ""}
+                    value={
+                      formData.discount_type === "Fixed amount"
+                        ? formData.discount_value
+                        : ""
+                    }
                     onChange={handleInputChange}
                     className="w-24 border border-gray-300 rounded-lg px-2 py-1 ml-2"
-                    disabled={formData.discount_type !== "fixed"}
+                    disabled={formData.discount_type !== "Fixed amount"}
                     min={0}
                   />
                 </label>
@@ -173,24 +241,29 @@ const PromoCodeFormView: React.FC<PromoCodeFormViewProps> = ({
                   <input
                     type="radio"
                     name="discount_type"
-                    checked={formData.discount_type === "percent"}
-                    onChange={() => handleDiscountTypeChange("percent")}
+                    checked={formData.discount_type === "Percent"}
+                    onChange={() => handleDiscountTypeChange("Percent")}
                     className="accent-blue-600"
                   />
                   <span>Percent (%)</span>
                   <input
                     type="number"
                     name="discount_value"
-                    value={formData.discount_type === "percent" ? formData.discount_value : ""}
+                    value={
+                      formData.discount_type === "Percent"
+                        ? formData.discount_value
+                        : ""
+                    }
                     onChange={handleInputChange}
                     className="w-24 border border-gray-300 rounded-lg px-2 py-1 ml-2"
-                    disabled={formData.discount_type !== "percent"}
+                    disabled={formData.discount_type !== "Percent"}
                     min={0}
                     max={100}
                   />
                 </label>
               </div>
             </div>
+
             {/* Courses Included */}
             <div className="mt-8">
               <label className="block text-sm font-medium mb-2">
@@ -199,67 +272,101 @@ const PromoCodeFormView: React.FC<PromoCodeFormViewProps> = ({
               <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
                 <PopoverTrigger asChild>
                   <div
-                    className={`relative ${inputBoxWidth} min-h-[48px] border rounded-md px-3 py-2 flex flex-wrap items-center gap-2 cursor-pointer ${
-                      popoverOpen ? "border-orange-400" : "border-gray-300"
+                    ref={triggerRef}
+                    className={`relative min-h-[48px] w-full border rounded-md px-3 py-2 flex flex-wrap items-center gap-2 cursor-pointer transition-colors ${
+                      popoverOpen
+                        ? "border-orange-400 ring-1 ring-orange-400"
+                        : "border-gray-300 hover:border-gray-400"
                     }`}
                     tabIndex={0}
                     onClick={() => setPopoverOpen(true)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        setPopoverOpen(true);
+                      }
+                    }}
                   >
-                    {formData.course_ids.includes("all") ? (
-                      <span className="bg-gray-100 px-3 py-1 rounded-full text-sm mr-2">
-                        All courses
-                      </span>
-                    ) : selectedCourses.length === 0 ? (
+                    {getSelectedCoursesDisplay.length === 0 ? (
                       <span className="text-gray-400">Select courses</span>
                     ) : (
-                      selectedCourses.map((course) => (
+                      getSelectedCoursesDisplay.map((course) => (
                         <span
                           key={course.id}
-                          className="flex items-center bg-blue-50 border border-blue-200 px-3 py-1 rounded-full text-sm mr-2"
+                          className="flex items-center px-3 py-1 rounded-full text-sm mr-2 bg-blue-50 border border-blue-200 text-blue-700"
                         >
                           {course.name}
                           <button
                             type="button"
-                            className="ml-1 text-gray-400 hover:text-red-500"
-                            onClick={e => {
+                            className="ml-2 text-gray-400 hover:text-red-500 transition-colors"
+                            onClick={(e) => {
                               e.stopPropagation();
                               handleRemoveTag(course.id);
                             }}
                           >
-                            <X size={16} />
+                            <X size={14} />
                           </button>
                         </span>
                       ))
                     )}
-                    <span className="ml-auto text-gray-400">
-                      <svg width="18" height="18" fill="none" viewBox="0 0 24 24"><path stroke="currentColor" strokeWidth="2" d="M6 9l6 6 6-6"/></svg>
-                    </span>
+                    <div className="ml-auto flex-shrink-0">
+                      <svg
+                        width="18"
+                        height="18"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        className={`text-gray-400 transition-transform ${
+                          popoverOpen ? "rotate-180" : ""
+                        }`}
+                      >
+                        <path
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          d="M6 9l6 6 6-6"
+                        />
+                      </svg>
+                    </div>
                   </div>
                 </PopoverTrigger>
                 <PopoverContent
                   align="start"
-                  className={`${inputBoxWidth} p-0`}
-                  style={{ minWidth: "100%" }}
+                  className="p-0"
+                  style={{ width: triggerWidth }}
+                  sideOffset={4}
                 >
                   <Command>
-                    <CommandInput placeholder="Search courses..." />
-                    <CommandList>
-                      {coursesList.map((course) => (
-                        <CommandItem key={course.id} className="flex items-center">
-                          <Checkbox
-                            checked={
-                              course.id === "all"
-                                ? formData.course_ids.includes("all")
-                                : formData.course_ids.includes(course.id)
-                            }
-                            onCheckedChange={() => handleToggleCourse(course.id)}
-                            id={course.id}
-                          />
-                          <label htmlFor={course.id} className="ml-2 cursor-pointer select-none">
-                            {course.name}
-                          </label>
-                        </CommandItem>
-                      ))}
+                    <CommandInput
+                      placeholder="Search courses..."
+                      className="border-none"
+                    />
+                    <CommandList className="max-h-[200px]">
+                      {coursesList.map((course) => {
+                        const isChecked =
+                          formData.course_ids?.includes(course.id) || false;
+
+                        return (
+                          <CommandItem
+                            key={course.id}
+                            className="flex items-center px-3 py-2 cursor-pointer hover:bg-gray-50"
+                            onSelect={() => false} // ป้องกัน default behavior
+                          >
+                            <div
+                              className="flex items-center w-full cursor-pointer"
+                              onClick={() => {
+                                handleToggleCourse(course.id);
+                              }}
+                            >
+                              <Checkbox
+                                checked={isChecked}
+                                className="mr-2 pointer-events-none"
+                              />
+                              <span className="flex-1 select-none">
+                                {course.name}
+                              </span>
+                            </div>
+                          </CommandItem>
+                        );
+                      })}
                     </CommandList>
                   </Command>
                 </PopoverContent>
