@@ -29,7 +29,7 @@ const CoursesTable: React.FC<CoursesTableProps> = ({
 
   const tableHeaderClasses =
     "px-6 py-3 text-left text-[14px] font-medium text-gray-500 uppercase tracking-wider";
-  const coursesPerPage = 10;
+  const coursesPerPage = 9;
 
   return (
     <div className="bg-white shadow-md rounded-lg overflow-hidden">

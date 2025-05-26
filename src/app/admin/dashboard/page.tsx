@@ -55,26 +55,28 @@ export default function DashboardPage() {
   }, []);
 
   return (
-    <div className="bg-gray-100 flex-1 h-screen overflow-hidden">
-      <div className="flex justify-between items-center mb-8 bg-white px-8 py-6 border-b-3 border-gray-200">
+    <div className="bg-gray-100 flex flex-col flex-1 min-h-screen">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mb-8 bg-white px-4 sm:px-8 py-6 border-b-3 border-gray-200">
         <h1 className="text-3xl font-semibold text-gray-800">Course</h1>
-        <div className="flex items-center space-x-4">
+        <div className="flex flex-col sm:flex-row items-center gap-4 w-full sm:w-auto">
           <SearchBar
             value={searchTerm}
             onChange={setSearchTerm}
             placeholder="Search courses..."
-            className="w-64"
+            className="w-full sm:w-64 md:w-72" // Adjusted width
           />
           <ButtonT
             onClick={handleAddCourse}
-            className='w-[200px] flex justify-center items-center gap-3'
+            className='w-full sm:w-auto px-4 py-2 flex justify-center items-center gap-3' // Adjusted width and padding
           >
             <FiPlus size={20} />
             <span>Add Course</span>
           </ButtonT>
         </div>
       </div>
-      <div className="px-8 pb-8">
+      {/* Content Area */}
+      <div className="flex-1 px-4 sm:px-8 pb-8 overflow-y-auto">
         {isLoading && <LoadingSpinner text="Loading courses..." size="md" />}
         {error && (
           <div className="text-center py-10 text-red-600 bg-red-100 p-4 rounded-md">
