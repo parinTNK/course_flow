@@ -1,55 +1,38 @@
 "use client";
 
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useState} from "react";
+import { useRouter } from "next/navigation";
 import { FiPlus } from "react-icons/fi";
-import axios from "axios";
+import { ButtonT } from "@/components/ui/ButtonT";
+
 import SearchBar from "../../components/SearchBar";
 import Pagination from "../../components/Pagination";
 import LoadingSpinner from "../../components/LoadingSpinner";
-import { ButtonT } from "@/components/ui/ButtonT";
 import PromoCodesTable, { PromoCode } from "../../components/PromoCodesTable";
-import { useRouter } from "next/navigation";
-import { useCustomToast } from "@/components/ui/CustomToast";
 import ConfirmationModal from "../../components/ConfirmationModal";
+import { useCustomToast } from "@/components/ui/CustomToast";
+import { usePromoCodes } from "../../hooks/usePromoCodes";
 
 export default function PromoCodesPage() {
   const router = useRouter();
-  const [promoCodes, setPromoCodes] = useState<PromoCode[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
 
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [selectedPromo, setSelectedPromo] = useState<PromoCode | null>(null);
 
-  const codesPerPage = 10;
   const { success: toastSuccess, error: toastError } = useCustomToast();
+  const codesPerPage = 12;
 
-const fetchPromoCodes = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const res = await axios.get("/api/promocodes", {
-        params: {
-          page: currentPage,
-          limit: codesPerPage,
-          search: searchTerm,
-        },
-      });
-      setPromoCodes(res.data.data);
-      setTotalPages(res.data.totalPages);
-    } catch (e: any) {
-      setError(e.message || "Failed to fetch promo codes");
-    } finally {
-      setIsLoading(false);
-    }
-  }, [currentPage, codesPerPage, searchTerm]);
+  const {
+    promoCodes,
+    isLoading,
+    error,
+    totalPages,
+    fetchPromoCodes,
+    deletePromoCode,
+  } = usePromoCodes(codesPerPage, searchTerm, currentPage);
 
-  useEffect(() => {
-    fetchPromoCodes();
-  }, [fetchPromoCodes]);
 
   const handleAddPromoCode = () => {
     router.push("/admin/dashboard/create-promo-codes");
@@ -69,11 +52,10 @@ const fetchPromoCodes = useCallback(async () => {
     setSelectedPromo(null);
   };
 
-const handleActualDeletePromo = async (promoId: string) => {
+  const handleActualDeletePromo = async (promoId: string) => {
     try {
-      await axios.delete(`/api/promocodes/delete/${promoId}`);
+      await deletePromoCode(promoId);
       toastSuccess("Promo code deleted successfully");
-      await fetchPromoCodes();
     } catch (e: any) {
       toastError(e.message || "Failed to delete promo code");
     } finally {
@@ -144,17 +126,9 @@ const handleActualDeletePromo = async (promoId: string) => {
         onClose={handleCloseAll}
         onConfirm={handleConfirmDelete}
         title="Delete Promo Code"
-        message={
-          <>
-            Are you sure you want to delete this promo code:{" "}
-            <span className="font-semibold text-red-600">
-              {selectedPromo?.code}
-            </span>
-            ?
-          </>
-        }
-        confirmText="Yes, delete"
-        cancelText="Cancel"
+        message={`Are you sure you want to delete this promo code: "${selectedPromo?.code}"?`}
+        confirmText="Yes, I want to delete"
+        cancelText="No, keep it"
         requireCourseName={false}
         courseName={selectedPromo?.code || ""}
       />
