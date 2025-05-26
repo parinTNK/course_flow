@@ -3,12 +3,19 @@ export interface SubLesson {
   name: string;            // Frontend property 
   title?: string;          // Database property
   videoUrl?: string;       // Frontend property
-  video_url?: string;      // Database property
+  video_url?: string;      // Database property (stores playback ID)
+  mux_asset_id?: string;   // Mux asset ID for video management
   lesson_id?: string;
   content?: string;
   content_type?: string;
   order?: number;          // Frontend property
   order_no?: number;       // Database property
+  // Video upload state (frontend only)
+  videoUploadState?: {
+    isUploading: boolean;
+    hasVideo: boolean;
+    error?: string;
+  };
 }
 
 export interface Lesson {
@@ -32,6 +39,9 @@ export interface CourseFormData {
   detail: string;
   status?: 'draft' | 'published';
   cover_image_url?: string | null;
+  video_trailer_url?: string | null;
+  video_trailer_mux_asset_id?: string | null;
+  attachment_url?: string | null;
   promo_code_id: string | null;
   lessons_attributes?: Lesson[];
   lessons?: Lesson[];      // Direct from database

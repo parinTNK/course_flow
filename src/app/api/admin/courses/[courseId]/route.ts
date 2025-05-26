@@ -12,7 +12,6 @@ export async function GET(
   }
 
   try {
-    // Fetch all the data in one query with proper nesting to minimize API calls
     const { data: course, error } = await supabase
       .from('courses')
       .select(`

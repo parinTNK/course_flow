@@ -1,7 +1,7 @@
 "use client"
 import React, { useState } from "react"
 
-import Buttons from "@/components/ui/ButtonT"
+import { ButtonT } from "@/components/ui/ButtonT";
 import DropdownSelect, {DropdownOption} from "@/components/ui/DropdownSelect"
 // import DatePicker from "@/components/ui/DatePicker"
 import NavBar from "@/components/nav"
@@ -24,7 +24,6 @@ function page() {
 
   return (
     <>
-    <NavBar user={mockUser} />
     {/* <NavBar user={null} /> */}
 
     <Footer />
@@ -75,9 +74,6 @@ function page() {
             <p className="text-b3">Body3</p>
             <p className="text-b4">Body4</p>
         </div>
-        <Buttons />
-        
-      
       </div>
 
     </div>

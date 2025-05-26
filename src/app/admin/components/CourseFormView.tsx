@@ -1,11 +1,16 @@
-import React from 'react';
+import React, { useRef, useState } from 'react';
 import { ButtonT } from '@/components/ui/ButtonT';
 import { PromoCodeSection } from '@/app/admin/components/PromoCodeSection';
-import { CourseFormData, Lesson, PromoCode } from '@/types/courseAdmin'; // Added PromoCode
+import { CourseFormData, Lesson } from '@/types/courseAdmin';
 import { DndContext, closestCenter, DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { SortableRow } from './SortableRow'; // Adjusted import
 import { useRouter } from 'next/navigation';
+import VideoUpload, { VideoUploadRef } from '@/app/admin/components/VideoUpload';
+import ConfirmationModal from '@/app/admin/components/ConfirmationModal';
+import { useNavigationBlocker } from '@/app/admin/hooks/useNavigationBlocker';
+import { X } from 'lucide-react';
+import { IoIosArrowBack } from "react-icons/io";
 
 interface CourseFormViewProps {
   formData: CourseFormData;
@@ -14,52 +19,124 @@ interface CourseFormViewProps {
   coverPreview: string;
   coverRef: React.RefObject<HTMLInputElement>;
   lessons: Lesson[];
-  allPromoCodes: PromoCode[]; // Added
   handleInputChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
   handleCoverClick: () => void;
   handleCoverChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  handleCoverRemove: () => void;
   handleSubmit: (e: React.FormEvent, status: 'draft' | 'published', validateNameOnlyFlag?: boolean) => void;
   handleCancel: () => void;
   handleAddLesson: () => void;
   handleDeleteLesson: (id: number) => void;
   handleEditLesson: (id: number) => void;
   handleDragEndLessons: (event: DragEndEvent) => void;
-  handlePromoCodeChange: (selectedPromoCode: PromoCode | null) => void; // Added
-  showError?: (title: string, description?: string) => void; // Added optional showError
+  handleVideoUploadSuccess: (assetId: string, playbackId: string) => void;
+  handleVideoUploadError: (error: string) => void;
+  handleVideoDelete: (assetId?: string | null) => void;
+  videoMarkedForDeletion?: string | null;
   dndSensors: any; // Type properly from @dnd-kit/core if possible
+  // New props for video upload state tracking
+  videoUploadState: {
+    isUploading: boolean
+    progress: number
+    error: string | null
+    success: boolean
+    currentAssetId?: string | null
+  };
+  handleVideoUploadStateChange: (uploadState: {
+    isUploading: boolean
+    progress: number
+    error: string | null
+    success: boolean
+    currentAssetId?: string | null
+  }) => void;
+  cancelVideoUpload: () => Promise<void>;
+  onDeleteCourse?: (id: string) => void; // เพิ่ม prop นี้
 }
 
 export const CourseFormView: React.FC<CourseFormViewProps> = ({
-  formData, errors, isLoading, coverPreview, coverRef, lessons, allPromoCodes, // Added allPromoCodes
-  handleInputChange, handleCoverClick, handleCoverChange, handleSubmit, handleCancel,
-  handleAddLesson, handleDeleteLesson, handleEditLesson, handleDragEndLessons, 
-  handlePromoCodeChange, showError, // Added handlePromoCodeChange and showError
-  dndSensors
+  formData, errors, isLoading, coverPreview, coverRef, lessons,
+  handleInputChange, handleCoverClick, handleCoverChange, handleCoverRemove, handleSubmit, handleCancel,
+  handleAddLesson, handleDeleteLesson, handleEditLesson, handleDragEndLessons,
+  handleVideoUploadSuccess, handleVideoUploadError, handleVideoDelete, videoMarkedForDeletion, dndSensors,
+  videoUploadState, handleVideoUploadStateChange, cancelVideoUpload, onDeleteCourse,
 }) => {
   const router = useRouter();
   
+  // Create ref for VideoUpload component
+  const videoUploadRef = useRef<VideoUploadRef>(null)
+
+  // Navigation blocker for browser navigation
+  const { showConfirmModal, handleConfirmNavigation, handleCancelNavigation, triggerConfirmModal } = useNavigationBlocker({
+    isBlocked: videoUploadState.isUploading,
+    onConfirmNavigation: async () => {
+      // Cancel upload and cleanup asset
+      await cancelVideoUpload()
+      if (videoUploadRef.current) {
+        await videoUploadRef.current.cancelUpload()
+      }
+      handleCancel()
+    }
+  })
+
+  // Handler for Cancel button click
+  const handleCancelButtonClick = () => {
+    if (videoUploadState.isUploading) {
+      // Show confirmation modal when video is uploading
+      triggerConfirmModal()
+    } else {
+      // Direct cancel when no upload in progress
+      handleCancel()
+    }
+  }
+
+  // Handler for back arrow button click
+  const handleBackButtonClick = () => {
+    if (videoUploadState.isUploading) {
+      // Show confirmation modal when video is uploading
+      triggerConfirmModal()
+    } else {
+      // Direct navigation when no upload in progress
+      router.push('/admin/dashboard')
+    }
+  }
+
   return (
     <>
       <div className="flex justify-between items-center mb-8 bg-white px-8 py-6 border-b-3 border-gray-200">
         <div className="flex items-center">
-          <ButtonT 
-            variant="ghost" 
-            className="w-auto h-auto px-3 py-2 mx-2"
-            onClick={() => router.push('/admin/dashboard')}
+          <button
+            className="cursor-pointer"
+            onClick={handleBackButtonClick}
           >
-            ← Back to Courses
-          </ButtonT>
-          <h1 className="text-3xl font-semibold text-gray-800 ml-4">{formData.id ? 'Edit Course' : 'Add Course'}</h1>
+            <IoIosArrowBack className="h-7 w-7 text-gray-600" />
+          </button>
+          <h1 className="text-3xl font-semibold ml-2">
+          {formData.id ? (
+            <>
+              Course <span className="text-gray-400 font-bold">'{formData.name}'</span>
+            </>
+          ) : (
+            'Add Course'
+          )}
+          </h1>
         </div>
         <div className="flex items-center space-x-4">
-          <ButtonT variant="Secondary" className="w-[149px] h-[32px]" onClick={handleCancel}>
+          <ButtonT 
+            variant="Secondary" 
+            className="w-[149px] h-[32px]" 
+            onClick={handleCancelButtonClick}
+          >
             Cancel
           </ButtonT>
           <ButtonT
             variant="primary"
             className="w-[149px] h-[32px]"
-            onClick={(e) => handleSubmit(e, 'published')}
-            disabled={isLoading}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              handleSubmit(e, 'published');
+            }}
+            disabled={isLoading || videoUploadState.isUploading}
           >
             {isLoading ? 'Saving...' : formData.id ? 'Update' : 'Create'}
           </ButtonT>
@@ -67,7 +144,10 @@ export const CourseFormView: React.FC<CourseFormViewProps> = ({
       </div>
 
       <div className="bg-geay-50 flex-1">
-        <form className="space-y-6" onSubmit={(e) => handleSubmit(e, 'published')}>
+        <form className="space-y-6" onSubmit={(e) => {
+          e.preventDefault();
+          handleSubmit(e, 'published');
+        }}>
           <div className="bg-white p-8 mx-8 border-b-3 rounded-2xl">
             {/* Course Name */}
             <div className="space-y-2">
@@ -81,6 +161,7 @@ export const CourseFormView: React.FC<CourseFormViewProps> = ({
                 className={`w-full px-4 py-2 border rounded-md ${errors['course-name'] ? 'border-red-500' : ''}`}
                 value={formData.name}
                 onChange={handleInputChange}
+         
               />
               {errors['course-name'] && <p className="text-red-500 text-xs">{errors['course-name']}</p>}
             </div>
@@ -116,14 +197,9 @@ export const CourseFormView: React.FC<CourseFormViewProps> = ({
                 {errors['learning-time'] && <p className="text-red-500 text-xs">{errors['learning-time']}</p>}
               </div>
             </div>
-            
+
             <div className="mt-4">
-                <PromoCodeSection 
-                  initialPromoCodeId={formData.promo_code_id}
-                  allPromoCodes={allPromoCodes}
-                  onChange={handlePromoCodeChange}
-                  showError={showError} // Pass down showError if you want to use a centralized error display
-                />
+              <PromoCodeSection />
             </div>
 
 
@@ -164,30 +240,59 @@ export const CourseFormView: React.FC<CourseFormViewProps> = ({
               </label>
               <p className="text-xs text-gray-500">Supported file types: .jpg, .png, .jpeg. Max file size: 5 MB</p>
               <input ref={coverRef} type="file" accept=".jpg,.jpeg,.png" className="hidden" onChange={handleCoverChange} />
-              <div onClick={handleCoverClick} className="w-[240px] h-[240px] flex items-center justify-center cursor-pointer rounded-lg p-4 text-center bg-[#F6F7FC]">
-                {coverPreview ? (
-                  <img src={coverPreview} alt="Cover preview" className="w-full h-full object-contain rounded-md" />
-                ) : (
-                  <div className="flex flex-col items-center justify-center">
-                    <svg className="w-8 h-8 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
-                    <p className="mt-2 text-sm text-blue-500">Upload Image</p>
-                  </div>
-                )}
+              <div className="">
+                <div onClick={handleCoverClick} className="w-[240px] h-[240px] relative flex items-center justify-center cursor-pointer rounded-lg p-4 text-center bg-[#F6F7FC] hover:bg-gray-50 transition-colors border border-gray-200">
+                  {coverPreview ? (
+                    <>
+                      <img src={coverPreview} alt="Cover preview" className="w-full h-full object-cover rounded-md" />
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          handleCoverRemove();
+                        }}
+                        className="absolute top-1 right-2 w-6 h-6 bg-orange-500 hover:bg-orange-600 text-white rounded-full flex items-center justify-center shadow-lg transition-colors duration-200 z-10"
+                        title="Remove cover image"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center">
+                      <svg className="w-8 h-8 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
+                      <p className="mt-2 text-sm text-blue-500">Upload Image</p>
+                    </div>
+                  )}
+                </div>
+
+
+
               </div>
               {errors.coverImage && <p className="text-red-500 text-xs">{errors.coverImage}</p>}
             </div>
 
-            {/* Video Trailer (Placeholder UI) */}
+            {/* Video Trailer */}
             <div className="space-y-2 mt-4">
-              <label className="block text-sm font-medium">Video Trailer <span className="text-red-500">*</span></label>
-              <p className="text-xs text-gray-500">Supported file types: .mp4, .mov, .avi Max file size: 20 MB</p>
-              <div className="w-[240px] h-[240px] flex items-center justify-center cursor-pointer rounded-lg p-8 text-center bg-[#F6F7FC]">
-                <div className="flex flex-col items-center justify-center">
-                  <svg className="w-8 h-8 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
-                  <p className="mt-2 text-sm text-blue-500">Upload Video</p>
-                </div>
-              </div>
-              {/* Add error display for video trailer if needed */}
+              <label className="block text-sm font-medium">
+                Video Trailer <span className="text-red-500">*</span>
+              </label>
+              <p className="text-xs text-gray-500">
+                Supported file types: .mp4, .mov, .avi Max file size: 100 MB
+              </p>
+              <VideoUpload
+                ref={videoUploadRef}
+                courseId={formData.id}
+                existingAssetId={formData.video_trailer_mux_asset_id}
+                existingPlaybackId={formData.video_trailer_url}
+                onVideoUpdate={handleVideoUploadSuccess}
+                onVideoDelete={handleVideoDelete}
+                onUploadStateChange={handleVideoUploadStateChange}
+                isMarkedForDeletion={!!videoMarkedForDeletion}
+              />
+              {errors.videoTrailer && (
+                <p className="text-red-500 text-xs">{errors.videoTrailer}</p>
+              )}
             </div>
 
             {/* Attach File (Placeholder UI) */}
@@ -208,9 +313,9 @@ export const CourseFormView: React.FC<CourseFormViewProps> = ({
               <p className="text-[24px] text-[#2A2E3F]">Lesson</p>
               <ButtonT
                 variant="primary"
-                className={`w-[171px] h-[32px] ${!formData.name.trim() ? 'opacity-50 cursor-not-allowed bg-gray-400 border-gray-400' : ''}`}
+                className={`w-[171px] h-[32px] ${(!formData.name.trim() || videoUploadState.isUploading) ? 'opacity-50 cursor-not-allowed bg-gray-400 border-gray-400' : ''}`}
                 onClick={handleAddLesson}
-                disabled={!formData.name.trim() || isLoading}
+                disabled={!formData.name.trim() || isLoading || videoUploadState.isUploading}
               >
                 + Add Lesson
               </ButtonT>
@@ -253,17 +358,37 @@ export const CourseFormView: React.FC<CourseFormViewProps> = ({
             </div>
           </div>
           <div className="flex justify-end mt-6 px-8">
-            <ButtonT
-              variant="Secondary"
-              className="mr-4 w-[169px]"
-              onClick={(e) => handleSubmit(e, 'draft', true)}
-              disabled={isLoading}
-            >
-              {isLoading ? 'Saving...' : 'Draft'}
-            </ButtonT>
+            {formData.id ? (
+              <button
+                type="button"
+                onClick={() => {
+                  onDeleteCourse && onDeleteCourse(formData.id!);
+                }}
+                className="text-[#2F5FAC] cursor-pointer transition-colors duration-200 flex items-center space-x-2 font-bold mr-2 hover:underline hover:underline-offset-2"
+              >
+                <span>Delete Course</span>
+              </button>
+            ) : (
+              <button className='hidden'>
+                <span className="text-gray-600">Cancel</span>
+              </button>
+            )}
           </div>
         </form>
       </div>
+      
+      <ConfirmationModal
+        isOpen={showConfirmModal}
+        onConfirm={handleConfirmNavigation}
+        onClose={handleCancelNavigation}
+        title="Video Upload in Progress"
+        message="Video upload is still in progress. If you leave this page, the upload will be cancelled. Do you want to continue?"
+        confirmText="Yes, Leave Page"
+        cancelText="Stay on Page"
+        confirmButtonClass = "bg-white border border-orange-500 text-orange-500 hover:bg-orange-50"
+        cancelButtonClass = "bg-blue-600 text-white hover:bg-blue-700"
+      />
+
     </>
   );
 };

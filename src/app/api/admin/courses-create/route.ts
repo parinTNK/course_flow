@@ -7,6 +7,7 @@ export const runtime = 'nodejs';
 export async function POST(req: NextRequest) {
     try {
         const body = await req.json();
+        
         const { 
             name, 
             summary, 
@@ -14,13 +15,22 @@ export async function POST(req: NextRequest) {
             price, 
             total_learning_time, 
             cover_image_url,
+            video_trailer_mux_asset_id,
+            video_trailer_url,
             status, 
+            lessons_attributes,
             lessons 
         } = body;
+
+        const lessonsData = lessons_attributes || lessons;
 
         // ตรวจสอบข้อมูลที่จำเป็น
         if (!name) {
             return NextResponse.json({ error: 'Course name is required' }, { status: 400 });
+        }
+
+        if (name.length < 10) {
+            return NextResponse.json({ error: 'Course name must be at least 10 characters long' }, { status: 400 });
         }
 
         const bangkok = getBangkokISOString();
@@ -35,6 +45,8 @@ export async function POST(req: NextRequest) {
                 price: price || 0,
                 total_learning_time: total_learning_time || 0,
                 cover_image_url: cover_image_url || '',
+                video_trailer_mux_asset_id: video_trailer_mux_asset_id || null,
+                video_trailer_url: video_trailer_url || null,
                 status: status || 'draft',
                 created_at: bangkok,
                 updated_at: bangkok
@@ -48,17 +60,17 @@ export async function POST(req: NextRequest) {
         const courseId = courseData[0].id;
 
         // 2. ถ้ามี lessons ให้สร้าง lessons
-        if (lessons && Array.isArray(lessons) && lessons.length > 0) {
-            for (let i = 0; i < lessons.length; i++) {
-                const lesson = lessons[i];
+        if (lessonsData && Array.isArray(lessonsData) && lessonsData.length > 0) {
+            for (let i = 0; i < lessonsData.length; i++) {
+                const lesson = lessonsData[i];
                 
                 // 2.1 สร้าง lesson
                 const { data: lessonData, error: lessonError } = await supabase
                     .from('lessons')
                     .insert({
                         course_id: courseId,
-                        title: lesson.title,
-                        order_no: lesson.order_no || i + 1,
+                        title: lesson.title || lesson.name || '',
+                        order_no: lesson.order_no || lesson.order || i + 1,
                         created_at: bangkok,
                         updated_at: bangkok
                     })
@@ -72,12 +84,15 @@ export async function POST(req: NextRequest) {
                 const lessonId = lessonData[0].id;
 
                 // 2.2 ถ้ามี sub_lessons ให้สร้าง sub_lessons
-                if (lesson.sub_lessons && Array.isArray(lesson.sub_lessons) && lesson.sub_lessons.length > 0) {
-                    const subLessonsToInsert = lesson.sub_lessons.map((subLesson, subIndex) => ({
+                const subLessonsData = lesson.sub_lessons_attributes || lesson.sub_lessons || [];
+                
+                if (subLessonsData && Array.isArray(subLessonsData) && subLessonsData.length > 0) {
+                    const subLessonsToInsert = subLessonsData.map((subLesson, subIndex) => ({
                         lesson_id: lessonId,
-                        title: subLesson.title,
-                        video_url: subLesson.video_url || '',
-                        order_no: subLesson.order_no || subIndex + 1,
+                        title: subLesson.title || subLesson.name || '',
+                        video_url: subLesson.video_url || subLesson.videoUrl || '',
+                        mux_asset_id: subLesson.mux_asset_id || null,
+                        order_no: subLesson.order_no || subLesson.order || subIndex,
                         created_at: bangkok,
                         updated_at: bangkok
                     }));

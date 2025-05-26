@@ -4,6 +4,7 @@ type ButtonProps = {
     children: React.ReactNode;
     className?: string;
     disabled?: boolean;
+    type?: "button" | "submit" | "reset";
   };
   
   function ButtonT({
@@ -12,6 +13,7 @@ type ButtonProps = {
     children,
     className = "",
     disabled = false,
+    type = "button",
   }: ButtonProps) {
   
     const variantStyles = {
@@ -22,6 +24,7 @@ type ButtonProps = {
   
     return (
       <button 
+        type={type}
         className={`${variantStyles[variant]} ${disabled ? "opacity-50 cursor-not-allowed" : ""} ${className}`}
         onClick={onClick}
         disabled={disabled}
