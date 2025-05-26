@@ -6,7 +6,7 @@ interface PromoRowProps {
   promo: PromoCode;
   index: number;
   onEdit: (id: string) => void;
-  onDelete: (id: string) => void;
+  onDelete: () => void;
 }
 
 const PromoRow: React.FC<PromoRowProps> = ({
@@ -44,7 +44,7 @@ const PromoRow: React.FC<PromoRowProps> = ({
     </td>
     <td className="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
       <button
-        onClick={() => onDelete(promo.id)}
+        onClick={onDelete}
         className="text-blue-600 hover:text-blue-800 mr-3 transition"
         aria-label="Delete promo code"
       >

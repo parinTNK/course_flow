@@ -9,6 +9,8 @@ import LoadingSpinner from "../../components/LoadingSpinner";
 import { ButtonT } from "@/components/ui/ButtonT";
 import PromoCodesTable, { PromoCode } from "../../components/PromoCodesTable";
 import { useRouter } from "next/navigation";
+import { useCustomToast } from "@/components/ui/CustomToast";
+import ConfirmationModal from "../../components/ConfirmationModal";
 
 export default function PromoCodesPage() {
   const router = useRouter();
@@ -19,32 +21,35 @@ export default function PromoCodesPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
 
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [selectedPromo, setSelectedPromo] = useState<PromoCode | null>(null);
+
   const codesPerPage = 10;
+  const { success: toastSuccess, error: toastError } = useCustomToast();
+
+const fetchPromoCodes = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const res = await axios.get("/api/promocodes", {
+        params: {
+          page: currentPage,
+          limit: codesPerPage,
+          search: searchTerm,
+        },
+      });
+      setPromoCodes(res.data.data);
+      setTotalPages(res.data.totalPages);
+    } catch (e: any) {
+      setError(e.message || "Failed to fetch promo codes");
+    } finally {
+      setIsLoading(false);
+    }
+  }, [currentPage, codesPerPage, searchTerm]);
 
   useEffect(() => {
-    const fetchPromoCodes = async () => {
-      setIsLoading(true);
-      setError(null);
-      try {
-        const res = await axios.get("/api/promocodes", {
-          params: {
-            page: currentPage,
-            limit: codesPerPage,
-            search: searchTerm, // ถ้า backend ยังไม่รองรับ ให้ลบออก
-          },
-        });
-        setPromoCodes(res.data.data);
-        setTotalPages(res.data.totalPages);
-      } catch (e: any) {
-        setError(e.message || "Failed to fetch promo codes");
-      } finally {
-        setIsLoading(false);
-      }
-    };
     fetchPromoCodes();
-  }, [currentPage, searchTerm]);
-
-  console.log("Promo codes:", promoCodes);
+  }, [fetchPromoCodes]);
 
   const handleAddPromoCode = () => {
     router.push("/admin/dashboard/create-promo-codes");
@@ -54,8 +59,31 @@ export default function PromoCodesPage() {
     alert(`Edit promo code ${id} functionality to be implemented`);
   };
 
-  const handleDeletePromoCode = (id: string) => {
-    alert(`Delete promo code ${id} functionality to be implemented`);
+  const handleDeletePromoCode = (promo: PromoCode) => {
+    setSelectedPromo(promo);
+    setShowConfirmModal(true);
+  };
+
+  const handleCloseAll = () => {
+    setShowConfirmModal(false);
+    setSelectedPromo(null);
+  };
+
+const handleActualDeletePromo = async (promoId: string) => {
+    try {
+      await axios.delete(`/api/promocodes/delete/${promoId}`);
+      toastSuccess("Promo code deleted successfully");
+      await fetchPromoCodes();
+    } catch (e: any) {
+      toastError(e.message || "Failed to delete promo code");
+    } finally {
+      handleCloseAll();
+    }
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!selectedPromo) return;
+    await handleActualDeletePromo(selectedPromo.id);
   };
 
   return (
@@ -111,6 +139,25 @@ export default function PromoCodesPage() {
           </div>
         )}
       </div>
+      <ConfirmationModal
+        isOpen={showConfirmModal}
+        onClose={handleCloseAll}
+        onConfirm={handleConfirmDelete}
+        title="Delete Promo Code"
+        message={
+          <>
+            Are you sure you want to delete this promo code:{" "}
+            <span className="font-semibold text-red-600">
+              {selectedPromo?.code}
+            </span>
+            ?
+          </>
+        }
+        confirmText="Yes, delete"
+        cancelText="Cancel"
+        requireCourseName={false}
+        courseName={selectedPromo?.code || ""}
+      />
     </div>
   );
 }

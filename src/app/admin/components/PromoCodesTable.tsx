@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import PromoRow from "./PromoRow";
 
 export interface PromoCode {
@@ -17,7 +17,7 @@ interface PromoCodesTableProps {
   isLoading: boolean;
   currentPage: number;
   onEditPromoCode: (id: string) => void;
-  onDeletePromoCode: (id: string) => void;
+  onDeletePromoCode: (promo: PromoCode) => void;
 }
 
 const PromoCodesTable: React.FC<PromoCodesTableProps> = ({
@@ -43,7 +43,6 @@ const PromoCodesTable: React.FC<PromoCodesTableProps> = ({
     "Created date",
     "Action",
   ];
-  const codesPerPage = 10;
 
   return (
     <div className="bg-white shadow-md rounded-lg overflow-hidden">
@@ -71,7 +70,7 @@ const PromoCodesTable: React.FC<PromoCodesTableProps> = ({
                 promo={promo}
                 index={idx}
                 onEdit={onEditPromoCode}
-                onDelete={onDeletePromoCode}
+                onDelete={() => onDeletePromoCode(promo)}
               />
             ))}
           </tbody>
