@@ -38,7 +38,7 @@ export default function Sidebar() {
     {
       id: "promo",
       name: "Promo code",
-      path: "/admin/promo-codes",
+      path: "/admin/dashboard/promo-codes",
       icon: RiCoupon3Line,
     },
   ];
