@@ -6,8 +6,8 @@ import { SubLesson } from '@/types/courseAdmin';
 
 interface SortableSubLessonItemProps {
   subLesson: SubLesson;
-  onRemove: (id: number) => void;
-  onNameChange: (id: number, name: string) => void;
+  onRemove: (id: number | string) => void;
+  onNameChange: (id: number | string, name: string) => void;
   // Add onVideoChange if implementing video upload per sub-lesson
 }
 
@@ -55,7 +55,7 @@ export function SortableSubLessonItem({ subLesson, onRemove, onNameChange }: Sor
           type="text"
           className="w-full px-4 py-2 border border-gray-300 rounded-md"
           placeholder="Enter sub-lesson name"
-          value={subLesson.name}
+          value={subLesson.name || subLesson.title || ''}
           onChange={e => onNameChange(subLesson.id, e.target.value)}
         />
       </div>
@@ -83,7 +83,9 @@ export function SortableSubLessonItem({ subLesson, onRemove, onNameChange }: Sor
             />
           </div>
           {/* Display video preview or name if uploaded */}
-          {subLesson.videoUrl && <p className="text-xs mt-1">{subLesson.videoUrl}</p>}
+          {(subLesson.videoUrl || subLesson.video_url) && 
+            <p className="text-xs mt-1">{subLesson.videoUrl || subLesson.video_url}</p>
+          }
         </div>
       </div>
     </div>

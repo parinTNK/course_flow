@@ -12,6 +12,8 @@ interface ConfirmationModalProps {
   cancelText?: string;
   confirmButtonClass?: string;
   cancelButtonClass?: string;
+  requireCourseName?: boolean;
+  courseName?: string;
 }
 
 export default function ConfirmationModal({
@@ -23,7 +25,9 @@ export default function ConfirmationModal({
   confirmText = "Yes, I want to delete",
   cancelText = "No, keep it",
   confirmButtonClass = "bg-white border border-orange-500 text-orange-500 hover:bg-orange-50",
-  cancelButtonClass = "bg-blue-600 text-white hover:bg-blue-700", 
+  cancelButtonClass = "bg-blue-600 text-white hover:bg-blue-700",
+  requireCourseName = false,
+  courseName = "",
 }: ConfirmationModalProps) {
   const modalRef = useRef<HTMLDivElement>(null);
 
@@ -60,13 +64,11 @@ export default function ConfirmationModal({
   if (!isOpen) return null;
 
   return (
-
     <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-4">
       <div 
         ref={modalRef}
         className="bg-white rounded-lg shadow-xl max-w-md w-full overflow-hidden"
       >
-    
         <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
           <h3 className="text-xl font-medium text-gray-900">{title}</h3>
           <button 
@@ -76,13 +78,16 @@ export default function ConfirmationModal({
             <span className="text-2xl">&times;</span>
           </button>
         </div>
-
-        {/* Modal Body */}
         <div className="p-6">
-          <p className="text-gray-600 ">{message}</p>
+          <p className="text-gray-600">{message}</p>
+          {requireCourseName && courseName && (
+            <div className="mt-4">
+              <p className="text-sm text-red-600 mb-2">
+                Additional confirmation information would go here
+              </p>
+            </div>
+          )}
         </div>
-
-        {/* Modal Footer */}
         <div className="pb-6 px-6 border-gray-200 flex justify-end space-x-3">
           <button
             onClick={onConfirm}
@@ -90,10 +95,9 @@ export default function ConfirmationModal({
           >
             {confirmText}
           </button>
-          {/* Force blue background on cancel button */}
           <button
             onClick={onClose}
-            style={{backgroundColor: '#2563eb'}} // Add inline style as a backup
+            style={{backgroundColor: '#2563eb'}}
             className={`px-4 py-2 rounded-md font-medium transition-colors duration-200 bg-blue-600 text-white hover:bg-blue-700 ${cancelButtonClass}`}
           >
             {cancelText}

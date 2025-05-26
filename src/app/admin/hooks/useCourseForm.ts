@@ -9,40 +9,57 @@ const INITIAL_FORM_DATA: CourseFormData = {
   total_learning_time: '',
   summary: '',
   detail: '',
-  promo: {
-    isActive: false,
-    promoCode: '',
-    minimumPurchase: '',
-    discountType: '',
-    discountAmount: '',
-  },
+  promo_code_id: null,
+  status: 'draft',
+  cover_image_url: null,
 };
 
-export const useCourseForm = () => {
+interface UseCourseFormProps {
+  courseId?: string;
+  initialData?: CourseFormData;
+}
+
+export const useCourseForm = (props?: UseCourseFormProps) => {
+  const { courseId, initialData } = props || {};
+  const isEditMode = !!courseId;
+  
   const router = useRouter();
   const { success: toastSuccess, error: toastError } = useCustomToast();
 
-  const [formData, setFormData] = useState<CourseFormData>(INITIAL_FORM_DATA);
+  const [formData, setFormData] = useState<CourseFormData>(initialData || INITIAL_FORM_DATA);
   const [isLoading, setIsLoading] = useState(false);
   const [coverImageFile, setCoverImageFile] = useState<File | null>(null);
   const [coverPreview, setCoverPreview] = useState<string>('');
   const [errors, setErrors] = useState<Record<string, string>>({});
   const coverRef = useRef<HTMLInputElement>(null);
 
+  // Only load from localStorage in create mode (not edit mode)
   useEffect(() => {
-    const savedFormData = localStorage.getItem('courseFormData');
-    if (savedFormData) {
-      try {
-        setFormData(JSON.parse(savedFormData));
-      } catch (error) {
-        console.error('Error parsing saved form data:', error);
+    if (!isEditMode) {
+      const savedFormData = localStorage.getItem('courseFormData');
+      if (savedFormData) {
+        try {
+          setFormData(JSON.parse(savedFormData));
+        } catch (error) {
+          console.error('Error parsing saved form data:', error);
+        }
       }
     }
-  }, []);
+  }, [isEditMode]);
 
+  // Only save to localStorage in create mode
   useEffect(() => {
-    localStorage.setItem('courseFormData', JSON.stringify(formData));
-  }, [formData]);
+    if (!isEditMode) {
+      localStorage.setItem('courseFormData', JSON.stringify(formData));
+    }
+  }, [formData, isEditMode]);
+
+  // Set cover preview from initial data if available
+  useEffect(() => {
+    if (initialData?.cover_image_url) {
+      setCoverPreview(initialData.cover_image_url);
+    }
+  }, [initialData]);
 
   const handleCoverClick = () => coverRef.current?.click();
 
@@ -76,13 +93,32 @@ export const useCourseForm = () => {
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
     if (!formData.name.trim()) newErrors['course-name'] = 'Please fill out this field';
-    if (!formData.price.trim()) newErrors['price'] = 'Please fill out this field';
-    else if (isNaN(parseFloat(formData.price)) || parseFloat(formData.price) < 0) newErrors['price'] = 'Please enter a valid price';
-    if (!formData.total_learning_time.trim()) newErrors['learning-time'] = 'Please fill out this field';
-    else if (isNaN(parseInt(formData.total_learning_time)) || parseInt(formData.total_learning_time) <= 0) newErrors['learning-time'] = 'Please enter a valid learning time';
+    
+    // Handle price validation for both string and number types
+    const priceValue = typeof formData.price === 'string' ? formData.price.trim() : formData.price;
+    if (!priceValue && priceValue !== 0) newErrors['price'] = 'Please fill out this field';
+    else {
+      const priceNum = typeof priceValue === 'string' ? parseFloat(priceValue) : priceValue;
+      if (isNaN(priceNum) || priceNum < 0) newErrors['price'] = 'Please enter a valid price';
+    }
+    
+    // Handle learning time validation for both string and number types
+    const timeValue = typeof formData.total_learning_time === 'string' ? 
+      formData.total_learning_time.trim() : formData.total_learning_time;
+    if (!timeValue && timeValue !== 0) newErrors['learning-time'] = 'Please fill out this field';
+    else {
+      const timeNum = typeof timeValue === 'string' ? parseInt(timeValue) : timeValue;
+      if (isNaN(timeNum) || timeNum <= 0) newErrors['learning-time'] = 'Please enter a valid learning time';
+    }
+    
     if (!formData.summary.trim()) newErrors['course-summary'] = 'Please fill out this field';
     if (!formData.detail.trim()) newErrors['course-detail'] = 'Please fill out this field';
-    // Add cover image validation if needed: if (!coverImageFile) newErrors.coverImage = 'Cover image is required';
+    
+    // Cover validation - only required on new courses or if not already present
+    if (!coverImageFile && !formData.cover_image_url) {
+      newErrors.coverImage = 'Cover image is required';
+    }
+    
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -106,7 +142,8 @@ export const useCourseForm = () => {
 
     setIsLoading(true);
     try {
-      let coverUrl = '';
+      // Upload cover image if a new one was selected
+      let coverUrl = formData.cover_image_url || '';
       if (coverImageFile) {
         const fd = new FormData();
         fd.append('coverImage', coverImageFile);
@@ -116,52 +153,76 @@ export const useCourseForm = () => {
         coverUrl = data.url;
       }
 
+      // Prepare course data for API
       const courseData = {
         ...formData,
-        price: formData.price ? parseFloat(formData.price) : 0,
-        total_learning_time: formData.total_learning_time ? parseInt(formData.total_learning_time) : 0,
+        id: courseId, // Include ID for edit mode
+        price: typeof formData.price === 'string' && formData.price ? 
+          parseFloat(formData.price) : formData.price || 0,
+        total_learning_time: typeof formData.total_learning_time === 'string' && formData.total_learning_time ? 
+          parseInt(formData.total_learning_time) : formData.total_learning_time || 0,
         status,
         cover_image_url: coverUrl,
-        lessons: lessons.map((lesson, index) => ({
-          title: lesson.name,
-          order_no: index + 1,
-          sub_lessons: lesson.subLessons.map((subLesson, subIndex) => ({
-            title: subLesson.name,
-            order_no: subIndex + 1,
-            video_url: subLesson.videoUrl || '',
-          })),
+        lessons_attributes: lessons.map((lesson, index) => ({
+          id: lesson.id,
+          name: lesson.name,
+          order: index,
+          sub_lessons_attributes: lesson.subLessons?.map((subLesson, subIndex) => ({
+            id: subLesson.id,
+            name: subLesson.name,
+            order: subIndex,
+            video_url: subLesson.videoUrl || subLesson.video_url || '',
+          })) || [],
         })),
       };
 
-      const response = await fetch('/api/admin/courses-create', {
-        method: 'POST',
+      // Determine API endpoint and method based on mode
+      const endpoint = isEditMode 
+        ? `/api/admin/courses-update/${courseId}`
+        : '/api/admin/courses-create';
+      const method = isEditMode ? 'PUT' : 'POST';
+
+      const response = await fetch(endpoint, {
+        method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(courseData),
       });
+      
       const result = await response.json();
-      if (!response.ok) throw new Error(result.error || 'Failed to create course');
+      if (!response.ok) throw new Error(result.error || `Failed to ${isEditMode ? 'update' : 'create'} course`);
 
-      toastSuccess(`Course ${status === 'published' ? 'published' : 'saved as draft'} successfully`);
-      localStorage.removeItem('courseFormData');
-      localStorage.removeItem('courseLessons'); // Ensure lessons are also cleared
+      const successMessage = isEditMode
+        ? `Course ${status === 'published' ? 'published' : 'updated'} successfully`
+        : `Course ${status === 'published' ? 'published' : 'saved as draft'} successfully`;
+      
+      toastSuccess(successMessage);
+      
+      // Clean up localStorage in create mode
+      if (!isEditMode) {
+        localStorage.removeItem('courseFormData');
+        localStorage.removeItem('courseLessons');
+      }
+      
       router.push('/admin/dashboard');
     } catch (error: any) {
-      console.error('Error creating course:', error);
-      toastError('Failed to create course', error.message);
+      console.error(`Error ${isEditMode ? 'updating' : 'creating'} course:`, error);
+      toastError(`Failed to ${isEditMode ? 'update' : 'create'} course`, error.message);
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleCancel = () => {
-    localStorage.removeItem('courseFormData');
-    localStorage.removeItem('courseLessons');
+    if (!isEditMode) {
+      localStorage.removeItem('courseFormData');
+      localStorage.removeItem('courseLessons');
+    }
     router.back();
   };
 
   return {
     formData,
-    setFormData, // Exposed if direct manipulation is needed, though handleInputChange is preferred
+    setFormData,
     isLoading,
     setIsLoading,
     coverImageFile,
@@ -178,5 +239,6 @@ export const useCourseForm = () => {
     validateNameOnly,
     handleSubmit,
     handleCancel,
+    isEditMode,
   };
 };

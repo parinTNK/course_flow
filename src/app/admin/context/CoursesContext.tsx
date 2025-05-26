@@ -170,7 +170,11 @@ export const CoursesProvider = ({ children }: { children: ReactNode }) => {
         }}
         onConfirm={confirmDeleteCourse}
         title="Delete Course"
-        message="Are you sure you want to delete this course?"
+        message={
+          <span style={{ color: "red" }}>
+            Are you sure you want to delete this course?
+          </span>
+        }
         confirmText="Yes, I want to delete the course"
         cancelText="No, keep it"
       />

@@ -1,10 +1,11 @@
 import React from 'react';
 import { ButtonT } from '@/components/ui/ButtonT';
 import { PromoCodeSection } from '@/app/admin/components/PromoCodeSection';
-import { CourseFormData, Lesson } from '@/types/courseAdmin';
+import { CourseFormData, Lesson, PromoCode } from '@/types/courseAdmin'; // Added PromoCode
 import { DndContext, closestCenter, DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { SortableRow } from './SortableRow'; // Adjusted import
+import { useRouter } from 'next/navigation';
 
 interface CourseFormViewProps {
   formData: CourseFormData;
@@ -13,6 +14,7 @@ interface CourseFormViewProps {
   coverPreview: string;
   coverRef: React.RefObject<HTMLInputElement>;
   lessons: Lesson[];
+  allPromoCodes: PromoCode[]; // Added
   handleInputChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
   handleCoverClick: () => void;
   handleCoverChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
@@ -22,18 +24,33 @@ interface CourseFormViewProps {
   handleDeleteLesson: (id: number) => void;
   handleEditLesson: (id: number) => void;
   handleDragEndLessons: (event: DragEndEvent) => void;
+  handlePromoCodeChange: (selectedPromoCode: PromoCode | null) => void; // Added
+  showError?: (title: string, description?: string) => void; // Added optional showError
   dndSensors: any; // Type properly from @dnd-kit/core if possible
 }
 
 export const CourseFormView: React.FC<CourseFormViewProps> = ({
-  formData, errors, isLoading, coverPreview, coverRef, lessons,
+  formData, errors, isLoading, coverPreview, coverRef, lessons, allPromoCodes, // Added allPromoCodes
   handleInputChange, handleCoverClick, handleCoverChange, handleSubmit, handleCancel,
-  handleAddLesson, handleDeleteLesson, handleEditLesson, handleDragEndLessons, dndSensors
+  handleAddLesson, handleDeleteLesson, handleEditLesson, handleDragEndLessons, 
+  handlePromoCodeChange, showError, // Added handlePromoCodeChange and showError
+  dndSensors
 }) => {
+  const router = useRouter();
+  
   return (
     <>
       <div className="flex justify-between items-center mb-8 bg-white px-8 py-6 border-b-3 border-gray-200">
-        <h1 className="text-3xl font-semibold text-gray-800">Add Course</h1>
+        <div className="flex items-center">
+          <ButtonT 
+            variant="ghost" 
+            className="w-auto h-auto px-3 py-2 mx-2"
+            onClick={() => router.push('/admin/dashboard')}
+          >
+            ← Back to Courses
+          </ButtonT>
+          <h1 className="text-3xl font-semibold text-gray-800 ml-4">{formData.id ? 'Edit Course' : 'Add Course'}</h1>
+        </div>
         <div className="flex items-center space-x-4">
           <ButtonT variant="Secondary" className="w-[149px] h-[32px]" onClick={handleCancel}>
             Cancel
@@ -44,7 +61,7 @@ export const CourseFormView: React.FC<CourseFormViewProps> = ({
             onClick={(e) => handleSubmit(e, 'published')}
             disabled={isLoading}
           >
-            {isLoading ? 'Creating...' : 'Create'}
+            {isLoading ? 'Saving...' : formData.id ? 'Update' : 'Create'}
           </ButtonT>
         </div>
       </div>
@@ -101,7 +118,12 @@ export const CourseFormView: React.FC<CourseFormViewProps> = ({
             </div>
             
             <div className="mt-4">
-                <PromoCodeSection />
+                <PromoCodeSection 
+                  initialPromoCodeId={formData.promo_code_id}
+                  allPromoCodes={allPromoCodes}
+                  onChange={handlePromoCodeChange}
+                  showError={showError} // Pass down showError if you want to use a centralized error display
+                />
             </div>
 
 
