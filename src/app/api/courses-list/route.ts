@@ -42,9 +42,10 @@ export async function GET(request: NextRequest) {
                 status,
                 lessons ( * ) 
             `)
+            .eq('status', 'published')
             .ilike('name', `%${searchTerm}%`)
             .range(from, to)
-            .order('created_at', { ascending: false });
+            .order('updated_at', { ascending: false });
             //TODO: check with team if we need to order by created_at or updated_at [how to order?]
 
         if (error) {

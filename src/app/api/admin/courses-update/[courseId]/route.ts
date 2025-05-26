@@ -40,12 +40,24 @@ export async function PUT(
     const formData: CourseFormData = await request.json();
     const { lessons_attributes, cover_image_url, promo_code_id, ...courseData } = formData;
 
+    // Log the data being updated (excluding sensitive info)
+    console.log('Updating course with data:', {
+      ...courseData,
+      video_trailer_fields: {
+        video_trailer_mux_asset_id: formData.video_trailer_mux_asset_id,
+        video_trailer_url: formData.video_trailer_url
+      }
+    });
+
     const { data: updatedCourse, error: courseError } = await supabase
       .from('courses')
       .update({
         ...courseData,
         ...(cover_image_url && { cover_image_url }),
         promo_code_id: promo_code_id,
+        // Explicitly include video trailer fields
+        video_trailer_mux_asset_id: formData.video_trailer_mux_asset_id || null,
+        video_trailer_url: formData.video_trailer_url || null,
         updated_at: getBangkokISOString(),
       })
       .eq('id', id)

@@ -100,7 +100,7 @@ const NavBar: React.FC<NavBarProps> = ({ navigate }) => {
               <DropdownMenuTrigger asChild>
                 <button className="flex items-center space-x-3 cursor-pointer px-2 py-1 rounded-md transition focus:outline-none">
                   <Avatar className="h-10 w-10">
-                    <AvatarImage src={avatarUrl} alt={displayName} />
+                    <AvatarImage src={avatarUrl} alt={displayName} className="object-cover" />
                     <AvatarFallback>U</AvatarFallback>
                   </Avatar>
                   <div className="flex items-center space-x-1">
@@ -179,7 +179,7 @@ const NavBar: React.FC<NavBarProps> = ({ navigate }) => {
               <DropdownMenuTrigger asChild>
                 <button className="flex items-center space-x-2">
                   <Avatar className="h-8 w-8">
-                    <AvatarImage src={avatarUrl} alt={displayName} />
+                    <AvatarImage src={avatarUrl} alt={displayName} className="object-cover"/>
                     <AvatarFallback>U</AvatarFallback>
                   </Avatar>
                   <ChevronDown

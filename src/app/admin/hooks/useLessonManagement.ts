@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useCustomToast } from '@/components/ui/CustomToast';
 import { Lesson, SubLesson } from '@/types/courseAdmin';
 import {
@@ -12,6 +12,7 @@ import {
   arrayMove,
   sortableKeyboardCoordinates,
 } from '@dnd-kit/sortable';
+import { SubLessonVideoUploadRef } from '@/app/admin/components/SubLessonVideoUpload';
 
 export const useLessonManagement = (courseName: string) => {
   const { success: toastSuccess, error: toastError } = useCustomToast();
@@ -31,9 +32,30 @@ export const useLessonManagement = (courseName: string) => {
       name: '', 
       title: '', // Initialize database field
       videoUrl: '',
-      video_url: '' // Initialize database field
+      video_url: '', // Initialize database field
+      mux_asset_id: '', // Initialize Mux asset ID
+      videoUploadState: { // Initialize video upload state
+        isUploading: false,
+        hasVideo: false,
+        error: undefined
+      }
     }]
   });
+  
+  // Store the courseName in a ref to prevent unnecessary re-renders
+  const courseNameRef = useRef(courseName);
+
+  // State to track all sub-lesson video upload states for navigation prevention
+  const [subLessonUploadStates, setSubLessonUploadStates] = useState<Record<string | number, {
+    isUploading: boolean;
+    progress: number;
+    error: string | null;
+    success: boolean;
+    currentAssetId?: string | null;
+  }>>({});
+
+  // Refs to manage sub-lesson video upload components
+  const subLessonVideoRefs = useRef<Record<string | number, SubLessonVideoUploadRef>>({});
 
   useEffect(() => {
     const savedLessons = localStorage.getItem('courseLessons');
@@ -57,8 +79,13 @@ export const useLessonManagement = (courseName: string) => {
     })
   );
 
+  // Method to update courseName from outside
+  const updateCourseName = useCallback((name: string) => {
+    courseNameRef.current = name;
+  }, []);
+
   const handleAddLesson = () => {
-    if (!courseName.trim()) {
+    if (!courseNameRef.current.trim()) {
       toastError('Please enter course name before adding lessons');
       return;
     }
@@ -71,7 +98,13 @@ export const useLessonManagement = (courseName: string) => {
         name: '', 
         title: '', // Add database field name
         videoUrl: '',
-        video_url: '' // Add database field name
+        video_url: '', // Add database field name
+        mux_asset_id: '', // Initialize Mux asset ID
+        videoUploadState: { // Initialize video upload state
+          isUploading: false,
+          hasVideo: false,
+          error: undefined
+        }
       }]
     });
     setIsAddLessonView(true);
@@ -99,7 +132,8 @@ export const useLessonManagement = (courseName: string) => {
         name: sl.name || sl.title || '',
         title: sl.title || sl.name || '',
         videoUrl: sl.videoUrl || sl.video_url || '',
-        video_url: sl.video_url || sl.videoUrl || ''
+        video_url: sl.video_url || sl.videoUrl || '',
+        mux_asset_id: sl.mux_asset_id || ''
       }));
       
       setLessons([...lessons, { 
@@ -119,7 +153,8 @@ export const useLessonManagement = (courseName: string) => {
         name: sl.name || sl.title || '',
         title: sl.title || sl.name || '',
         videoUrl: sl.videoUrl || sl.video_url || '',
-        video_url: sl.video_url || sl.videoUrl || ''
+        video_url: sl.video_url || sl.videoUrl || '',
+        mux_asset_id: sl.mux_asset_id || ''
       }));
       
       setLessons(lessons.map(lesson =>
@@ -151,7 +186,13 @@ export const useLessonManagement = (courseName: string) => {
         name: '', 
         title: '',  // Add database field
         videoUrl: '', 
-        video_url: ''  // Add database field
+        video_url: '',  // Add database field
+        mux_asset_id: '', // Initialize Mux asset ID
+        videoUploadState: { // Initialize video upload state
+          isUploading: false,
+          hasVideo: false,
+          error: undefined
+        }
       }]
     }));
   };
@@ -180,6 +221,173 @@ export const useLessonManagement = (courseName: string) => {
     }));
   };
 
+  // Video management functions for sub-lessons
+  const handleSubLessonVideoUpdate = (subLessonId: number | string, assetId: string, playbackId: string) => {
+    setCurrentEditingLesson(prev => ({
+      ...prev,
+      subLessons: prev.subLessons.map(sl =>
+        sl.id === subLessonId ? {
+          ...sl,
+          video_url: playbackId,      // Store playback ID in database field
+          videoUrl: playbackId,       // Frontend field
+          mux_asset_id: assetId,      // Store Mux asset ID
+          videoUploadState: {
+            isUploading: false,
+            hasVideo: true,
+            error: undefined
+          }
+        } : sl
+      )
+    }));
+    toastSuccess('Video uploaded successfully');
+  };
+
+  const handleSubLessonVideoDelete = (subLessonId: number | string) => {
+    setCurrentEditingLesson(prev => ({
+      ...prev,
+      subLessons: prev.subLessons.map(sl =>
+        sl.id === subLessonId ? {
+          ...sl,
+          video_url: '',              // Clear playback ID
+          videoUrl: '',               // Clear frontend field
+          mux_asset_id: '',           // Clear Mux asset ID
+          videoUploadState: {
+            isUploading: false,
+            hasVideo: false,
+            error: undefined
+          }
+        } : sl
+      )
+    }));
+    toastSuccess('Video deleted successfully');
+  };
+
+  const handleSubLessonVideoUploadStart = (subLessonId: number | string) => {
+    setCurrentEditingLesson(prev => ({
+      ...prev,
+      subLessons: prev.subLessons.map(sl =>
+        sl.id === subLessonId ? {
+          ...sl,
+          videoUploadState: {
+            isUploading: true,
+            hasVideo: false,
+            error: undefined
+          }
+        } : sl
+      )
+    }));
+  };
+
+  const handleSubLessonVideoUploadError = (subLessonId: number | string, error: string) => {
+    setCurrentEditingLesson(prev => ({
+      ...prev,
+      subLessons: prev.subLessons.map(sl =>
+        sl.id === subLessonId ? {
+          ...sl,
+          videoUploadState: {
+            isUploading: false,
+            hasVideo: false,
+            error
+          }
+        } : sl
+      )
+    }));
+    toastError(`Video upload failed: ${error}`);
+  };
+
+  // Handle sub-lesson video upload state changes for navigation prevention
+  const handleSubLessonVideoUploadStateChange = (subLessonId: string | number, uploadState: {
+    isUploading: boolean;
+    progress: number;
+    error: string | null;
+    success: boolean;
+    currentAssetId?: string | null;
+  }) => {
+    setSubLessonUploadStates(prev => ({
+      ...prev,
+      [subLessonId]: uploadState
+    }));
+  };
+
+  // Cancel all sub-lesson video uploads
+  const cancelAllSubLessonVideoUploads = async () => {
+    const cancelPromises = Object.entries(subLessonVideoRefs.current).map(async ([subLessonId, ref]) => {
+      const uploadState = subLessonUploadStates[subLessonId];
+      if (uploadState?.isUploading && ref?.cancelUpload) {
+        try {
+          await ref.cancelUpload();
+        } catch (error) {
+          console.error(`Failed to cancel upload for sub-lesson ${subLessonId}:`, error);
+        }
+      }
+    });
+
+    await Promise.all(cancelPromises);
+  };
+
+  // Method to register sub-lesson video refs from external components
+  const lastRegisteredRefs = useRef<string>('');
+  const lastRegistrationTime = useRef<number>(0);
+  
+  const registerSubLessonVideoRefs = useCallback((refs: Record<string | number, SubLessonVideoUploadRef>) => {
+    const refKeys = Object.keys(refs).sort().join(',');
+    const now = Date.now();
+    
+    // Only log significant changes and not too frequently
+    const shouldLog = lastRegisteredRefs.current !== refKeys && 
+                     refKeys && 
+                     (now - lastRegistrationTime.current > 10000); // Log at most every 10 seconds
+    
+    if (shouldLog) {
+      console.log('📝 useLessonManagement: Video refs registered:', Object.keys(refs).length);
+      lastRegisteredRefs.current = refKeys;
+      lastRegistrationTime.current = now;
+    }
+    subLessonVideoRefs.current = { ...subLessonVideoRefs.current, ...refs };
+  }, []);
+
+  // Cancel all active video uploads
+  const cancelAllUploads = async () => {
+    const refKeys = Object.keys(subLessonVideoRefs.current);
+    if (refKeys.length > 0) {
+      console.log(`🚫 useLessonManagement: Cancelling ${refKeys.length} video uploads`);
+    }
+    
+    // Gather all cancel promises
+    const cancelPromises = Object.entries(subLessonVideoRefs.current).map(([id, ref]) => {
+      if (ref) {
+        try {
+          return ref.cancelUpload();
+        } catch (error) {
+          console.error(`❌ useLessonManagement: Failed to cancel upload for sub-lesson ${id}:`, error);
+          return Promise.resolve();
+        }
+      }
+      return Promise.resolve();
+    });
+    
+    // Execute all cancel operations
+    await Promise.all(cancelPromises);
+    
+    if (refKeys.length > 0) {
+      console.log(`✅ useLessonManagement: All uploads cancelled successfully`);
+    }
+  };
+
+  // Check if any sub-lesson videos are currently uploading
+  const hasActiveSubLessonUploads = () => {
+    return Object.values(subLessonUploadStates).some(state => state.isUploading);
+  };
+
+  // Set ref for sub-lesson video upload component
+  const setSubLessonVideoRef = (subLessonId: string | number, ref: SubLessonVideoUploadRef | null) => {
+    if (ref) {
+      subLessonVideoRefs.current[subLessonId] = ref;
+    } else {
+      delete subLessonVideoRefs.current[subLessonId];
+    }
+  };
+
   // Add a method to set both name and title fields for consistency
   const setCurrentEditingLessonName = (newName: string) => {
     setCurrentEditingLesson(prev => ({
@@ -206,7 +414,13 @@ export const useLessonManagement = (courseName: string) => {
         name: sl.name || sl.title || '',
         title: sl.title || sl.name || '',
         videoUrl: sl.videoUrl || sl.video_url || '',
-        video_url: sl.video_url || sl.videoUrl || ''
+        video_url: sl.video_url || sl.videoUrl || '',
+        mux_asset_id: sl.mux_asset_id || '',
+        videoUploadState: sl.videoUploadState || {
+          isUploading: false,
+          hasVideo: !!(sl.video_url || sl.videoUrl),
+          error: undefined
+        }
       }));
       
       setCurrentEditingLesson({
@@ -268,5 +482,15 @@ export const useLessonManagement = (courseName: string) => {
     handleDragEndLessons,
     handleDragEndSubLessons,
     setCurrentEditingLessonName, // Expose the new method
+    // Video management functions
+    handleSubLessonVideoUpdate,
+    handleSubLessonVideoDelete,
+    handleSubLessonVideoUploadStart,
+    handleSubLessonVideoUploadError,
+    // Cancel uploads
+    cancelAllUploads,
+    registerSubLessonVideoRefs,
+    // Course name management
+    updateCourseName,
   };
 };

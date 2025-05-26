@@ -119,7 +119,7 @@ const CoursesTable: React.FC<CoursesTableProps> = ({
                 "Course name",
                 "Lesson",
                 "Price",
-                "Status",
+                // "Status",
                 "Created date",
                 "Updated date",
                 "Action",
