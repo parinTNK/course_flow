@@ -36,8 +36,8 @@ export async function adminLogin(credentials: UserCredentials): Promise<AdminLog
       };
     }
 
-    const userRole = data.user.user_metadata?.role || 
-                data.user.raw_user_meta_data?.role;
+    const userRole = data.user.raw_user_meta_data?.role || 
+      data.user.user_metadata?.role;
     
     if (userRole !== "admin") {
       
@@ -78,7 +78,9 @@ export async function verifyAdminAuth(token: string): Promise<AdminSessionRespon
       return { isAdmin: false };
     }
     
-    const userRole = data.user.user_metadata?.role;
+     const userRole = 
+      data.user.raw_user_meta_data?.role ||
+      data.user.user_metadata?.role;
     
     const adminProfile: AdminProfile = {
       id: data.user.id,

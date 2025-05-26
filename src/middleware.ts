@@ -7,12 +7,86 @@ export async function middleware(request: NextRequest) {
   try {
     const response = NextResponse.next();
     const path = request.nextUrl.pathname;
-    if (path.startsWith('/admin/dashboard')) {
-      return response;
+if (path.startsWith('/admin')) {
+      if (path === '/admin/login') {
+        return response;
+      }
+      
+      // Method 1: Check for auth bypass parameter
+      if (request.nextUrl.searchParams.get('auth') === 'success') {
+        console.log("Admin middleware - First login bypass");
+        const url = new URL(request.url);
+        url.searchParams.delete('auth');
+        
+        // Set a temporary cookie to remember this is a fresh login
+        const redirectResponse = NextResponse.redirect(url);
+        redirectResponse.cookies.set('admin-fresh-login', 'true', {
+          httpOnly: true,
+          maxAge: 10, // 10 seconds
+          path: '/'
+        });
+        return redirectResponse;
+      }
+      
+      // Method 2: Check for fresh login cookie
+      if (request.cookies.get('admin-fresh-login')?.value === 'true') {
+        console.log("Admin middleware - Fresh login detected, allowing access");
+        response.cookies.delete('admin-fresh-login');
+        return response;
+      }
+      
+      // Method 3: Normal session check
+      const supabase = createMiddlewareClient({ req: request, res: response });
+      
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        console.log("Admin middleware - Session check:", {
+          hasSession: !!session,
+          error: error?.message
+        });
+        
+        if (!session) {
+          // Double check by trying to get user
+          const { data: { user } } = await supabase.auth.getUser();
+          
+          if (!user) {
+            console.log("Admin middleware - No user found, redirecting to login");
+            return NextResponse.redirect(new URL('/admin/login', request.url));
+          }
+          
+          // If user exists but no session, try to refresh
+          const { data: refreshData } = await supabase.auth.refreshSession();
+          if (!refreshData.session) {
+            return NextResponse.redirect(new URL('/admin/login', request.url));
+          }
+        }
+        
+        // Check admin role
+        const userRole = 
+          session?.user?.user_metadata?.role ||
+          session?.user?.raw_user_meta_data?.role;
+          
+        console.log("Admin middleware - Role check:", userRole);
+        
+        if (userRole !== 'admin') {
+          console.log("Admin middleware - Not admin, redirecting");
+          return NextResponse.redirect(new URL('/admin/login', request.url));
+        }
+        
+        console.log("Admin middleware - Access granted");
+        return response;
+        
+      } catch (error) {
+        console.error('Admin middleware error:', error);
+        return NextResponse.redirect(new URL('/admin/login', request.url));
+      }
     }
+    
+    
     const publicPathsSet = new Set(['/', '/login', '/register', '/our-courses','/course-detail/[courseId]']);
-
     const protectedPathsSet = new Set([ '/my-courses', '/profile', '/my-wishlist', '/my-assignments','/payment/[courseId]','/course-learn/[courseId]/learning']);
+
     const isPublicPath = publicPathsSet.has(path);
     const isPublicPathWithSubpath = !isPublicPath && Array.from(publicPathsSet).some(publicPath => 
       path.startsWith(`${publicPath}/`)
@@ -23,7 +97,6 @@ export async function middleware(request: NextRequest) {
     path.startsWith('/favicon.ico');
 
     const isPublicResource = isPublicPath || isPublicPathWithSubpath || isStaticFile;
-
     const isProtectedPath = protectedPathsSet.has(path) || 
     Array.from(protectedPathsSet).some(protectedPath => path.startsWith(`${protectedPath}/`));  
   
@@ -85,34 +158,8 @@ export async function middleware(request: NextRequest) {
         return redirectResponse;
       }
       
-       const isAdminRoute = path.startsWith('/admin') && !path.startsWith('/admin/login');
-
-if (isAdminRoute) {
-  const hasAuthCookie = request.cookies.has('supabase-auth-token');
-  
-  if (request.nextUrl.searchParams.has('t') && hasAuthCookie) {
-    return response;
-  }
-  
-  const redirectAttempts = request.cookies.get('admin_redirect')?.value;
-  const attempts = redirectAttempts ? parseInt(redirectAttempts) : 0;
-  
-  if (attempts > 3) {
-    response.cookies.set('admin_redirect', '0', { path: '/' });
-    return response;
-  }
-  
-  response.cookies.set('admin_redirect', String(attempts + 1), { path: '/' });
-  
-  const userRole = session?.user?.user_metadata?.role || 
-                  session?.user?.raw_user_meta_data?.role;
-  
-  if (!session || userRole !== 'admin') {
-    return NextResponse.redirect(new URL('/admin/login', request.url));
-  }
-}
+     return response;
       
-      return response;
     } catch (sessionError) {
       console.error('Error checking session:', sessionError);
       

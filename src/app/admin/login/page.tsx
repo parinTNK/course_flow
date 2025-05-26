@@ -1,8 +1,6 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { adminLogin } from "./utils/action";
 import { supabase } from "@/lib/supabaseClient";
 import { UserCredentials, LoginState } from "./type";
 import { useCustomToast } from "@/components/ui/CustomToast";
@@ -19,30 +17,31 @@ const AdminLogin = () => {
     error: null,
   });
 
-  const router = useRouter();
   const toast = useCustomToast();
 
   useEffect(() => {
     const checkExistingSession = async () => {
       try {
-        const { data, error } = await supabase.auth.getSession();
-        console.log("Session data:", data);
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+        console.log("Session check on mount:", session);
 
-        if (data.session && !error) {
-          const { data: userData } = await supabase.auth.getUser();
-          console.log("User data:", userData);
-
+        if (session) {
           const userRole =
-            userData.user?.user_metadata?.role ||
-            userData.user?.raw_user_meta_data?.role;
+            session.user?.user_metadata?.role ||
+            session.user?.app_metadata?.role ||
+            (session.user as any)?.raw_user_meta_data?.role ||
+            (session.user as any)?.raw_app_meta_data?.role;
 
-          console.log("User role:", userRole);
+          console.log("User role from session:", {
+            role: userRole,
+            user_metadata: session.user?.user_metadata,
+            app_metadata: session.user?.app_metadata,
+          });
 
           if (userRole === "admin") {
-            const dashboardUrl = `${
-              window.location.origin
-            }/admin/dashboard?t=${Date.now()}`;
-            window.location.replace(dashboardUrl);
+            window.location.href = "/admin/dashboard";
           } else {
             await supabase.auth.signOut();
             toast.warning(
@@ -57,7 +56,26 @@ const AdminLogin = () => {
     };
 
     checkExistingSession();
-  }, []);
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log("Auth state changed:", event, session);
+      if (event === "SIGNED_IN" && session) {
+        const userRole =
+          session.user?.user_metadata?.role ||
+          session.user?.raw_user_meta_data?.role;
+        if (userRole === "admin") {
+          console.log("Admin signed in via auth state change");
+          window.location.href = "/admin/dashboard";
+        }
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [toast]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -72,10 +90,8 @@ const AdminLogin = () => {
     setLoginState({ loading: true, error: null });
 
     try {
-      await supabase.auth.signOut();
-      localStorage.clear();
+      console.log("Starting CLIENT-SIDE login...");
 
-      console.log("Starting login process...");
       const { data, error } = await supabase.auth.signInWithPassword({
         email: credentials.email,
         password: credentials.password,
@@ -103,9 +119,8 @@ const AdminLogin = () => {
       }
 
       const userRole =
-        data.user.user_metadata?.role || data.user.raw_user_meta_data?.role;
+        data.user.raw_user_meta_data?.role || data.user.user_metadata?.role;
 
-      console.log("User role:", userRole);
       if (userRole !== "admin") {
         setLoginState({
           loading: false,
@@ -119,16 +134,17 @@ const AdminLogin = () => {
         return;
       }
 
-      toast.success("Login successful", "Welcome to the admin panel");
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+      const { data: refreshData, error: refreshError } =
+        await supabase.auth.refreshSession();
 
-      setTimeout(() => {
-        try {
-          const dashboardUrl = `${
-            window.location.origin
-          }/admin/dashboard?t=${Date.now()}`;
-          window.location.replace(dashboardUrl);
-        } catch (navigateError) {}
-      }, 1000);
+      if (refreshError || !refreshData.session) {
+        toast.error("Session Error", "Failed to establish session");
+        return;
+      }
+      toast.success("Login successful", "Welcome to the admin panel");
+      setLoginState({ loading: false, error: null });
+      window.location.href = "/admin/dashboard?auth=success";
     } catch (error: any) {
       console.error("Login error:", error);
       setLoginState({
@@ -143,8 +159,13 @@ const AdminLogin = () => {
     <div className="min-h-screen flex items-center justify-center bg-linear2">
       <div className="bg-white p-8 rounded-lg shadow-md w-full max-w-md">
         <div className="text-center mb-6">
-          <h1 className="text-3xl font-bold text-blue-400 mb-1">CourseFlow</h1>
-          <p className="text-gray-500">Admin Panel Control</p>
+          <h1
+            className="text-5xl mb-1 text-gradient font-extrabold"
+            style={{ backgroundClip: "text", WebkitBackgroundClip: "text" }}
+          >
+            CourseFlow
+          </h1>
+          <p className="text-gray-500 text-xl font-bold">Admin Panel Control</p>
         </div>
 
         <form onSubmit={handleLogin}>

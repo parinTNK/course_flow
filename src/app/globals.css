@@ -2,6 +2,7 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
+
 @custom-variant dark (&:is(.dark *));
 
 @layer utilities {
@@ -210,4 +211,10 @@
   body {
     @apply bg-background text-foreground;
   }
+}
+.text-gradient {
+  background: var(--linear1);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
