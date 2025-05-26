@@ -19,28 +19,35 @@ export default function PromoCodesPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
 
-  const fetchPromoCodes = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const res = await axios.get("/api/promocodes");
-      setPromoCodes(res.data);
-      setTotalPages(1);
-    } catch (e: any) {
-      setError(e.message || "Failed to fetch promo codes");
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
+  const codesPerPage = 10;
+
+  useEffect(() => {
+    const fetchPromoCodes = async () => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const res = await axios.get("/api/promocodes", {
+          params: {
+            page: currentPage,
+            limit: codesPerPage,
+            search: searchTerm, // ถ้า backend ยังไม่รองรับ ให้ลบออก
+          },
+        });
+        setPromoCodes(res.data.data);
+        setTotalPages(res.data.totalPages);
+      } catch (e: any) {
+        setError(e.message || "Failed to fetch promo codes");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchPromoCodes();
+  }, [currentPage, searchTerm]);
 
   console.log("Promo codes:", promoCodes);
 
-  useEffect(() => {
-    fetchPromoCodes();
-  }, [fetchPromoCodes]);
-
   const handleAddPromoCode = () => {
-    router.push('/admin/dashboard/create-promo-codes');
+    router.push("/admin/dashboard/create-promo-codes");
   };
 
   const handleEditPromoCode = (id: string) => {
@@ -51,10 +58,6 @@ export default function PromoCodesPage() {
     alert(`Delete promo code ${id} functionality to be implemented`);
   };
 
-  const filteredPromoCodes = promoCodes.filter((promo) =>
-    promo.code.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
   return (
     <div className="bg-gray-100 flex-1 h-screen overflow-hidden">
       <div className="flex justify-between items-center mb-8 bg-white px-8 py-6 border-b-3 border-gray-200">
@@ -62,7 +65,10 @@ export default function PromoCodesPage() {
         <div className="flex items-center space-x-4">
           <SearchBar
             value={searchTerm}
-            onChange={setSearchTerm}
+            onChange={(val) => {
+              setSearchTerm(val);
+              setCurrentPage(1);
+            }}
             placeholder="Search..."
             className="w-64"
           />
@@ -76,7 +82,9 @@ export default function PromoCodesPage() {
         </div>
       </div>
       <div className="px-8 pb-8">
-        {isLoading && <LoadingSpinner text="Loading promo codes..." size="md" />}
+        {isLoading && (
+          <LoadingSpinner text="Loading promo codes..." size="md" />
+        )}
         {error && (
           <div className="text-center py-10 text-red-600 bg-red-100 p-4 rounded-md">
             Error: {error}
@@ -85,7 +93,7 @@ export default function PromoCodesPage() {
 
         {!isLoading && !error && (
           <PromoCodesTable
-            promoCodes={filteredPromoCodes}
+            promoCodes={promoCodes}
             isLoading={isLoading}
             currentPage={currentPage}
             onEditPromoCode={handleEditPromoCode}
@@ -93,7 +101,7 @@ export default function PromoCodesPage() {
           />
         )}
 
-        {filteredPromoCodes.length > 0 && (
+        {promoCodes.length > 0 && (
           <div className="mt-4">
             <Pagination
               currentPage={currentPage}
