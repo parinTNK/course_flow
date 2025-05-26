@@ -38,13 +38,13 @@ export interface AdminSessionResponse {
 
 declare module '@supabase/supabase-js' {
   interface User {
-    user_metadata?: {
-      role?: string;
-      [key: string]: any;
-    };
     raw_user_meta_data?: {
       role?: string;
       email_verified?: boolean;
+      [key: string]: any;
+    };
+    user_metadata?: {
+      role?: string;
       [key: string]: any;
     };
   }

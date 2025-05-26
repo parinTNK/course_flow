@@ -1,5 +1,5 @@
 import NavBar from "@/components/nav";
-
+import { Toaster } from "sonner";
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -9,6 +9,7 @@ export default function RootLayout({
     <div>
       <NavBar />
       {children}
+      <Toaster position="bottom-right" richColors />
     </div>
   );
 }
