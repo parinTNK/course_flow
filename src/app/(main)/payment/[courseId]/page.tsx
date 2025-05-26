@@ -9,7 +9,7 @@ import axios from "axios";
 import { Course, CardForm } from "@/types/payment";
 import { useAuth } from "@/app/context/authContext";
 import LoadingSpinner from "../../../admin/components/LoadingSpinner";
-import { useCustomToast } from "@/components/ui/CustomToast"
+import { useCustomToast } from "@/components/ui/CustomToast";
 import { useCheckPurchased } from "@/hooks/useCheckPurchased";
 
 // -------------------- Validate Functions --------------------
@@ -66,8 +66,8 @@ export default function PaymentPage() {
     promoCodeId: string;
     message: string;
   }>(null);
-  const { user,loading: authLoading } = useAuth();
-  const { success, error: toastError } = useCustomToast();
+  const { user, loading: authLoading } = useAuth();
+  const { success: toastSuccess, error: toastError } = useCustomToast();
   // Hooks
   const params = useParams();
   const router = useRouter();
@@ -99,7 +99,7 @@ export default function PaymentPage() {
         setError(
           err.response?.data?.error || err.message || "Failed to fetch course"
         );
-      }finally {
+      } finally {
         setIsFetchingCourse(false);
       }
     };
@@ -133,14 +133,15 @@ export default function PaymentPage() {
     } catch (err: any) {
       setPromoError("Error validating promo code");
       setPromoApplied(false);
-    }finally {
+    } finally {
     }
   };
 
   // -------------------- Discount Calculation --------------------
   let discount = 0;
   if (promoResult) {
-    if (promoResult.discountType === "THB") { //Clean code need to change to constant or enum
+    if (promoResult.discountType === "THB") {
+      //Clean code need to change to constant or enum
       discount = promoResult.discountValue;
     } else if (promoResult.discountType === "percentage") {
       discount =
@@ -153,7 +154,7 @@ export default function PaymentPage() {
   const displayDiscount = Math.round(discount * 100) / 100;
   const rawTotal = (course?.price ?? 0) - discount;
   const total = Math.round(rawTotal * 100) / 100; // 2 ตำแหน่งทศนิยม
-  
+
   // -------------------- Omise Token --------------------
   const createOmiseToken = async (cardData: any) => {
     return new Promise<string>((resolve, reject) => {
@@ -213,46 +214,56 @@ export default function PaymentPage() {
         userId: user?.user_id,
         courseName: course?.name,
         userName: user?.full_name,
+        expectedAmount: total,
         promoCode: promoCode,
       });
 
       const result = res.data;
 
-      if (result.charge.status === "successful" && (result.charge.paid)) {
+      if (result.charge.status === "successful" && result.charge.paid) {
         router.push(`/payment/${courseId}/order-completed`);
       } else {
-        router.push(`/payment/${courseId}/order-failed`);  //business logic error go to order failed
+        router.push(`/payment/${courseId}/order-failed`); //business logic error go to order failed
       }
     } catch (err: any) {
-      toastError("Unable to process your request due to a system error. Please try again ", err.message); //system error
+      if (err.response && err.response.status === 409) {
+        toastError(
+          err.response.data.message +
+            ` (Correct price: ${err.response.data.correctAmount} THB)`
+        );
+        return;
+      }
+      toastError(
+        "Unable to process your request due to a system error. Please try again ",
+        err.message
+      ); //system error
     }
   };
-  
-  if (alreadyPurchased === true) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh]">
-        <div className="text-red-500">You have already purchased this course</div>
-      </div>
-    );
-  }
+
+  useEffect(() => {
+    if (alreadyPurchased === true) {
+      toastSuccess("You have already purchased this course");
+      router.replace(`/course-detail/${courseId}`);
+    }
+  }, [alreadyPurchased, courseId, router]);
 
   if (authLoading || isFetchingCourse || alreadyPurchased === null) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <LoadingSpinner text="Loading..." className = '' size="md" />
+        <LoadingSpinner text="Loading..." className="" size="md" />
       </div>
     );
   }
 
   // -------------------- Render --------------------
   return (
-    <div className="flex flex-col mt-18">
+    <div className="flex flex-col mt-14">
       <Script src="https://cdn.omise.co/omise.js" strategy="afterInteractive" />
       <main className="pt-20">
-        <div className="container mx-auto px-4 py-8 ">
+        <div className="container mx-auto px-4 py-8">
           <div className="max-w-5xl mx-auto">
             <button
-              className="text-sm text-blue-600 mb-8 flex items-center gap-1 hover:underline cursor-pointer"
+              className="text-[16px] text-[#2F5FAC] mb-8 flex items-center gap-2 hover:underline cursor-pointer font-semibold"
               onClick={() => router.replace(`/course-detail/${courseId}`)}
             >
               &larr; Back
@@ -260,10 +271,12 @@ export default function PaymentPage() {
             <div className="flex flex-col md:flex-row gap-8 items-start">
               {/* Payment Form */}
               <div className="">
-                <h1 className="text-2xl font-semibold mb-10">
-                  Enter payment info to start your subscription
+                <h1 className="text-4xl font-semibold mb-10">
+                  Enter payment info to start <br /> your subscription
                 </h1>
-                <p className="text-gray-500 mb-6">Select payment method</p>
+                <p className="text-gray-500 mb-6 text-[16px]">
+                  Select payment method
+                </p>
                 <div className="flex flex-col md:flex-row gap-6">
                   <div className="space-y-4 ">
                     {/* Card Payment */}
@@ -289,7 +302,7 @@ export default function PaymentPage() {
                       <div className="flex flex-row md:pr-15">
                         <form
                           ref={formRef}
-                          className="space-y-4 md:px-5 pt-3"
+                          className="space-y-6 md:px-5 pt-3"
                           onSubmit={handleSubmit(onSubmit)}
                           autoComplete="off"
                         >
@@ -423,14 +436,12 @@ export default function PaymentPage() {
                   {/* Order Summary */}
                   <div className="w-full md:w-[350px]">
                     <div className="bg-white rounded-xl shadow p-6">
-                      <h2 className="text-md font-semibold mb-4 text-[#F47E20]">
-                        Summary
-                      </h2>
+                      <h2 className="text-sm mb-4 text-[#F47E20]">Summary</h2>
                       <div className="mb-2">
-                        <div className="text-md text-[#646D89]">
+                        <div className="text-[16px] text-[#646D89] mb-2">
                           Subscription
                         </div>
-                        <div className="text-xl font-medium">
+                        <div className="text-xl font-medium mb-4">
                           {course?.name}
                         </div>
                       </div>
@@ -462,11 +473,11 @@ export default function PaymentPage() {
                         </button>
                       </div>
                       {promoError && (
-                        <div className="text-red-500 text-sm mb-2">
+                        <div className="text-red-500 text-sm mb-4">
                           {promoError}
                         </div>
                       )}
-                      <div className="flex justify-between text-sm mb-1">
+                      <div className="flex justify-between text-sm mb-4">
                         <span className="">Subtotal</span>
                         <span className="text-[#646D89]">
                           {course?.price.toLocaleString("en-US", {
@@ -475,7 +486,7 @@ export default function PaymentPage() {
                         </span>
                       </div>
                       {promoApplied && (
-                        <div className="flex justify-between text-sm mb-1">
+                        <div className="flex justify-between text-sm mb-4">
                           <span className="">Discount</span>
                           <span className="text-[#9B2FAC]">
                             {displayDiscount !== 0 ? <span> - </span> : ""}
@@ -485,7 +496,7 @@ export default function PaymentPage() {
                           </span>
                         </div>
                       )}
-                      <div className="flex justify-between text-sm mb-1">
+                      <div className="flex justify-between gap-5 text-sm mb-4">
                         <span className="">Payment method</span>
                         <span className="text-[#646D89]">
                           {paymentMethod === "card"
@@ -515,9 +526,10 @@ export default function PaymentPage() {
                             const params = new URLSearchParams({
                               promoCode: promoCode || "",
                               amount: total.toString(),
-                              courseName: course?.name || "",
                             });
-                            router.push(`/payment/${courseId}/qr-code?${params.toString()}`);
+                            router.push(
+                              `/payment/${courseId}/qr-code?${params.toString()}`
+                            );
                           }
                         }}
                       >

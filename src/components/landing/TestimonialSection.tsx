@@ -63,9 +63,9 @@ const TestimonialSection: React.FC = () => {
   );
 
   return (
-    <section className="bg-white py-16 overflow-hidden">
-      <div className="max-w-screen-xl mx-auto px-6 lg:px-20">
-        <h2 className="text-3xl font-bold text-center text-black mb-10">
+    <section className="bg-white overflow-hidden">
+      <div className="max-w-screen-xl mx-auto px-[16px] sm:px-[80px] my-[64px] lg:my-[160px]">
+        <h2 className="text-[24px] md:text-[36px] font-medium text-center text-black mb-[40px]">
           Our Graduates
         </h2>
 
@@ -79,11 +79,11 @@ const TestimonialSection: React.FC = () => {
             {testimonials.map((item, index) => (
               <CarouselItem
                 key={index}
-                className="md:basis-2/3 lg:basis-1/2 px-4 py-6"
+                className="md:basis-2/3 lg:basis-1/2  py-[24px]"
               >
-                <Card className="flex flex-col md:flex-row items-center bg-[#EAF1FF] rounded-xl shadow-md p-6">
+                <Card className="flex flex-col md:flex-row items-center bg-[#EAF1FF] rounded-xl shadow-md p-[24px]">
                   {/* Avatar */}
-                  <div className="flex-shrink-0 w-24 h-24 md:w-32 md:h-32 rounded-full overflow-hidden border-4 border-white shadow-md mb-4 md:mb-0 md:mr-6">
+                  <div className="flex-shrink-0 w-[96px] h-[96px] md:w-[128px] md:h-[128px] rounded-full overflow-hidden border-[4px] border-white shadow-md mb-[16px] md:mb-0 md:mr-[24px]">
                     <img
                       src={item.image}
                       alt={item.name}
@@ -93,13 +93,13 @@ const TestimonialSection: React.FC = () => {
 
                   {/* Testimonial Content */}
                   <div className="text-left">
-                    <p className="text-[#1E293B] mb-4 text-sm leading-relaxed">
-                      <span className="text-3xl text-[#94A3B8]">“</span>
+                    <p className="text-[#1E293B] mb-[16px] text-[14px] leading-relaxed">
+                      <span className="text-[30px] text-[#94A3B8]">“</span>
                       {item.message}
-                      <span className="text-3xl text-[#94A3B8]">”</span>
+                      <span className="text-[30px] text-[#94A3B8]">”</span>
                     </p>
                     <p className="text-[#2F5FAC] font-semibold">{item.name}</p>
-                    <p className="text-sm text-[#64748B]">{item.role}</p>
+                    <p className="text-[14px] text-[#64748B]">{item.role}</p>
                   </div>
                 </Card>
               </CarouselItem>
@@ -107,7 +107,7 @@ const TestimonialSection: React.FC = () => {
           </CarouselContent>
 
           {/* Navigation Buttons */}
-          <div className="flex justify-center mt-6 gap-4">
+          <div className="flex justify-center mt-[24px] gap-[16px]">
             <CarouselPrevious className="bg-white text-[#2F5FAC] hover:bg-[#E2E8F0]" />
             <CarouselNext className="bg-white text-[#2F5FAC] hover:bg-[#E2E8F0]" />
           </div>

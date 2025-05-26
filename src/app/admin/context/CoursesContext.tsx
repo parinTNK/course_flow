@@ -50,9 +50,9 @@ export const CoursesProvider = ({ children }: { children: ReactNode }) => {
     totalItems: 0,
     totalPages: 0,
     currentPage: 1,
-    limit: 10,
+    limit: 9,
   });
-  const coursesPerPage = 10;
+  const coursesPerPage = 9;
 
   const fetchCourses = useCallback(async () => {
     setIsLoading(true);
@@ -170,7 +170,11 @@ export const CoursesProvider = ({ children }: { children: ReactNode }) => {
         }}
         onConfirm={confirmDeleteCourse}
         title="Delete Course"
-        message="Are you sure you want to delete this course?"
+        message={
+          <span style={{ color: "red" }}>
+            Are you sure you want to delete this course?
+          </span>
+        }
         confirmText="Yes, I want to delete the course"
         cancelText="No, keep it"
       />

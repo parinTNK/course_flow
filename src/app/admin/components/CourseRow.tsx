@@ -80,7 +80,7 @@ const CourseRow: React.FC<CourseRowProps> = ({
         >
           <Image
             src="/delete.svg"
-            alt="Edit"
+            alt="Delete"
             width={18}
             height={18}
             className="inline-block"

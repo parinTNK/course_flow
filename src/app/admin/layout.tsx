@@ -6,11 +6,9 @@ export default function DashboardLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en">
-      <body>
+      <div>
         <main>{children}</main>
         <Toaster position="bottom-right" richColors />
-      </body>
-    </html>
+      </div>
   )
 }
