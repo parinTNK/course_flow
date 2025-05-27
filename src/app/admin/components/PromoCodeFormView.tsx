@@ -1,4 +1,10 @@
-import React,{ useState, useEffect, useRef, useCallback, useMemo} from "react";
+import React, {
+  useState,
+  useEffect,
+  useRef,
+  useCallback,
+  useMemo,
+} from "react";
 import { ButtonT } from "@/components/ui/ButtonT";
 import { Button } from "@/components/ui/button";
 import {
@@ -15,9 +21,6 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { X } from "lucide-react";
 import axios from "axios";
-import { useRouter } from "next/navigation";
-import { useCustomToast } from "@/components/ui/CustomToast";
-
 
 interface Course {
   id: string;
@@ -42,6 +45,7 @@ interface PromoCodeFormViewProps {
   handleCancel: () => void;
   handleSubmit: (e: React.FormEvent) => void;
   setFormData?: any;
+  errors?: Record<string, string>;
 }
 
 const PromoCodeFormView: React.FC<PromoCodeFormViewProps> = ({
@@ -52,6 +56,7 @@ const PromoCodeFormView: React.FC<PromoCodeFormViewProps> = ({
   handleCancel,
   handleSubmit,
   setFormData,
+  errors = {},
 }) => {
   const [coursesList, setCoursesList] = useState<Course[]>([]);
   const [error, setError] = useState(null);
@@ -61,12 +66,10 @@ const PromoCodeFormView: React.FC<PromoCodeFormViewProps> = ({
   const triggerRef = useRef<HTMLDivElement>(null);
   const [triggerWidth, setTriggerWidth] = useState<number>(0);
 
-  const { success: toastSuccess, error: toastError } = useCustomToast();
-
   useEffect(() => {
     const fetchCourses = async () => {
-      setLoading(true);    
-      setError(null);        
+      setLoading(true);
+      setError(null);
       try {
         const res = await axios.get("/api/course");
         setCoursesList([
@@ -76,13 +79,12 @@ const PromoCodeFormView: React.FC<PromoCodeFormViewProps> = ({
       } catch (err) {
         setCoursesList([{ id: "all", name: "All Courses" }]);
         setError(`เกิดข้อผิดพลาดในการโหลดข้อมูล ${err.message}`);
-      }finally {
+      } finally {
         setLoading(false);
       }
     };
     fetchCourses();
   }, []);
-
 
   useEffect(() => {
     if (triggerRef.current) {
@@ -111,7 +113,7 @@ const PromoCodeFormView: React.FC<PromoCodeFormViewProps> = ({
       });
     },
     [formData.course_ids, setFormData]
-  )
+  );
 
   // ลบ tag
   const handleRemoveTag = useCallback(
@@ -130,6 +132,23 @@ const PromoCodeFormView: React.FC<PromoCodeFormViewProps> = ({
   const getSelectedCoursesDisplay = useMemo(() => {
     return coursesList.filter((c) => formData.course_ids?.includes(c.id));
   }, [formData.course_ids]);
+
+  const handlePercentBlur = (e) => {
+    if (formData.discount_type === "Percent") {
+      let value = Number(e.target.value);
+      if (value > 100) {
+        setFormData((prev) => ({
+          ...prev,
+          discount_value: 100,
+        }));
+      } else if (value < 0) {
+        setFormData((prev) => ({
+          ...prev,
+          discount_value: 0,
+        }));
+      }
+    }
+  };
 
   return (
     <>
@@ -177,11 +196,16 @@ const PromoCodeFormView: React.FC<PromoCodeFormViewProps> = ({
                   id="promo-code"
                   name="code"
                   placeholder="Enter promo code"
-                  className="w-full px-4 py-2 border rounded-md"
+                  className={`w-full px-4 py-2 border rounded-md ${
+                    errors.code ? "border-red-500" : ""
+                  }`}
                   value={formData.code}
                   onChange={handleInputChange}
                   required
                 />
+                {errors.code && (
+                  <div className="text-red-500 text-xs mt-1">{errors.code}</div>
+                )}
               </div>
               {/* Minimum purchase */}
               <div>
@@ -197,12 +221,19 @@ const PromoCodeFormView: React.FC<PromoCodeFormViewProps> = ({
                   id="min-purchase"
                   name="min_purchase_amount"
                   placeholder="0"
-                  className="w-full px-4 py-2 border rounded-md"
+                  className={`w-full px-4 py-2 border rounded-md ${
+                    errors.min_purchase_amount ? "border-red-500" : ""
+                  }`}
                   value={formData.min_purchase_amount}
                   onChange={handleInputChange}
                   min={0}
                   required
                 />
+                {errors.min_purchase_amount && (
+                  <div className="text-red-500 text-xs mt-1">
+                    {errors.min_purchase_amount}
+                  </div>
+                )}
               </div>
             </div>
 
@@ -211,15 +242,20 @@ const PromoCodeFormView: React.FC<PromoCodeFormViewProps> = ({
               <label className="block text-sm font-medium mb-2">
                 Select discount type <span className="text-red-500">*</span>
               </label>
+              {errors.discount_type && (
+                <div className="text-red-500 text-xs mb-2">
+                  {errors.discount_type}
+                </div>
+              )}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* Fixed amount */}
-                <label className="flex items-center gap-2">
+                <label className="flex items-center gap-2 cursor-pointer">
                   <input
                     type="radio"
                     name="discount_type"
                     checked={formData.discount_type === "Fixed amount"}
                     onChange={() => handleDiscountTypeChange("Fixed amount")}
-                    className="accent-blue-600"
+                    className="accent-blue-600 cursor-pointer"
                   />
                   <span>Fixed amount (THB)</span>
                   <input
@@ -231,19 +267,30 @@ const PromoCodeFormView: React.FC<PromoCodeFormViewProps> = ({
                         : ""
                     }
                     onChange={handleInputChange}
-                    className="w-24 border border-gray-300 rounded-lg px-2 py-1 ml-2"
+                    className={`w-24 border border-gray-300 rounded-lg px-2 py-1 ml-2 ${
+                      formData.discount_type === "Fixed amount" &&
+                      errors.discount_value
+                        ? "border-red-500"
+                        : ""
+                    }`}
                     disabled={formData.discount_type !== "Fixed amount"}
                     min={0}
                   />
+                  {formData.discount_type === "Fixed amount" &&
+                    errors.discount_value && (
+                      <div className="text-red-500 text-xs mt-1">
+                        {errors.discount_value}
+                      </div>
+                    )}
                 </label>
                 {/* Percent */}
-                <label className="flex items-center gap-2">
+                <label className="flex items-center gap-2 cursor-pointer">
                   <input
                     type="radio"
                     name="discount_type"
                     checked={formData.discount_type === "Percent"}
                     onChange={() => handleDiscountTypeChange("Percent")}
-                    className="accent-blue-600"
+                    className="accent-blue-600 cursor-pointer"
                   />
                   <span>Percent (%)</span>
                   <input
@@ -255,11 +302,23 @@ const PromoCodeFormView: React.FC<PromoCodeFormViewProps> = ({
                         : ""
                     }
                     onChange={handleInputChange}
-                    className="w-24 border border-gray-300 rounded-lg px-2 py-1 ml-2"
+                    onBlur={handlePercentBlur}
+                    className={`w-24 border border-gray-300 rounded-lg px-2 py-1 ml-2 ${
+                      formData.discount_type === "Percent" &&
+                      errors.discount_value
+                        ? "border-red-500"
+                        : ""
+                    }`}
                     disabled={formData.discount_type !== "Percent"}
                     min={0}
                     max={100}
                   />
+                  {formData.discount_type === "Percent" &&
+                    errors.discount_value && (
+                      <div className="text-red-500 text-xs mt-1">
+                        {errors.discount_value}
+                      </div>
+                    )}
                 </label>
               </div>
             </div>
