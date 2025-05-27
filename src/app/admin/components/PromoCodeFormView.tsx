@@ -94,38 +94,50 @@ const PromoCodeFormView: React.FC<PromoCodeFormViewProps> = ({
 
   const handleToggleCourse = useCallback(
     (courseId: string) => {
-      if (!setFormData) {
-        return;
-      }
-      const currentIds = formData.course_ids || [];
+      if (!setFormData) return;
       let newIds: string[] = [];
 
-      if (currentIds.includes(courseId)) {
-        // ถ้าเลือกอยู่แล้ว ให้ยกเลิก
-        newIds = currentIds.filter((id: string) => id !== courseId);
+      if (courseId === "all") {
+        newIds = ["all"];
       } else {
-        // ถ้ายังไม่เลือก ให้เพิ่มเข้าไป
-        newIds = [...currentIds, courseId];
+        const currentIds = formData.course_ids.filter((id) => id !== "all");
+        if (formData.course_ids.includes(courseId)) {
+          newIds = currentIds.filter((id) => id !== courseId);
+        } else {
+          newIds = [...currentIds, courseId];
+        }
+        if (newIds.length === 0) {
+          newIds = ["all"];
+        }
       }
-      setFormData((prev: any) => {
-        const updated = { ...prev, course_ids: newIds };
-        return updated;
-      });
+      setFormData((prev: any) => ({
+        ...prev,
+        course_ids: newIds,
+      }));
     },
     [formData.course_ids, setFormData]
   );
+
+  const handleCoursesBlur = () => {
+    if (!formData.course_ids || formData.course_ids.length === 0) {
+      setFormData((prev: any) => ({
+        ...prev,
+        course_ids: ["all"],
+      }));
+    }
+  };
 
   // ลบ tag
   const handleRemoveTag = useCallback(
     (id: string) => {
       if (!setFormData) return;
-
+      const newIds = formData.course_ids.filter((cid) => cid !== id);
       setFormData((prev: any) => ({
         ...prev,
-        course_ids: prev.course_ids.filter((cid: string) => cid !== id),
+        course_ids: newIds.length === 0 ? ["all"] : newIds,
       }));
     },
-    [setFormData]
+    [formData.course_ids, setFormData]
   );
 
   // แสดงชื่อคอร์สที่เลือก
@@ -339,6 +351,7 @@ const PromoCodeFormView: React.FC<PromoCodeFormViewProps> = ({
                     }`}
                     tabIndex={0}
                     onClick={() => setPopoverOpen(true)}
+                    onBlur={handleCoursesBlur}
                     onKeyDown={(e) => {
                       if (e.key === "Enter" || e.key === " ") {
                         e.preventDefault();
@@ -346,13 +359,14 @@ const PromoCodeFormView: React.FC<PromoCodeFormViewProps> = ({
                       }
                     }}
                   >
-                    {getSelectedCoursesDisplay.length === 0 ? (
-                      <span className="text-gray-400">Select courses</span>
+                    {formData.course_ids.length === 1 &&
+                    formData.course_ids[0] === "all" ? (
+                      <span className="">All courses</span>
                     ) : (
                       getSelectedCoursesDisplay.map((course) => (
                         <span
                           key={course.id}
-                          className="flex items-center px-3 py-1 rounded-full text-sm mr-2 bg-blue-50 border border-blue-200 text-blue-700"
+                          className="flex items-center px-3 py-1 rounded-md text-sm mr-2 bg-[#E5ECF8] border border-[#8DADE0] font-semibold"
                         >
                           {course.name}
                           <button
@@ -363,7 +377,7 @@ const PromoCodeFormView: React.FC<PromoCodeFormViewProps> = ({
                               handleRemoveTag(course.id);
                             }}
                           >
-                            <X size={14} />
+                            <X size={14} className="text-[#2F5FAC] cursor-pointer" />
                           </button>
                         </span>
                       ))
