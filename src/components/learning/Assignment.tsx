@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useLearning } from "./context/LearningContext";
 import { useAuth } from "@/app/context/authContext";
 import { useParams } from "next/navigation";
@@ -9,6 +9,7 @@ import LoadingSpinner from "@/app/admin/components/LoadingSpinner";
 import { useCustomToast } from "@/components/ui/CustomToast";
 import { getBangkokISOString } from "@/lib/bangkokTime";
 import { ButtonT } from "@/components/ui/ButtonT";
+import { useDraft } from "@/app/context/draftContext";
 
 export default function Assignment() {
   const { currentLesson, setCurrentLesson } = useLearning();
@@ -16,8 +17,16 @@ export default function Assignment() {
   const { courseId } = useParams();
   const { success, error } = useCustomToast();
 
+  // --- Draft logic ---
+  const { dirtyAssignments, setDirty, clearDrafts } = useDraft?.() || {};
+  const [lastSaved, setLastSaved] = useState<Date | null>(null);
+  const [lastSavedAnswer, setLastSavedAnswer] = useState<string>("");
+  const [autoSaveStatus, setAutoSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const autoSaveTimeout = useRef<NodeJS.Timeout | null>(null);
+  // --- End draft logic ---
+
   const [assignment, setAssignment] = useState<any>(null);
-  const [assignmentStatus, setAssignmentStatus] = useState<"pending" | "submitted">("pending");
+  const [assignmentStatus, setAssignmentStatus] = useState<"pending" | "submitted" | "inprogress">("pending");
   const [assignmentAnswer, setAssignmentAnswer] = useState("");
   const [submittedAt, setSubmittedAt] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -81,7 +90,7 @@ export default function Assignment() {
 
       const { data, error } = await supabase
         .from("submissions")
-        .select("id, answer, created_at, updated_at")
+        .select("id, answer, created_at, updated_at, status")
         .eq("user_id", user.user_id)
         .eq("assignment_id", assignment.id)
         .single();
@@ -91,19 +100,122 @@ export default function Assignment() {
         return;
       }
 
-      if (data && data.answer && data.answer.trim() !== "") {
-        setAssignmentStatus("submitted");
+      if (data && typeof data.answer === "string") {
         setAssignmentAnswer(data.answer);
-        setSubmittedAt(data.updated_at); 
+        setLastSavedAnswer(data.answer);
+        setSubmittedAt(data.updated_at);
+        if (data.status === "submitted") {
+          setAssignmentStatus("submitted");
+        } else if (data.answer.trim() !== "") {
+          setAssignmentStatus("inprogress");
+        } else {
+          setAssignmentStatus("pending");
+        }
       } else {
         setAssignmentStatus("pending");
         setAssignmentAnswer("");
+        setLastSavedAnswer("");
         setSubmittedAt(null);
       }
     };
 
     checkExistingSubmission();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.user_id, assignment?.id]);
+
+  // --- Draft/auto-save logic ---
+  // Mark as dirty on change
+  const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setAssignmentAnswer(e.target.value);
+    if (assignment?.id) setDirty?.(assignment.id);
+    if (assignmentStatus === "submitted") return;
+    if (e.target.value.trim() === "") {
+      setAssignmentStatus("pending");
+    } else {
+      setAssignmentStatus("inprogress");
+    }
+  };
+
+  // Auto-save every 30s if answer changed and not submitted
+  useEffect(() => {
+    if (!assignment?.id || assignmentStatus === "submitted") return;
+    if (autoSaveTimeout.current) clearTimeout(autoSaveTimeout.current);
+
+    if (assignmentAnswer === lastSavedAnswer) {
+      setAutoSaveStatus("idle");
+      return;
+    }
+
+    setAutoSaveStatus("idle");
+    autoSaveTimeout.current = setTimeout(async () => {
+      setAutoSaveStatus("saving");
+      try {
+        if (!user?.user_id) return;
+        const now = getBangkokISOString();
+        // Upsert submission as "inprogress"
+        const { data: existing, error: checkError } = await supabase
+          .from("submissions")
+          .select("id")
+          .eq("assignment_id", assignment.id)
+          .eq("user_id", user.user_id)
+          .single();
+
+        if (checkError && checkError.code !== "PGRST116") throw checkError;
+
+        if (existing) {
+          const { error: updateError } = await supabase
+            .from("submissions")
+            .update({
+              answer: assignmentAnswer,
+              updated_at: now,
+              status: assignmentAnswer.trim() === "" ? "pending" : "inprogress",
+            })
+            .eq("id", existing.id);
+          if (updateError) throw updateError;
+        } else {
+          const { error: insertError } = await supabase
+            .from("submissions")
+            .insert([{
+              assignment_id: assignment.id,
+              user_id: user.user_id,
+              answer: assignmentAnswer,
+              status: assignmentAnswer.trim() === "" ? "pending" : "inprogress",
+              grade: null,
+              created_at: now,
+              updated_at: now,
+              submission_date: null,
+            }]);
+          if (insertError) throw insertError;
+        }
+        setLastSaved(new Date());
+        setLastSavedAnswer(assignmentAnswer);
+        setAutoSaveStatus("saved");
+        // Use info toast for auto-save
+        if (typeof (success as any) === "function" && (success as any).name === "info") {
+          (success as any)("Auto-saved", "Your answer was auto-saved.");
+        } else if ((useCustomToast() as any).info) {
+          (useCustomToast() as any).info("Auto-saved", "Your answer was auto-saved.");
+        } else if ((useCustomToast() as any).success) {
+          // fallback, but prefer info
+          (useCustomToast() as any).success("Auto-saved", "Your answer was auto-saved.");
+        }
+      } catch (e) {
+        setAutoSaveStatus("error");
+        error("Auto-save failed", "Could not auto-save your answer.");
+      }
+    }, 30000);
+
+    return () => {
+      if (autoSaveTimeout.current) clearTimeout(autoSaveTimeout.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [assignmentAnswer, assignment?.id, assignmentStatus, user?.user_id]);
+
+  // Clear drafts on submit/reset
+  const clearDraftIfAny = () => {
+    if (assignment?.id) clearDrafts?.();
+  };
+  // --- End draft/auto-save logic ---
 
   const handleSubmit = async () => {
     const now = getBangkokISOString();
@@ -117,6 +229,7 @@ export default function Assignment() {
 
       if (!assignmentAnswer.trim()) {
         error("Answer is required", "Please type your answer before submitting.");
+        setAssignmentStatus("pending");
         return;
       }
 
@@ -162,6 +275,9 @@ export default function Assignment() {
 
       setAssignmentStatus("submitted");
       setSubmittedAt(now);
+      setLastSaved(new Date());
+      setLastSavedAnswer(assignmentAnswer);
+      clearDraftIfAny();
       success("Submission Successful", "Your answer has been saved.");
 
     } catch (err) {
@@ -187,7 +303,10 @@ export default function Assignment() {
     if (!resetError) {
       setAssignmentStatus("pending");
       setAssignmentAnswer("");
+      setLastSaved(new Date());
+      setLastSavedAnswer("");
       setSubmittedAt(null);
+      clearDraftIfAny();
       success("Answer Cleared", "You can now submit a new answer.");
     } else {
       console.error("❌ Reset error:", resetError);
@@ -204,34 +323,72 @@ export default function Assignment() {
 
   if (!assignment) return null;
 
+  // --- Status tag logic ---
+  let statusText = "Pending";
+  let statusClass = "bg-yellow-100 text-yellow-800";
+  if (assignmentStatus === "submitted") {
+    statusText = "Submitted";
+    statusClass = "bg-green-100 text-green-800";
+  } else if (assignmentStatus === "inprogress") {
+    statusText = "In Progress";
+    statusClass = "bg-[#EBF0FF] text-[#3557CF]";
+  }
+  // ---
+
   return (
     <div className="mt-8 px-4 py-6 sm:p-6 border rounded-lg bg-white">
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-lg font-bold">Assignment</h2>
-        <span className={`px-3 py-1 rounded-full text-sm w-fit ${
-          assignmentStatus === "submitted"
-            ? "bg-green-100 text-green-800"
-            : "bg-yellow-100 text-yellow-800"
-        }`}>
-          {assignmentStatus === "submitted" ? "Submitted" : "Pending"}
+        <span className={`px-3 py-1 rounded-full text-sm w-fit ${statusClass}`}>
+          {statusText}
         </span>
       </div>
 
       <p className="mb-4 text-sm text-gray-700">{assignment.description || "No Assignment"}</p>
 
-      {assignmentStatus === "pending" ? (
+      {assignmentStatus === "pending" || assignmentStatus === "inprogress" ? (
         <>
           <textarea
-            className="w-full p-3 border rounded-lg mb-4 min-h-[120px] text-sm"
+            className="w-full p-3 border rounded-lg mb-2 min-h-[120px] text-sm"
             value={assignmentAnswer}
-            onChange={(e) => setAssignmentAnswer(e.target.value)}
+            onChange={handleChange}
             placeholder="Answer..."
           />
+          {/* Auto-save status */}
+          {(autoSaveStatus === "saving" ||
+            (autoSaveStatus === "saved" && lastSaved) ||
+            autoSaveStatus === "error") &&
+            (
+              <div className="flex items-center gap-3 mb-1 min-h-[24px]">
+                {autoSaveStatus === "saving" && (
+                  <span className="text-[#3557CF] text-xs">Saving...</span>
+                )}
+                {autoSaveStatus === "saved" && lastSaved && (
+                  <span className="text-[#646D89] text-xs">
+                    Last saved: {lastSaved.toLocaleDateString()}{" "}
+                    {lastSaved.toLocaleTimeString([], {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                      second: "2-digit",
+                    })}
+                  </span>
+                )}
+                {autoSaveStatus === "error" && (
+                  <span className="text-red-500 text-xs">Auto-save failed</span>
+                )}
+              </div>
+            )}
+          {autoSaveStatus !== "saving" &&
+            !(autoSaveStatus === "saved" && lastSaved) &&
+            autoSaveStatus !== "error" && (
+              <div style={{ marginBottom: 0, minHeight: 0 }} />
+            )}
           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
             <ButtonT
               variant="primary"
               className="w-full sm:w-auto"
               onClick={handleSubmit}
+              disabled={!assignmentAnswer.trim()}
             >
               Send Assignment
             </ButtonT>

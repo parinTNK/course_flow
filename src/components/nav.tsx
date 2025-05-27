@@ -23,12 +23,23 @@ import { ButtonT } from "@/components/ui/ButtonT";
 import { useAuth } from "@/app/context/authContext";
 import { useRouter } from "next/navigation";
 
-const NavBar: React.FC = () => {
+type NavBarProps = {
+  navigate?: (to: string) => void;
+};
+
+const NavBar: React.FC<NavBarProps> = ({ navigate }) => {
   const [isOpen, setIsOpen] = useState(false);
-  const { user, loading, fetchUser } = useAuth();
+  const { user } = useAuth();
   const router = useRouter();
 
-  // Check user role on first load and logout if admin
+  const handleNav = (to: string) => {
+    if (navigate) {
+      navigate(to);
+    } else {
+      router.push(to); // fallback
+    }
+  };
+
   useEffect(() => {
     if (user?.role === "admin") {
       (async () => {
@@ -62,22 +73,23 @@ const NavBar: React.FC = () => {
   return (
     <nav className="bg-white fixed w-full h-[56px] sm:h-[88px] z-20 top-0 start-0 border-b border-gray-200 shadow-sm">
       {/* Desktop */}
-      <div className=" h-full hidden sm:flex items-center justify-between mx-[80px] lg:mx-[160px]">
-        <Link
-          href="/"
-          className="text-2xl font-extrabold text-transparent bg-linear1"
+      <div className="hidden sm:flex items-center justify-between mx-[80px] lg:mx-[160px] h-full">
+        {/* Logo */}
+        <a
+          className="text-2xl font-extrabold text-transparent bg-linear1 cursor-pointer"
           style={{ backgroundClip: "text", WebkitBackgroundClip: "text" }}
+          onClick={() => handleNav("/")}
         >
           CourseFlow
-        </Link>
+        </a>
 
         <div className="flex items-center space-x-6">
-          <Link
-            href="/our-courses"
-            className="font-semibold text-[#1A1A66] hover:text-[#0033CC] transition"
+          <a
+            className="font-semibold text-[#1A1A66] hover:text-[#0033CC] transition cursor-pointer"
+            onClick={() => handleNav("/our-courses")}
           >
             Our Courses
-          </Link>
+          </a>
 
           {!user ? (
             <Link href="/login">
@@ -114,7 +126,7 @@ const NavBar: React.FC = () => {
                 {menuItems.map(({ icon: Icon, label, href }) => (
                   <DropdownMenuItem
                     key={label}
-                    onClick={() => router.push(href)}
+                    onClick={() => handleNav(href)}
                     className="px-4 py-2 hover:bg-gray-100 flex items-center space-x-3 text-[#646D89] cursor-pointer"
                   >
                     <Icon className="w-5 h-5 text-[#8DADE0]" />
@@ -137,21 +149,22 @@ const NavBar: React.FC = () => {
 
       {/* Mobile */}
       <div className="sm:hidden flex justify-between items-center h-full mx-[16px]">
-        <Link
-          href="/"
-          className="text-xl font-extrabold text-transparent bg-linear1"
+        {/* Logo */}
+        <a
+          className="text-xl font-extrabold text-transparent bg-linear1 cursor-pointer"
           style={{ backgroundClip: "text", WebkitBackgroundClip: "text" }}
+          onClick={() => handleNav("/")}
         >
           CourseFlow
-        </Link>
+        </a>
 
         <div className="flex items-center space-x-4">
-          <Link
-            href="/our-courses"
-            className="text-sm font-bold text-[#1A1A66] hover:text-[#0033CC] transition !important"
+          <a
+            className="text-sm font-bold text-[#1A1A66] hover:text-[#0033CC] transition !important cursor-pointer"
+            onClick={() => handleNav("/our-courses")}
           >
             Our Courses
-          </Link>
+          </a>
 
           {!user ? (
             <Link href="/login">
@@ -181,7 +194,7 @@ const NavBar: React.FC = () => {
                 {menuItems.map(({ icon: Icon, label, href }) => (
                   <DropdownMenuItem
                     key={label}
-                    onClick={() => router.push(href)}
+                    onClick={() => handleNav(href)}
                     className="px-4 py-2 hover:bg-gray-100 flex items-center space-x-3 text-[#646D89] cursor-pointer"
                   >
                     <Icon className="w-5 h-5 text-[#8DADE0]" />
