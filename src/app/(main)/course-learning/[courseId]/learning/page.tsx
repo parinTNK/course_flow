@@ -13,6 +13,7 @@ import { useRouter } from "next/navigation";
 import { ProgressProvider } from "@/components/learning/context/ProgressContext";
 import LessonVideoPlayer from "@/components/learning/SubLessonVideoPlayer";
 import { ButtonT } from "@/components/ui/ButtonT";
+import { DraftProvider } from "@/app/context/draftContext";
 
 interface SubLesson {
   id: string;
@@ -224,10 +225,12 @@ function CourseContent() {
 
 export default function CourseLearningPage() {
   return (
-    <LearningProvider>
-      <ProgressProvider>
-        <CourseContent />
-      </ProgressProvider>
-    </LearningProvider>
+    <DraftProvider>
+      <LearningProvider>
+        <ProgressProvider>
+          <CourseContent />
+        </ProgressProvider>
+      </LearningProvider>
+    </DraftProvider>
   );
 }
