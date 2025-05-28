@@ -1,12 +1,5 @@
-import React, {
-  useState,
-  useEffect,
-  useRef,
-  useCallback,
-  useMemo,
-} from "react";
+import React from "react";
 import { ButtonT } from "@/components/ui/ButtonT";
-import { Button } from "@/components/ui/button";
 import {
   Popover,
   PopoverTrigger,
@@ -20,148 +13,60 @@ import {
 } from "@/components/ui/command";
 import { Checkbox } from "@/components/ui/checkbox";
 import { X } from "lucide-react";
-import axios from "axios";
-
-interface Course {
-  id: string;
-  name: string;
-  price?: number;
-}
+import {
+  ALL_COURSES_ID,
+  DISCOUNT_TYPE_FIXED,
+  DISCOUNT_TYPE_PERCENT,
+  PromoCodeFormData,
+  Course,
+} from "@/types/promoCode";
+import LoadingSpinner from "../components/LoadingSpinner";
 
 interface PromoCodeFormViewProps {
-  formData: {
-    code: string;
-    min_purchase_amount: string;
-    discount_type: string;
-    discount_value: string;
-    course_ids: string[];
-  };
+  formData: PromoCodeFormData;
   isLoading: boolean;
+  errors?: Record<string, string>;
+  coursesList: Course[];
+  popoverOpen: boolean;
+  triggerRef: React.RefObject<HTMLDivElement>;
+  triggerWidth: number;
+  getSelectedCoursesDisplay: Course[];
   handleInputChange: (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => void;
   handleDiscountTypeChange: (type: string) => void;
-  handleCoursesChange?: (e: React.ChangeEvent<HTMLSelectElement>) => void;
   handleCancel: () => void;
   handleSubmit: (e: React.FormEvent) => void;
-  setFormData?: any;
-  errors?: Record<string, string>;
+  setPopoverOpen: (open: boolean) => void;
+  handleCoursesBlur: () => void;
+  handleToggleCourse: (courseId: string) => void;
+  handleRemoveTag: (id: string) => void;
+  handlePercentBlur: (e: React.FocusEvent<HTMLInputElement>) => void;
+  isCreateDisabled?: boolean;
+  isLoadingCourses?: boolean;
 }
 
 const PromoCodeFormView: React.FC<PromoCodeFormViewProps> = ({
   formData,
   isLoading,
+  errors = {},
+  coursesList,
+  popoverOpen,
+  triggerRef,
+  triggerWidth,
+  getSelectedCoursesDisplay,
   handleInputChange,
   handleDiscountTypeChange,
   handleCancel,
   handleSubmit,
-  setFormData,
-  errors = {},
+  setPopoverOpen,
+  handleCoursesBlur,
+  handleToggleCourse,
+  handleRemoveTag,
+  handlePercentBlur,
+  isCreateDisabled = false,
+  isLoadingCourses = false,
 }) => {
-  const [coursesList, setCoursesList] = useState<Course[]>([]);
-  const [error, setError] = useState(null);
-  const [loading, setLoading] = useState(false);
-
-  const [popoverOpen, setPopoverOpen] = useState(false);
-  const triggerRef = useRef<HTMLDivElement>(null);
-  const [triggerWidth, setTriggerWidth] = useState<number>(0);
-
-  useEffect(() => {
-    const fetchCourses = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const res = await axios.get("/api/course");
-        setCoursesList([
-          { id: "all", name: "All Courses" },
-          ...(res.data || []),
-        ]);
-      } catch (err) {
-        setCoursesList([{ id: "all", name: "All Courses" }]);
-        setError(`เกิดข้อผิดพลาดในการโหลดข้อมูล ${err.message}`);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchCourses();
-  }, []);
-
-  useEffect(() => {
-    if (triggerRef.current) {
-      setTriggerWidth(triggerRef.current.offsetWidth);
-    }
-  }, [popoverOpen]);
-
-  const handleToggleCourse = useCallback(
-    (courseId: string) => {
-      if (!setFormData) return;
-      let newIds: string[] = [];
-
-      if (courseId === "all") {
-        newIds = ["all"];
-      } else {
-        const currentIds = formData.course_ids.filter((id) => id !== "all");
-        if (formData.course_ids.includes(courseId)) {
-          newIds = currentIds.filter((id) => id !== courseId);
-        } else {
-          newIds = [...currentIds, courseId];
-        }
-        if (newIds.length === 0) {
-          newIds = ["all"];
-        }
-      }
-      setFormData((prev: any) => ({
-        ...prev,
-        course_ids: newIds,
-      }));
-    },
-    [formData.course_ids, setFormData]
-  );
-
-  const handleCoursesBlur = () => {
-    if (!formData.course_ids || formData.course_ids.length === 0) {
-      setFormData((prev: any) => ({
-        ...prev,
-        course_ids: ["all"],
-      }));
-    }
-  };
-
-  // ลบ tag
-  const handleRemoveTag = useCallback(
-    (id: string) => {
-      if (!setFormData) return;
-      const newIds = formData.course_ids.filter((cid) => cid !== id);
-      setFormData((prev: any) => ({
-        ...prev,
-        course_ids: newIds.length === 0 ? ["all"] : newIds,
-      }));
-    },
-    [formData.course_ids, setFormData]
-  );
-
-  // แสดงชื่อคอร์สที่เลือก
-  const getSelectedCoursesDisplay = useMemo(() => {
-    return coursesList.filter((c) => formData.course_ids?.includes(c.id));
-  }, [formData.course_ids]);
-
-  const handlePercentBlur = (e) => {
-    if (formData.discount_type === "Percent") {
-      let value = Number(e.target.value);
-      if (value > 100) {
-        setFormData((prev) => ({
-          ...prev,
-          discount_value: 100,
-        }));
-      } else if (value < 0) {
-        setFormData((prev) => ({
-          ...prev,
-          discount_value: 0,
-        }));
-      }
-    }
-  };
-
   return (
     <>
       <div className="flex justify-between items-center mb-8 bg-white px-8 py-6 border-b-3 border-gray-200">
@@ -177,277 +82,291 @@ const PromoCodeFormView: React.FC<PromoCodeFormViewProps> = ({
           <ButtonT
             variant="primary"
             className="w-[149px] h-[32px]"
-            disabled={isLoading}
+            disabled={isCreateDisabled}
             onClick={handleSubmit}
           >
             {isLoading ? "Creating..." : "Create"}
           </ButtonT>
         </div>
       </div>
-
-      <div className="bg-geay-50 flex-1 h-screen">
-        <form className="space-y-6" onSubmit={handleSubmit}>
-          <div className="px-24 py-14 mx-10 border-b-3 rounded-2xl bg-white">
-            {/* Debug info */}
-            {/* <div className="mb-4 p-2 bg-gray-100 rounded text-xs">
-              Debug - Selected course_ids: {JSON.stringify(formData.course_ids)}
-            </div> */}
-
-            {/* 2 columns */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Promo code */}
-              <div>
-                <label
-                  htmlFor="promo-code"
-                  className="block text-sm font-medium mb-2"
-                >
-                  Set promo code <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  id="promo-code"
-                  name="code"
-                  placeholder="Enter promo code"
-                  className={`w-full px-4 py-2 border rounded-md ${
-                    errors.code ? "border-red-500" : ""
-                  }`}
-                  value={formData.code}
-                  onChange={handleInputChange}
-                  required
-                />
-                {errors.code && (
-                  <div className="text-red-500 text-xs mt-1">{errors.code}</div>
-                )}
-              </div>
-              {/* Minimum purchase */}
-              <div>
-                <label
-                  htmlFor="min-purchase"
-                  className="block text-sm font-medium mb-2"
-                >
-                  Minimum purchase amount (THB){" "}
-                  <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="number"
-                  id="min-purchase"
-                  name="min_purchase_amount"
-                  placeholder="0"
-                  className={`w-full px-4 py-2 border rounded-md ${
-                    errors.min_purchase_amount ? "border-red-500" : ""
-                  }`}
-                  value={formData.min_purchase_amount}
-                  onChange={handleInputChange}
-                  min={0}
-                  required
-                />
-                {errors.min_purchase_amount && (
-                  <div className="text-red-500 text-xs mt-1">
-                    {errors.min_purchase_amount}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Discount type */}
-            <div className="mt-8">
-              <label className="block text-sm font-medium mb-2">
-                Select discount type <span className="text-red-500">*</span>
-              </label>
-              {errors.discount_type && (
-                <div className="text-red-500 text-xs mb-2">
-                  {errors.discount_type}
-                </div>
-              )}
+      {isLoadingCourses ? (
+        <LoadingSpinner text="Loading courses..." size="md" />
+      ) : (
+        <div className="bg-geay-50 flex-1 h-screen">
+          <form className="space-y-6" onSubmit={handleSubmit}>
+            <div className="px-24 py-14 mx-10 border-b-3 rounded-2xl bg-white">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Fixed amount */}
-                <label className="flex items-center gap-2 cursor-pointer">
+                {/* Promo code */}
+                <div>
+                  <label
+                    htmlFor="promo-code"
+                    className="block text-sm font-medium mb-2"
+                  >
+                    Set promo code <span className="text-red-500">*</span>
+                  </label>
                   <input
-                    type="radio"
-                    name="discount_type"
-                    checked={formData.discount_type === "Fixed amount"}
-                    onChange={() => handleDiscountTypeChange("Fixed amount")}
-                    className="accent-blue-600 cursor-pointer"
+                    type="text"
+                    id="promo-code"
+                    name="code"
+                    placeholder="Enter promo code"
+                    className={`w-full px-4 py-2 border rounded-md ${
+                      errors.code ? "border-red-500" : ""
+                    }`}
+                    value={formData.code}
+                    onChange={handleInputChange}
+                    required
                   />
-                  <span>Fixed amount (THB)</span>
+                  {errors.code && (
+                    <div className="text-red-500 text-xs mt-1">
+                      {errors.code}
+                    </div>
+                  )}
+                </div>
+                {/* Minimum purchase */}
+                <div>
+                  <label
+                    htmlFor="min-purchase"
+                    className="block text-sm font-medium mb-2"
+                  >
+                    Minimum purchase amount (THB){" "}
+                    <span className="text-red-500">*</span>
+                  </label>
                   <input
                     type="number"
-                    name="discount_value"
-                    value={
-                      formData.discount_type === "Fixed amount"
-                        ? formData.discount_value
-                        : ""
-                    }
-                    onChange={handleInputChange}
-                    className={`w-24 border border-gray-300 rounded-lg px-2 py-1 ml-2 ${
-                      formData.discount_type === "Fixed amount" &&
-                      errors.discount_value
-                        ? "border-red-500"
-                        : ""
+                    id="min-purchase"
+                    name="min_purchase_amount"
+                    placeholder="0"
+                    className={`w-full px-4 py-2 border rounded-md ${
+                      errors.min_purchase_amount ? "border-red-500" : ""
                     }`}
-                    disabled={formData.discount_type !== "Fixed amount"}
-                    min={0}
-                  />
-                  {formData.discount_type === "Fixed amount" &&
-                    errors.discount_value && (
-                      <div className="text-red-500 text-xs mt-1">
-                        {errors.discount_value}
-                      </div>
-                    )}
-                </label>
-                {/* Percent */}
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="discount_type"
-                    checked={formData.discount_type === "Percent"}
-                    onChange={() => handleDiscountTypeChange("Percent")}
-                    className="accent-blue-600 cursor-pointer"
-                  />
-                  <span>Percent (%)</span>
-                  <input
-                    type="number"
-                    name="discount_value"
-                    value={
-                      formData.discount_type === "Percent"
-                        ? formData.discount_value
-                        : ""
-                    }
+                    value={formData.min_purchase_amount}
                     onChange={handleInputChange}
-                    onBlur={handlePercentBlur}
-                    className={`w-24 border border-gray-300 rounded-lg px-2 py-1 ml-2 ${
-                      formData.discount_type === "Percent" &&
-                      errors.discount_value
-                        ? "border-red-500"
-                        : ""
-                    }`}
-                    disabled={formData.discount_type !== "Percent"}
                     min={0}
-                    max={100}
+                    required
                   />
-                  {formData.discount_type === "Percent" &&
-                    errors.discount_value && (
-                      <div className="text-red-500 text-xs mt-1">
-                        {errors.discount_value}
-                      </div>
-                    )}
+                  {errors.min_purchase_amount && (
+                    <div className="text-red-500 text-xs mt-1">
+                      {errors.min_purchase_amount}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Discount type */}
+              <div className="mt-8">
+                <label className="block text-sm font-medium mb-2">
+                  Select discount type <span className="text-red-500">*</span>
                 </label>
+                {errors.discount_type && (
+                  <div className="text-red-500 text-xs mb-2">
+                    {errors.discount_type}
+                  </div>
+                )}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Fixed amount */}
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="discount_type"
+                      checked={formData.discount_type === DISCOUNT_TYPE_FIXED}
+                      onChange={() =>
+                        handleDiscountTypeChange(DISCOUNT_TYPE_FIXED)
+                      }
+                      className="accent-blue-600 cursor-pointer"
+                    />
+                    <span>Fixed amount (THB)</span>
+                    <input
+                      type="number"
+                      name="discount_value"
+                      placeholder="THB"
+                      value={
+                        formData.discount_type === DISCOUNT_TYPE_FIXED
+                          ? formData.discount_value
+                          : ""
+                      }
+                      onChange={handleInputChange}
+                      className={`w-24 border border-gray-300 rounded-lg px-2 py-1 ml-2 ${
+                        formData.discount_type === DISCOUNT_TYPE_FIXED &&
+                        errors.discount_value
+                          ? "border-red-500"
+                          : ""
+                      }`}
+                      disabled={formData.discount_type !== DISCOUNT_TYPE_FIXED}
+                      min={0}
+                    />
+                    {formData.discount_type === DISCOUNT_TYPE_FIXED &&
+                      errors.discount_value && (
+                        <div className="text-red-500 text-xs mt-1">
+                          {errors.discount_value}
+                        </div>
+                      )}
+                  </label>
+                  {/* Percent */}
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="discount_type"
+                      checked={formData.discount_type === DISCOUNT_TYPE_PERCENT}
+                      onChange={() =>
+                        handleDiscountTypeChange(DISCOUNT_TYPE_PERCENT)
+                      }
+                      className="accent-blue-600 cursor-pointer"
+                    />
+                    <span>Percent (%)</span>
+                    <input
+                      type="number"
+                      name="discount_value"
+                      placeholder="Percent"
+                      value={
+                        formData.discount_type === DISCOUNT_TYPE_PERCENT
+                          ? formData.discount_value
+                          : ""
+                      }
+                      onChange={handleInputChange}
+                      onBlur={handlePercentBlur}
+                      className={`w-24 border border-gray-300 rounded-lg px-2 py-1 ml-2 ${
+                        formData.discount_type === DISCOUNT_TYPE_PERCENT &&
+                        errors.discount_value
+                          ? "border-red-500"
+                          : ""
+                      }`}
+                      disabled={
+                        formData.discount_type !== DISCOUNT_TYPE_PERCENT
+                      }
+                      min={0}
+                      max={100}
+                    />
+                    {formData.discount_type === DISCOUNT_TYPE_PERCENT &&
+                      errors.discount_value && (
+                        <div className="text-red-500 text-xs mt-1">
+                          {errors.discount_value}
+                        </div>
+                      )}
+                  </label>
+                </div>
+              </div>
+
+              {/* Courses Included */}
+              <div className="mt-8">
+                <label className="block text-sm font-medium mb-2">
+                  Courses Included
+                </label>
+                {coursesList.length <= 1 ? (
+                  <div className="text-gray-400 py-2">No courses available</div>
+                ) : (
+                  <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
+                    <PopoverTrigger asChild>
+                      <div
+                        ref={triggerRef}
+                        className={`relative min-h-[48px] w-full border rounded-md px-3 py-2 flex flex-wrap items-center gap-2 cursor-pointer transition-colors ${
+                          popoverOpen
+                            ? "border-orange-400 ring-1 ring-orange-400"
+                            : "border-gray-300 hover:border-gray-400"
+                        }`}
+                        tabIndex={0}
+                        onClick={() => setPopoverOpen(true)}
+                        onBlur={handleCoursesBlur}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            setPopoverOpen(true);
+                          }
+                        }}
+                      >
+                        {formData.course_ids.length === 1 &&
+                        formData.course_ids[0] === ALL_COURSES_ID ? (
+                          <span className="">All courses</span>
+                        ) : (
+                          getSelectedCoursesDisplay.map((course) => (
+                            <span
+                              key={course.id}
+                              className="flex items-center px-3 py-1 rounded-md text-sm mr-2 bg-[#E5ECF8] border border-[#8DADE0] font-semibold"
+                            >
+                              {course.name}
+                              <button
+                                type="button"
+                                className="ml-2 text-gray-400 hover:text-red-500 transition-colors"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleRemoveTag(course.id);
+                                }}
+                              >
+                                <X
+                                  size={14}
+                                  className="text-[#2F5FAC] cursor-pointer"
+                                />
+                              </button>
+                            </span>
+                          ))
+                        )}
+                        <div className="ml-auto flex-shrink-0">
+                          <svg
+                            width="18"
+                            height="18"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            className={`text-gray-400 transition-transform ${
+                              popoverOpen ? "rotate-180" : ""
+                            }`}
+                          >
+                            <path
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              d="M6 9l6 6 6-6"
+                            />
+                          </svg>
+                        </div>
+                      </div>
+                    </PopoverTrigger>
+                    <PopoverContent
+                      align="start"
+                      className="p-0"
+                      style={{ width: triggerWidth }}
+                      sideOffset={4}
+                    >
+                      <Command>
+                        <CommandInput
+                          placeholder="Search courses..."
+                          className="border-none"
+                        />
+                        <CommandList className="max-h-[200px]">
+                          {coursesList.map((course) => {
+                            const isChecked =
+                              formData.course_ids?.includes(course.id) || false;
+
+                            return (
+                              <CommandItem
+                                key={course.id}
+                                className="flex items-center px-3 py-2 cursor-pointer hover:bg-gray-50"
+                                onSelect={() => false}
+                              >
+                                <div
+                                  className="flex items-center w-full cursor-pointer"
+                                  onClick={() => {
+                                    handleToggleCourse(course.id);
+                                  }}
+                                >
+                                  <Checkbox
+                                    checked={isChecked}
+                                    className="mr-2 pointer-events-none"
+                                  />
+                                  <span className="flex-1 select-none">
+                                    {course.name}
+                                  </span>
+                                </div>
+                              </CommandItem>
+                            );
+                          })}
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
+                )}
               </div>
             </div>
-
-            {/* Courses Included */}
-            <div className="mt-8">
-              <label className="block text-sm font-medium mb-2">
-                Courses Included
-              </label>
-              <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
-                <PopoverTrigger asChild>
-                  <div
-                    ref={triggerRef}
-                    className={`relative min-h-[48px] w-full border rounded-md px-3 py-2 flex flex-wrap items-center gap-2 cursor-pointer transition-colors ${
-                      popoverOpen
-                        ? "border-orange-400 ring-1 ring-orange-400"
-                        : "border-gray-300 hover:border-gray-400"
-                    }`}
-                    tabIndex={0}
-                    onClick={() => setPopoverOpen(true)}
-                    onBlur={handleCoursesBlur}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") {
-                        e.preventDefault();
-                        setPopoverOpen(true);
-                      }
-                    }}
-                  >
-                    {formData.course_ids.length === 1 &&
-                    formData.course_ids[0] === "all" ? (
-                      <span className="">All courses</span>
-                    ) : (
-                      getSelectedCoursesDisplay.map((course) => (
-                        <span
-                          key={course.id}
-                          className="flex items-center px-3 py-1 rounded-md text-sm mr-2 bg-[#E5ECF8] border border-[#8DADE0] font-semibold"
-                        >
-                          {course.name}
-                          <button
-                            type="button"
-                            className="ml-2 text-gray-400 hover:text-red-500 transition-colors"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleRemoveTag(course.id);
-                            }}
-                          >
-                            <X size={14} className="text-[#2F5FAC] cursor-pointer" />
-                          </button>
-                        </span>
-                      ))
-                    )}
-                    <div className="ml-auto flex-shrink-0">
-                      <svg
-                        width="18"
-                        height="18"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        className={`text-gray-400 transition-transform ${
-                          popoverOpen ? "rotate-180" : ""
-                        }`}
-                      >
-                        <path
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          d="M6 9l6 6 6-6"
-                        />
-                      </svg>
-                    </div>
-                  </div>
-                </PopoverTrigger>
-                <PopoverContent
-                  align="start"
-                  className="p-0"
-                  style={{ width: triggerWidth }}
-                  sideOffset={4}
-                >
-                  <Command>
-                    <CommandInput
-                      placeholder="Search courses..."
-                      className="border-none"
-                    />
-                    <CommandList className="max-h-[200px]">
-                      {coursesList.map((course) => {
-                        const isChecked =
-                          formData.course_ids?.includes(course.id) || false;
-
-                        return (
-                          <CommandItem
-                            key={course.id}
-                            className="flex items-center px-3 py-2 cursor-pointer hover:bg-gray-50"
-                            onSelect={() => false} // ป้องกัน default behavior
-                          >
-                            <div
-                              className="flex items-center w-full cursor-pointer"
-                              onClick={() => {
-                                handleToggleCourse(course.id);
-                              }}
-                            >
-                              <Checkbox
-                                checked={isChecked}
-                                className="mr-2 pointer-events-none"
-                              />
-                              <span className="flex-1 select-none">
-                                {course.name}
-                              </span>
-                            </div>
-                          </CommandItem>
-                        );
-                      })}
-                    </CommandList>
-                  </Command>
-                </PopoverContent>
-              </Popover>
-            </div>
-          </div>
-        </form>
-      </div>
+          </form>
+        </div>
+      )}
     </>
   );
 };
