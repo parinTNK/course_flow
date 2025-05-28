@@ -1,72 +1,36 @@
 "use client";
 
-import React, { useState} from "react";
-import { useRouter } from "next/navigation";
+import React from "react";
 import { FiPlus } from "react-icons/fi";
 import { ButtonT } from "@/components/ui/ButtonT";
 
 import SearchBar from "../../components/SearchBar";
 import Pagination from "../../components/Pagination";
 import LoadingSpinner from "../../components/LoadingSpinner";
-import PromoCodesTable, { PromoCode } from "../../components/PromoCodesTable";
+import PromoCodesTable from "../../components/PromoCodesTable";
 import ConfirmationModal from "../../components/ConfirmationModal";
-import { useCustomToast } from "@/components/ui/CustomToast";
 import { usePromoCodes } from "../../hooks/usePromoCodes";
 
 export default function PromoCodesPage() {
-  const router = useRouter();
-  const [searchTerm, setSearchTerm] = useState("");
-  const [currentPage, setCurrentPage] = useState(1);
-
-  const [showConfirmModal, setShowConfirmModal] = useState(false);
-  const [selectedPromo, setSelectedPromo] = useState<PromoCode | null>(null);
-
-  const { success: toastSuccess, error: toastError } = useCustomToast();
   const codesPerPage = 12;
 
   const {
+    searchTerm,
+    setSearchTerm,
+    currentPage,
+    setCurrentPage,
     promoCodes,
     isLoading,
     error,
     totalPages,
-    fetchPromoCodes,
-    deletePromoCode,
-  } = usePromoCodes(codesPerPage, searchTerm, currentPage);
-
-
-  const handleAddPromoCode = () => {
-    router.push("/admin/dashboard/create-promo-codes");
-  };
-
-  const handleEditPromoCode = (id: string) => {
-    alert(`Edit promo code ${id} functionality to be implemented`);
-  };
-
-  const handleDeletePromoCode = (promo: PromoCode) => {
-    setSelectedPromo(promo);
-    setShowConfirmModal(true);
-  };
-
-  const handleCloseAll = () => {
-    setShowConfirmModal(false);
-    setSelectedPromo(null);
-  };
-
-  const handleActualDeletePromo = async (promoId: string) => {
-    try {
-      await deletePromoCode(promoId);
-      toastSuccess("Promo code deleted successfully");
-    } catch (e: any) {
-      toastError(e.message || "Failed to delete promo code");
-    } finally {
-      handleCloseAll();
-    }
-  };
-
-  const handleConfirmDelete = async () => {
-    if (!selectedPromo) return;
-    await handleActualDeletePromo(selectedPromo.id);
-  };
+    showConfirmModal,
+    selectedPromo,
+    handleAddPromoCode,
+    handleEditPromoCode,
+    handleDeletePromoCode,
+    handleCloseAll,
+    handleConfirmDelete,
+  } = usePromoCodes(codesPerPage);
 
   return (
     <div className="bg-gray-100 flex-1 h-screen overflow-hidden">
@@ -97,7 +61,12 @@ export default function PromoCodesPage() {
         )}
         {error && (
           <div className="text-center py-10 text-red-600 bg-red-100 p-4 rounded-md">
-            Error: {error}
+            Cant load promo codes. Please try again later.
+            {error && (
+              <div className="text-xs text-gray-500 mt-2">
+                Details: {error}
+              </div>
+            )}
           </div>
         )}
 
@@ -105,7 +74,6 @@ export default function PromoCodesPage() {
           <PromoCodesTable
             promoCodes={promoCodes}
             isLoading={isLoading}
-            currentPage={currentPage}
             onEditPromoCode={handleEditPromoCode}
             onDeletePromoCode={handleDeletePromoCode}
           />

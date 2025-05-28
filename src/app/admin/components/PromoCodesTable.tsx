@@ -1,21 +1,11 @@
-import React, { useState } from "react";
+import React from "react";
 import PromoRow from "./PromoRow";
+import type { PromoCode } from "@/types/promoCode";
 
-export interface PromoCode {
-  id: string;
-  code: string;
-  min_purchase_amount: number;
-  discount_type: string;
-  discount_value: number | null;
-  discount_percentage: number | null;
-  created_at: string;
-  course_names?: string[]; // เพิ่ม field นี้
-}
 
 interface PromoCodesTableProps {
   promoCodes: PromoCode[];
   isLoading: boolean;
-  currentPage: number;
   onEditPromoCode: (id: string) => void;
   onDeletePromoCode: (promo: PromoCode) => void;
 }
@@ -23,10 +13,10 @@ interface PromoCodesTableProps {
 const PromoCodesTable: React.FC<PromoCodesTableProps> = ({
   promoCodes,
   isLoading,
-  currentPage,
   onEditPromoCode,
   onDeletePromoCode,
 }) => {
+
   if (!isLoading && promoCodes.length === 0) {
     return (
       <div className="px-6 py-10 text-center text-gray-500 bg-white shadow-md rounded-lg">
@@ -64,11 +54,10 @@ const PromoCodesTable: React.FC<PromoCodesTableProps> = ({
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {promoCodes.map((promo, idx) => (
+            {promoCodes.map((promo) => (
               <PromoRow
                 key={promo.id}
                 promo={promo}
-                index={idx}
                 onEdit={onEditPromoCode}
                 onDelete={() => onDeletePromoCode(promo)}
               />
