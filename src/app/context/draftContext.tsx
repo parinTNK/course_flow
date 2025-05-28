@@ -4,6 +4,7 @@ import { createContext, useContext, useState } from "react";
 
 type DraftContextType = {
   dirtyAssignments: Set<string>;
+  saveAllDrafts?: () => Promise<void>;
   setDirty: (id: string) => void;
   clearDrafts: () => void;
 };

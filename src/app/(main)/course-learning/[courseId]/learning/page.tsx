@@ -14,6 +14,9 @@ import { ProgressProvider } from "@/components/learning/context/ProgressContext"
 import LessonVideoPlayer from "@/components/learning/SubLessonVideoPlayer";
 import { ButtonT } from "@/components/ui/ButtonT";
 import { DraftProvider } from "@/app/context/draftContext";
+import { useDraft } from "@/app/context/draftContext";
+import DraftDialog from "@/components/common/DraftDialog";
+
 
 interface SubLesson {
   id: string;
@@ -38,6 +41,10 @@ function CourseContent() {
   const [lessons, setLessons] = useState<Lesson[]>([]);
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [loading, setLoading] = useState(true);
+
+  const { dirtyAssignments, clearDrafts, setDirty } = useDraft();
+  const [pendingNavDirection, setPendingNavDirection] = useState<"prev" | "next" | null>(null);
+  const [showDraftModal, setShowDraftModal] = useState(false);
 
   const scrollToLessonSection = () => {
     const checkAndScroll = () => {
@@ -111,43 +118,62 @@ function CourseContent() {
     return null;
   };
 
-  const handlePrev = () => {
-    if (isFirstSubLesson()) return;
-    const found = findSubLessonIndex();
-    if (!found) return;
-    const { lesson, index } = found;
+const handlePrev = () => {
+  if (isFirstSubLesson()) return;
+  if (dirtyAssignments.size > 0) {
+    setPendingNavDirection("prev");
+    setShowDraftModal(true);
+    return;
+  }
+  goToPrevLesson();
+};
 
-    if (index > 0) {
-      setCurrentLesson(lesson.sub_lessons[index - 1]);
+const handleNext = () => {
+  if (isLastSubLesson()) return;
+  if (dirtyAssignments.size > 0) {
+    setPendingNavDirection("next");
+    setShowDraftModal(true);
+    return;
+  }
+  goToNextLesson();
+};
+
+const goToPrevLesson = () => {
+  const found = findSubLessonIndex();
+  if (!found) return;
+  const { lesson, index } = found;
+
+  if (index > 0) {
+    setCurrentLesson(lesson.sub_lessons[index - 1]);
+    scrollToLessonSection();
+  } else {
+    const currentLessonIndex = lessons.findIndex(l => l.id === lesson.id);
+    if (currentLessonIndex > 0) {
+      const prevLesson = lessons[currentLessonIndex - 1];
+      setCurrentLesson(prevLesson.sub_lessons[prevLesson.sub_lessons.length - 1]);
       scrollToLessonSection();
-    } else {
-      const currentLessonIndex = lessons.findIndex(l => l.id === lesson.id);
-      if (currentLessonIndex > 0) {
-        const prevLesson = lessons[currentLessonIndex - 1];
-        setCurrentLesson(prevLesson.sub_lessons[prevLesson.sub_lessons.length - 1]);
-        scrollToLessonSection();
-      }
     }
-  };
+  }
+};
 
-  const handleNext = () => {
-    if (isLastSubLesson()) return;
-    const found = findSubLessonIndex();
-    if (!found) return;
-    const { lesson, index } = found;
+const goToNextLesson = () => {
+  const found = findSubLessonIndex();
+  if (!found) return;
+  const { lesson, index } = found;
 
-    if (index < lesson.sub_lessons.length - 1) {
-      setCurrentLesson(lesson.sub_lessons[index + 1]);
+  if (index < lesson.sub_lessons.length - 1) {
+    setCurrentLesson(lesson.sub_lessons[index + 1]);
+    scrollToLessonSection();
+  } else {
+    const currentLessonIndex = lessons.findIndex(l => l.id === lesson.id);
+    if (currentLessonIndex < lessons.length - 1) {
+      const nextLesson = lessons[currentLessonIndex + 1];
+      setCurrentLesson(nextLesson.sub_lessons[0]);
       scrollToLessonSection();
-    } else {
-      const currentLessonIndex = lessons.findIndex(l => l.id === lesson.id);
-      if (currentLessonIndex < lessons.length - 1) {
-        const nextLesson = lessons[currentLessonIndex + 1];
-        setCurrentLesson(nextLesson.sub_lessons[0]);
-        scrollToLessonSection();
-      }
     }
-  };
+  }
+};
+
 
   const isFirstSubLesson = () => {
     const found = findSubLessonIndex();
@@ -177,6 +203,21 @@ function CourseContent() {
         <Sidebar setLessons={setLessons} scrollToVideo={scrollToLessonSection} />
       </div>
 
+      <DraftDialog
+  open={showDraftModal}
+  onOpenChange={setShowDraftModal}
+  onConfirm={() => {
+    clearDrafts();
+    setShowDraftModal(false);
+    if (pendingNavDirection === "prev") goToPrevLesson();
+    else if (pendingNavDirection === "next") goToNextLesson();
+    setPendingNavDirection(null);
+  }}
+  onDiscard={() => {
+    setShowDraftModal(false);
+    setPendingNavDirection(null);
+  }}
+/>
       <main className="flex-1 w-full md:p-6 md:max-w-[calc(100%-280px)]">
         <div id="lesson-section">
           <h1 className="text-2xl font-bold mb-6">
