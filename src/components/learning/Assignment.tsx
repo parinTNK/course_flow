@@ -132,7 +132,7 @@ export default function Assignment() {
   // Mark as dirty on change
   const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setAssignmentAnswer(e.target.value);
-    if (assignment?.id) setDirty?.(assignment.id);
+if (assignment?.id) setDirty?.(assignment.id, e.target.value);
     if (assignmentStatus === "submitted") return;
     if (e.target.value.trim() === "") {
       setAssignmentStatus("pending");
