@@ -15,6 +15,8 @@ type MyAssignmentProps = {
   disabled?: boolean;
   courseId: string; // <-- add this prop
   onAutoSave?: () => void; // <-- add this prop
+  lastSaved?: Date | null;
+  lastSavedAnswer?: string;
 };
 
 export default function MyAssignment({
@@ -29,6 +31,8 @@ export default function MyAssignment({
   disabled = false,
   courseId,
   onAutoSave, // <-- add this
+  lastSaved: propLastSaved,
+  lastSavedAnswer: propLastSavedAnswer,
 }: MyAssignmentProps) {
   // Normalize status to match backend
   const normalizedStatus = status.replace(" ", "").toLowerCase() as
@@ -70,6 +74,14 @@ export default function MyAssignment({
   >("idle");
   const autoSaveTimeout = useRef<NodeJS.Timeout | null>(null);
 
+  // Initialize lastSaved and lastSavedAnswer from props on first load
+  React.useEffect(() => {
+    // Always use updated_at (passed as propLastSaved) for lastSaved, not submission_date
+    if (propLastSaved) setLastSaved(new Date(propLastSaved)); // propLastSaved should be updated_at from submission table
+    if (propLastSavedAnswer !== undefined) setLastSavedAnswer(propLastSavedAnswer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const handleLocalSubmit = async () => {
     if (!answer.trim()) {
       setLocalError("Answer is required");
@@ -85,6 +97,8 @@ export default function MyAssignment({
     try {
       await Promise.resolve(onSubmit());
       setLocalStatus("submitted"); // <-- Update status tag after submit
+      setLastSaved(new Date()); // Set lastSaved on submit
+      setLastSavedAnswer(answer);
     } finally {
       setLoading(false);
     }
@@ -95,6 +109,8 @@ export default function MyAssignment({
     try {
       await Promise.resolve(onReset?.());
       setLocalStatus("pending"); // <-- Update status tag after reset
+      setLastSaved(new Date()); // Set lastSaved on reset (like Assignment.tsx)
+      setLastSavedAnswer(""); // Clear lastSavedAnswer on reset
     } finally {
       setLoading(false);
     }
@@ -191,35 +207,30 @@ export default function MyAssignment({
         className={`bg-white rounded-lg flex flex-col px-[16px] sm:px-[24px] py-1 gap-1 mx-[16px] lg:mx-[96px] w-[311px] sm:w-[auto] lg:w-[928px] h-auto justify-center border-1 border-[#D6D9E4] `}
       >
         <div className="text-[16px] mt-4 sm:mt-6 font-base">{question}</div>
-        {/* Last saved and auto-save status */}
-        {(autoSaveStatus === "saving" ||
-          (autoSaveStatus === "saved" && lastSaved) ||
-          autoSaveStatus === "error") &&
-          normalizedStatus !== "submitted" && (
-            <div className="flex items-center gap-3 mb-1 min-h-[24px]">
-              {autoSaveStatus === "saving" && (
-                <span className="text-[#3557CF] text-xs">Saving...</span>
-              )}
-              {autoSaveStatus === "saved" && lastSaved && (
-                <span className="text-[#646D89] text-xs">
-                  Last saved: {lastSaved.toLocaleDateString()}{" "}
-                  {lastSaved.toLocaleTimeString([], {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                    second: "2-digit",
-                  })}
-                </span>
-              )}
-              {autoSaveStatus === "error" && (
-                <span className="text-red-500 text-xs">Auto-save failed</span>
-              )}
-            </div>
-          )}
-        {autoSaveStatus !== "saving" &&
-          !(autoSaveStatus === "saved" && lastSaved) &&
-          autoSaveStatus !== "error" && (
-            <div style={{ marginBottom: 0, minHeight: 0 }} />
-          )}
+        {/* Show last saved only when in progress and lastSaved exists */}
+        {localStatus === "inprogress" && lastSaved && (
+          <div className="flex items-center gap-3 mb-1 min-h-[24px]">
+            <span className="text-[#646D89] text-xs">
+              Last saved: {lastSaved.toLocaleDateString()}{" "}
+              {lastSaved.toLocaleTimeString([], {
+                hour: "2-digit",
+                minute: "2-digit",
+                second: "2-digit",
+              })}
+            </span>
+          </div>
+        )}
+        {/* Show auto-save status only if saving or error */}
+        {(autoSaveStatus === "saving" || autoSaveStatus === "error") && localStatus !== "submitted" && (
+          <div className="flex items-center gap-3 mb-1 min-h-[24px]">
+            {autoSaveStatus === "saving" && (
+              <span className="text-[#3557CF] text-xs">Saving...</span>
+            )}
+            {autoSaveStatus === "error" && (
+              <span className="text-red-500 text-xs">Auto-save failed</span>
+            )}
+          </div>
+        )}
         <div className="flex flex-col sm:flex-row sm:items-center gap-4">
           {/* Mobile: show readonly answer block if submitted, else textarea */}
           {normalizedStatus === "submitted" ? (

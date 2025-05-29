@@ -104,18 +104,23 @@ export default function Assignment() {
         setAssignmentAnswer(data.answer);
         setLastSavedAnswer(data.answer);
         setSubmittedAt(data.updated_at);
+
         if (data.status === "submitted") {
           setAssignmentStatus("submitted");
-        } else if (data.answer.trim() !== "") {
+          if (data.updated_at) setLastSaved(new Date(data.updated_at));
+        } else if (data.status === "inprogress" || data.answer.trim() !== "") {
           setAssignmentStatus("inprogress");
+          if (data.updated_at) setLastSaved(new Date(data.updated_at));
         } else {
           setAssignmentStatus("pending");
+          setLastSaved(null);
         }
       } else {
         setAssignmentStatus("pending");
         setAssignmentAnswer("");
         setLastSavedAnswer("");
         setSubmittedAt(null);
+        setLastSaved(null); // Clear lastSaved when there's no data
       }
     };
 
@@ -357,13 +362,25 @@ export default function Assignment() {
           {/* Auto-save status */}
           {(autoSaveStatus === "saving" ||
             (autoSaveStatus === "saved" && lastSaved) ||
-            autoSaveStatus === "error") &&
-            (
+            autoSaveStatus === "error" ||
+            (assignmentStatus === "inprogress" && lastSaved)
+          ) && (
               <div className="flex items-center gap-3 mb-1 min-h-[24px]">
                 {autoSaveStatus === "saving" && (
                   <span className="text-[#3557CF] text-xs">Saving...</span>
                 )}
-                {autoSaveStatus === "saved" && lastSaved && (
+                {(autoSaveStatus === "saved" && lastSaved) && (
+                  <span className="text-[#646D89] text-xs">
+                    Last saved: {lastSaved.toLocaleDateString()}{" "}
+                    {lastSaved.toLocaleTimeString([], {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                      second: "2-digit",
+                    })}
+                  </span>
+                )}
+                {/* Always show lastSaved for inprogress */}
+                {(assignmentStatus === "inprogress" && lastSaved && autoSaveStatus !== "saved") && (
                   <span className="text-[#646D89] text-xs">
                     Last saved: {lastSaved.toLocaleDateString()}{" "}
                     {lastSaved.toLocaleTimeString([], {
@@ -380,6 +397,7 @@ export default function Assignment() {
             )}
           {autoSaveStatus !== "saving" &&
             !(autoSaveStatus === "saved" && lastSaved) &&
+            !(assignmentStatus === "inprogress" && lastSaved) &&
             autoSaveStatus !== "error" && (
               <div style={{ marginBottom: 0, minHeight: 0 }} />
             )}
@@ -401,7 +419,7 @@ export default function Assignment() {
             <p className="font-medium mb-2 text-sm">Your Answer:</p>
             <p className="text-gray-700 whitespace-pre-line text-sm">{assignmentAnswer}</p>
             {submittedAt && (
-              <p className="text-xs text-gray-500 mt-2">Update At: {new Date(submittedAt).toLocaleString()}</p>
+              <p className="text-xs text-gray-500 mt-2">Updated At: {new Date(submittedAt).toLocaleString()}</p>
             )}
           </div>
 

@@ -12,6 +12,7 @@ import NavBar from "@/components/nav";
 import DraftDialog from "@/components/common/DraftDialog";
 import { useCustomToast } from "@/components/ui/CustomToast";
 import SwipeableAssignmentTabs from "@/components/assignment/SwipeableAssignmentTabs";
+import { getBangkokISOString } from "@/lib/bangkokTime";
 
 
 type Assignment = {
@@ -28,6 +29,7 @@ type Submission = {
   answer: string;
   status: "pending" | "submitted" | "inprogress" | "overdue";
   submission_date?: string;
+  updated_at?: string;
 };
 
 type AssignmentWithSubmission = Assignment & {
@@ -55,9 +57,19 @@ export default function MyAssignmentsPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const ASSIGNMENTS_PER_PAGE = 4;
 
+  // Remove global lastSaved, lastSavedAnswers, use per-assignment instead:
+  // const [lastSaved, setLastSaved] = useState<string | null>(null);
+  // const [lastSavedAnswers, setLastSavedAnswers] = useState<Record<string, string>>({});
+
+  // Per-assignment lastSaved and lastSavedAnswers
+  const [lastSaved, setLastSaved] = useState<Record<string, Date | null>>({});
+  const [lastSavedAnswers, setLastSavedAnswers] = useState<Record<string, string>>({});
+
   useEffect(() => {
     if (!user?.user_id) {
       setAssignments([]);
+      setLastSaved({});
+      setLastSavedAnswers({});
       return;
     }
     setLoading(true);
@@ -71,10 +83,16 @@ export default function MyAssignmentsPage() {
 
         setAssignments(assignmentsWithSubmission);
         const initialAnswers: Record<string, string> = {};
+        const initialLastSaved: Record<string, Date | null> = {};
         assignmentsWithSubmission.forEach((a) => {
           initialAnswers[a.id] = a.submission?.answer || "";
+          initialLastSaved[a.id] = a.submission?.updated_at
+            ? new Date(a.submission.updated_at)
+            : null;
         });
         setAnswers(initialAnswers);
+        setLastSaved(initialLastSaved);
+        setLastSavedAnswers(initialAnswers);
       })
       .catch((err) => {
         setError(err.message || "Failed to fetch assignments");
@@ -84,8 +102,6 @@ export default function MyAssignmentsPage() {
 
 
   const { dirtyAssignments, setDirty, clearDrafts } = useDraft();
-  const [lastSaved, setLastSaved] = useState<Date | null>(null);
-  const [lastSavedAnswers, setLastSavedAnswers] = useState<Record<string, string>>({}); // <-- add this
   const router = useRouter();
   const { success, error: toastError } = useCustomToast();
 
@@ -93,9 +109,10 @@ export default function MyAssignmentsPage() {
   const saveAllDrafts = useCallback(async () => {
     if (!user?.user_id || dirtyAssignments.size === 0) return;
 
+    const bangkok = getBangkokISOString();
+
     const promises = Array.from(dirtyAssignments).map(async (assignmentId) => {
       const answer = answers[assignmentId];
-      // Set status based on answer content
       const status = answer.trim() === "" ? "pending" : "inprogress";
       try {
         const putRes = await axios.put(
@@ -103,7 +120,7 @@ export default function MyAssignmentsPage() {
           {
             answer,
             status,
-            updated_at: new Date().toISOString(),
+            updated_at: bangkok,
           }
         );
 
@@ -113,9 +130,12 @@ export default function MyAssignmentsPage() {
             user_id: user.user_id,
             answer,
             status,
-            submission_date: new Date().toISOString(),
+            submission_date: bangkok,
           });
         }
+        // Update per-assignment lastSaved and lastSavedAnswers
+        setLastSaved((prev) => ({ ...prev, [assignmentId]: new Date() }));
+        setLastSavedAnswers((prev) => ({ ...prev, [assignmentId]: answer }));
       } catch (err) {
         console.error(`[Draft] Failed to save draft for ${assignmentId}`, err);
       }
@@ -123,15 +143,6 @@ export default function MyAssignmentsPage() {
 
     await Promise.all(promises);
     clearDrafts();
-    setLastSaved(new Date());
-    setLastSavedAnswers((prev) => {
-      // Save the current answers for dirty assignments
-      const updated = { ...prev };
-      Array.from(dirtyAssignments).forEach((assignmentId) => {
-        updated[assignmentId] = answers[assignmentId];
-      });
-      return updated;
-    });
   }, [dirtyAssignments, answers, user?.user_id, clearDrafts]);
 
 
@@ -142,6 +153,7 @@ export default function MyAssignmentsPage() {
   // Helper to clear empty answers and set status to pending before navigation
   const clearEmptyAnswersAndSetPending = async () => {
     if (!user?.user_id) return;
+    const bangkok = getBangkokISOString();
     const promises = Object.entries(answers)
       .filter(([assignmentId, val]) => val.trim() === "")
       .map(async ([assignmentId]) => {
@@ -151,7 +163,7 @@ export default function MyAssignmentsPage() {
             {
               answer: "",
               status: "pending",
-              updated_at: new Date().toISOString(),
+              updated_at: bangkok,
             }
           );
           setAssignments((prev) =>
@@ -298,14 +310,16 @@ const handleChangeAnswer = (assignmentId: string, val: string) => {
 
     setSubmitting((prev) => ({ ...prev, [assignment.id]: true }));
 
+    const bangkok = getBangkokISOString();
+
     try {
       const putRes = await axios.put(
         `/api/submission?assignmentId=${assignment.id}&userId=${user.user_id}`,
         {
           answer: answers[assignment.id] ?? "",
           status: "submitted",
-          updated_at: new Date().toISOString(),
-          submission_date: new Date().toISOString(),
+          updated_at: bangkok,
+          submission_date: bangkok,
         }
       );
 
@@ -316,7 +330,7 @@ const handleChangeAnswer = (assignmentId: string, val: string) => {
           user_id: user.user_id,
           answer: answers[assignment.id] ?? "",
           status: "submitted",
-          submission_date: new Date().toISOString(),
+          submission_date: bangkok,
         });
       }
 
@@ -324,10 +338,16 @@ const handleChangeAnswer = (assignmentId: string, val: string) => {
       setAssignments(res.data.data || []);
 
       const updatedAnswers: Record<string, string> = {};
+      const updatedLastSaved: Record<string, Date | null> = {};
       (res.data.data || []).forEach((a: AssignmentWithSubmission) => {
         updatedAnswers[a.id] = a.submission?.answer || "";
+        updatedLastSaved[a.id] = a.submission?.updated_at
+          ? new Date(a.submission.updated_at)
+          : null;
       });
       setAnswers(updatedAnswers);
+      setLastSaved(updatedLastSaved);
+      setLastSavedAnswers(updatedAnswers);
 
       success("Submission Successful", "Your answer has been saved.");
     } catch (err: any) {
@@ -346,13 +366,15 @@ const handleChangeAnswer = (assignmentId: string, val: string) => {
       return;
     }
 
+    const bangkok = getBangkokISOString();
+
     try {
       const putRes = await axios.put(
         `/api/submission?assignmentId=${assignment.id}&userId=${user.user_id}`,
         {
           answer: "",
           status: "pending",
-          updated_at: new Date().toISOString(),
+          updated_at: bangkok,
         }
       );
 
@@ -363,7 +385,7 @@ const handleChangeAnswer = (assignmentId: string, val: string) => {
           user_id: user.user_id,
           answer: "",
           status: "pending",
-          submission_date: new Date().toISOString(),
+          submission_date: bangkok,
         });
       }
 
@@ -371,10 +393,16 @@ const handleChangeAnswer = (assignmentId: string, val: string) => {
       setAssignments(res.data.data || []);
 
       const updatedAnswers: Record<string, string> = {};
+      const updatedLastSaved: Record<string, Date | null> = {};
       (res.data.data || []).forEach((a: AssignmentWithSubmission) => {
         updatedAnswers[a.id] = a.submission?.answer || "";
+        updatedLastSaved[a.id] = a.submission?.updated_at
+          ? new Date(a.submission.updated_at)
+          : null;
       });
       setAnswers(updatedAnswers);
+      setLastSaved(updatedLastSaved);
+      setLastSavedAnswers(updatedAnswers);
 
       success("Answer Cleared", "You can now submit a new answer.");
     } catch (err: any) {
@@ -470,6 +498,9 @@ const handleChangeAnswer = (assignmentId: string, val: string) => {
                       }
                       disabled={submitting[assignment.id]}
                       courseId={assignment.course_id}
+                      // Pass lastSaved and lastSavedAnswer for this assignment
+                      lastSaved={lastSaved[assignment.id]}
+                      lastSavedAnswer={lastSavedAnswers[assignment.id]}
                     />
                   </div>
                 ))}
