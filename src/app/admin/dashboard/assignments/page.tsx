@@ -26,11 +26,11 @@ export function AssignmentsPageContent() {
   } = useAssignmentsContext();
 
   const handleAddAssignment = useCallback(() => {
-    router.push("/admin/create-assignments");
+    router.push("/admin/dashboard/create-assignments");
   }, [router]);
 
   const handleEditAssignment = useCallback((id: string) => {
-    router.push(`/admin/edit-assignments/${id}`);
+    router.push(`/admin/dashboard/edit-assignments/${id}`);
   }, [router]);
 
   const formatDate = useCallback((dateString: string): string => {
