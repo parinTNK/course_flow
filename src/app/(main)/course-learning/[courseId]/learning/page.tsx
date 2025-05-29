@@ -266,12 +266,10 @@ const goToNextLesson = () => {
 
 export default function CourseLearningPage() {
   return (
-    <DraftProvider>
-      <LearningProvider>
-        <ProgressProvider>
-          <CourseContent />
-        </ProgressProvider>
-      </LearningProvider>
-    </DraftProvider>
+    <LearningProvider>
+      <ProgressProvider>
+        <CourseContent />
+      </ProgressProvider>
+    </LearningProvider>
   );
 }

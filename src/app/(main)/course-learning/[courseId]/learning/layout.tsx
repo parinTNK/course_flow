@@ -27,10 +27,14 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
 
   const navigateWithDraftCheck = useCallback(
     (to: string) => {
-      setPendingNav(to);
-      setShowDraftModal(true);
+      if (dirtyAssignments && dirtyAssignments.size > 0) {
+        setPendingNav(to);
+        setShowDraftModal(true);
+      } else {
+        router.push(to);
+      }
     },
-    []
+    [dirtyAssignments, router]
   );
 
   const handleConfirmDraftSave = async () => {

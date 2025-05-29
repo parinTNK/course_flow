@@ -4,7 +4,7 @@ import { createContext, useContext, useState } from "react";
 
 type DraftContextType = {
   dirtyAssignments: Set<string>;
-  saveAllDrafts?: () => Promise<void>;
+  saveAllDrafts: () => Promise<void>;
   setDirty: (id: string) => void;
   clearDrafts: () => void;
 };
@@ -27,12 +27,19 @@ export const DraftProvider = ({ children }: { children: React.ReactNode }) => {
     setDirtyAssignments(new Set());
   };
 
+  // Placeholder: implement actual save logic if needed
+  const saveAllDrafts = async () => {
+    // ...save logic for all dirty assignments...
+    setDirtyAssignments(new Set());
+  };
+
   return (
     <DraftContext.Provider
       value={{
         dirtyAssignments,
         setDirty,
         clearDrafts,
+        saveAllDrafts,
       }}
     >
       {children}
