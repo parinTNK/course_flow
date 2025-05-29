@@ -7,19 +7,19 @@ import LoadingSpinner from "../../admin/components/LoadingSpinner";
 import { AlertCircle } from "lucide-react";
 import Pagination from "../../admin/components/Pagination";
 import { useRouter } from "next/navigation";
-import { useDraft } from '@/app/context/draftContext';
+import { useDraft } from "@/app/context/draftContext";
 import NavBar from "@/components/nav";
 import DraftDialog from "@/components/common/DraftDialog";
 import { useCustomToast } from "@/components/ui/CustomToast";
 import SwipeableAssignmentTabs from "@/components/assignment/SwipeableAssignmentTabs";
 import { getBangkokISOString } from "@/lib/bangkokTime";
 
-
 type Assignment = {
   id: string;
   course_id: string;
   title: string;
   description: string;
+  solution?: string; 
 };
 
 type Submission = {
@@ -48,7 +48,9 @@ type TabKey = (typeof TABS)[number]["key"];
 export default function MyAssignmentsPage() {
   const { user, loading: authLoading } = useAuth();
   const [tab, setTab] = useState<TabKey>("all");
-  const [assignments, setAssignments] = useState<AssignmentWithSubmission[]>([]);
+  const [assignments, setAssignments] = useState<AssignmentWithSubmission[]>(
+    []
+  );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -57,13 +59,10 @@ export default function MyAssignmentsPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const ASSIGNMENTS_PER_PAGE = 4;
 
-  // Remove global lastSaved, lastSavedAnswers, use per-assignment instead:
-  // const [lastSaved, setLastSaved] = useState<string | null>(null);
-  // const [lastSavedAnswers, setLastSavedAnswers] = useState<Record<string, string>>({});
-
-  // Per-assignment lastSaved and lastSavedAnswers
   const [lastSaved, setLastSaved] = useState<Record<string, Date | null>>({});
-  const [lastSavedAnswers, setLastSavedAnswers] = useState<Record<string, string>>({});
+  const [lastSavedAnswers, setLastSavedAnswers] = useState<
+    Record<string, string>
+  >({});
 
   useEffect(() => {
     if (!user?.user_id) {
@@ -72,44 +71,44 @@ export default function MyAssignmentsPage() {
       setLastSavedAnswers({});
       return;
     }
-    // Only fetch assignments on first load or when user changes, not on every tab change
     setLoading(true);
     setError(null);
 
     axios
       .get(`/api/users/${user.user_id}/submission`)
       .then((res) => {
-  const assignmentsWithSubmission: AssignmentWithSubmission[] = res.data.data || [];
-  console.log("[Fetched assignmentsWithSubmission]:", assignmentsWithSubmission); 
+        const assignmentsWithSubmission: AssignmentWithSubmission[] =
+          res.data.data || [];
+        console.log(
+          "[Fetched assignmentsWithSubmission]:",
+          assignmentsWithSubmission
+        );
 
-  setAssignments(assignmentsWithSubmission);
-  const initialAnswers: Record<string, string> = {};
-  const initialLastSaved: Record<string, Date | null> = {};
-  assignmentsWithSubmission.forEach((a) => {
-    initialAnswers[a.id] = a.submission?.answer || "";
-    initialLastSaved[a.id] = a.submission?.updated_at
-      ? new Date(a.submission.updated_at)
-      : null;
-  });
-  setAnswers(initialAnswers);
-  setLastSaved(initialLastSaved);
-  setLastSavedAnswers(initialAnswers);
-  clearDrafts(); 
-})
+        setAssignments(assignmentsWithSubmission);
+        const initialAnswers: Record<string, string> = {};
+        const initialLastSaved: Record<string, Date | null> = {};
+        assignmentsWithSubmission.forEach((a) => {
+          initialAnswers[a.id] = a.submission?.answer || "";
+          initialLastSaved[a.id] = a.submission?.updated_at
+            ? new Date(a.submission.updated_at)
+            : null;
+        });
+        setAnswers(initialAnswers);
+        setLastSaved(initialLastSaved);
+        setLastSavedAnswers(initialAnswers);
+        clearDrafts();
+      })
 
       .catch((err) => {
         setError(err.message || "Failed to fetch assignments");
       })
       .finally(() => setLoading(false));
-  // Only depend on user?.user_id, not tab
   }, [user?.user_id]);
-
 
   const { dirtyAssignments, setDirty, clearDrafts } = useDraft();
   const router = useRouter();
   const { success, error: toastError } = useCustomToast();
 
-  // Save all drafts helper (now uses local answers/user)
   const saveAllDrafts = useCallback(async () => {
     if (!user?.user_id || dirtyAssignments.size === 0) return;
 
@@ -137,7 +136,6 @@ export default function MyAssignmentsPage() {
             submission_date: bangkok,
           });
         }
-        // Update per-assignment lastSaved and lastSavedAnswers
         setLastSaved((prev) => ({ ...prev, [assignmentId]: new Date() }));
         setLastSavedAnswers((prev) => ({ ...prev, [assignmentId]: answer }));
       } catch (err) {
@@ -149,12 +147,9 @@ export default function MyAssignmentsPage() {
     clearDrafts();
   }, [dirtyAssignments, answers, user?.user_id, clearDrafts]);
 
-
-  // Add modal state for navigation confirmation
   const [pendingNav, setPendingNav] = useState<string | null>(null);
   const [showDraftModal, setShowDraftModal] = useState(false);
 
-  // Helper to clear empty answers and set status to pending before navigation
   const clearEmptyAnswersAndSetPending = async () => {
     if (!user?.user_id) return;
     const bangkok = getBangkokISOString();
@@ -191,16 +186,13 @@ export default function MyAssignmentsPage() {
             )
           );
         } catch (err) {
-          // Optionally handle error
         }
       });
     await Promise.all(promises);
   };
 
-  // Patch router.push to check for drafts using modal and handle empty answers
   const navigateWithDraftCheck = useCallback(
     async (to: string) => {
-      // First, clear empty answers in backend
       await clearEmptyAnswersAndSetPending();
       if (dirtyAssignments.size > 0) {
         setPendingNav(to);
@@ -212,7 +204,6 @@ export default function MyAssignmentsPage() {
     [dirtyAssignments, router, clearEmptyAnswersAndSetPending]
   );
 
-  // Handler for confirming draft save in modal
   const handleConfirmDraftSave = async () => {
     if (pendingNav) {
       await saveAllDrafts();
@@ -222,7 +213,6 @@ export default function MyAssignmentsPage() {
     }
   };
 
-  // Handler for discarding draft save in modal
   const handleDiscardDraft = () => {
     if (pendingNav) {
       setShowDraftModal(false);
@@ -231,28 +221,27 @@ export default function MyAssignmentsPage() {
     }
   };
 
-  // Auto-save drafts every 30 seconds ONLY if answers changed since last save
-useEffect(() => {
-  const interval = setInterval(() => {
-    const hasChanged = Array.from(dirtyAssignments).some(
-      (assignmentId) =>
-        answers[assignmentId] !== lastSavedAnswers[assignmentId]
-    );
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const hasChanged = Array.from(dirtyAssignments).some(
+        (assignmentId) =>
+          answers[assignmentId] !== lastSavedAnswers[assignmentId]
+      );
 
-    if (dirtyAssignments.size > 0 && hasChanged) {
-      saveAllDrafts(); // Only save when changed
-    }
-  }, 30000);
+      if (dirtyAssignments.size > 0 && hasChanged) {
+        saveAllDrafts();
+      }
+    }, 30000);
 
-  return () => clearInterval(interval);
-}, [dirtyAssignments, answers, lastSavedAnswers, saveAllDrafts]);
+    return () => clearInterval(interval);
+  }, [dirtyAssignments, answers, lastSavedAnswers, saveAllDrafts]);
 
-  // Warn on browser/tab close if drafts exist
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       if (dirtyAssignments.size > 0) {
         e.preventDefault();
-        e.returnValue = "You have unsaved drafts. Are you sure you want to leave?";
+        e.returnValue =
+          "You have unsaved drafts. Are you sure you want to leave?";
       }
     };
     window.addEventListener("beforeunload", handleBeforeUnload);
@@ -261,13 +250,16 @@ useEffect(() => {
 
   const filteredAssignments = assignments.filter((a) => {
     if (tab === "all") return true;
-    if (tab === "pending") return a.submission?.status === "pending" || !a.submission;
+    if (tab === "pending")
+      return a.submission?.status === "pending" || !a.submission;
     if (tab === "inprogress") return a.submission?.status === "inprogress";
     if (tab === "submitted") return a.submission?.status === "submitted";
     return true;
   });
 
-  const totalPages = Math.ceil(filteredAssignments.length / ASSIGNMENTS_PER_PAGE);
+  const totalPages = Math.ceil(
+    filteredAssignments.length / ASSIGNMENTS_PER_PAGE
+  );
   const paginatedAssignments = filteredAssignments.slice(
     (currentPage - 1) * ASSIGNMENTS_PER_PAGE,
     currentPage * ASSIGNMENTS_PER_PAGE
@@ -277,38 +269,41 @@ useEffect(() => {
     if (currentPage > totalPages) setCurrentPage(1);
   }, [filteredAssignments.length, totalPages]);
 
-  
+  const handleChangeAnswer = (assignmentId: string, val: string) => {
+    setAnswers((prev) => {
+      if (prev[assignmentId] === val) return prev;
 
-  // Move dirtyAssignments declaration above any useEffect or function that uses it
+      setDirty(assignmentId);
 
-const handleChangeAnswer = (assignmentId: string, val: string) => {
-  // Only update if changed
-  setAnswers((prev) => {
-    if (prev[assignmentId] === val) return prev;
-    // Only set dirty if the answer actually changed
-    setDirty(assignmentId);
-    setAssignments((prevAssignments) =>
-      prevAssignments.map((a) =>
-        a.id === assignmentId && (!a.submission || a.submission.status !== "submitted")
-          ? {
-              ...a,
-              submission: {
-                ...(a.submission || {
-                  id: "",
-                  assignment_id: assignmentId,
-                  user_id: user?.user_id || "",
-                  answer: "",
+      if (typeof window !== "undefined") {
+        window.__draftAnswers ??= {};
+        window.__draftAnswers[assignmentId] = val;
+      }
+
+      setAssignments((prevAssignments) =>
+        prevAssignments.map((a) =>
+          a.id === assignmentId &&
+          (!a.submission || a.submission.status !== "submitted")
+            ? {
+                ...a,
+                submission: {
+                  ...(a.submission || {
+                    id: "",
+                    assignment_id: assignmentId,
+                    user_id: user?.user_id || "",
+                    answer: "",
+                    status: "inprogress",
+                  }),
                   status: "inprogress",
-                }),
-                status: "inprogress",
-              },
-            }
-          : a
-      )
-    );
-    return { ...prev, [assignmentId]: val };
-  });
-};
+                },
+              }
+            : a
+        )
+      );
+
+      return { ...prev, [assignmentId]: val };
+    });
+  };
 
   const handleSubmit = async (assignment: AssignmentWithSubmission) => {
     console.log("[Submit] assignment.id:", assignment.id);
@@ -335,7 +330,9 @@ const handleChangeAnswer = (assignmentId: string, val: string) => {
       );
 
       if (!putRes.data?.data?.length) {
-        console.log("[Submit] No existing submission found, creating new one...");
+        console.log(
+          "[Submit] No existing submission found, creating new one..."
+        );
         await axios.post(`/api/submission`, {
           assignment_id: assignment.id,
           user_id: user.user_id,
@@ -390,7 +387,9 @@ const handleChangeAnswer = (assignmentId: string, val: string) => {
       );
 
       if (!putRes.data?.data?.length) {
-        console.log("[Reset] No existing submission found, creating new one...");
+        console.log(
+          "[Reset] No existing submission found, creating new one..."
+        );
         await axios.post(`/api/submission`, {
           assignment_id: assignment.id,
           user_id: user.user_id,
@@ -421,7 +420,6 @@ const handleChangeAnswer = (assignmentId: string, val: string) => {
     }
   };
 
-  // Listen for navigation events from MyAssignment
   useEffect(() => {
     const handler = (e: any) => {
       if (e.detail && typeof e.detail === "string") {
@@ -442,9 +440,7 @@ const handleChangeAnswer = (assignmentId: string, val: string) => {
 
   return (
     <div className="flex flex-col min-h-screen overflow-x-hidden">
-      {/* Pass navigateWithDraftCheck to NavBar */}
       <NavBar navigate={navigateWithDraftCheck} />
-      {/* Draft confirmation modal */}
       <DraftDialog
         open={showDraftModal}
         onOpenChange={setShowDraftModal}
@@ -458,7 +454,6 @@ const handleChangeAnswer = (assignmentId: string, val: string) => {
               <h1 className="text-center text-2xl font-semibold">
                 My Assignments
               </h1>
-              {/* Replace static tab buttons with swipeable tabs */}
               <SwipeableAssignmentTabs tab={tab} setTab={setTab} />
             </div>
           </div>
@@ -486,7 +481,10 @@ const handleChangeAnswer = (assignmentId: string, val: string) => {
             ) : (
               <>
                 {paginatedAssignments.map((assignment) => (
-                  <div key={assignment.id} className="flex justify-center mx-4 lg:mx-40 mb-6">
+                  <div
+                    key={assignment.id}
+                    className="flex justify-center mx-4 lg:mx-40 mb-6"
+                  >
                     <MyAssignment
                       title={assignment.title}
                       subtitle={assignment.description}
@@ -509,9 +507,9 @@ const handleChangeAnswer = (assignmentId: string, val: string) => {
                       }
                       disabled={submitting[assignment.id]}
                       courseId={assignment.course_id}
-                      // Pass lastSaved and lastSavedAnswer for this assignment
                       lastSaved={lastSaved[assignment.id]}
                       lastSavedAnswer={lastSavedAnswers[assignment.id]}
+                      solution={assignment.solution} 
                     />
                   </div>
                 ))}

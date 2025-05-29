@@ -1,5 +1,4 @@
-// /src/app/(main)/course-learning/[courseId]/learning/page.tsx
-'use client';  // ✅ Only this one at top
+"use client";
 
 import { useAuth } from "@/app/context/authContext";
 import { DraftProvider } from "@/app/context/draftContext";
@@ -16,11 +15,14 @@ export default function CourseLearningPage() {
 
     const savePromises = Object.entries(dirtyDrafts).map(
       async ([assignmentId, answer]) => {
-        await fetch(`/api/submission?assignmentId=${assignmentId}&userId=${user.id}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ answer, status: "inprogress" }),
-        });
+        await fetch(
+          `/api/submission?assignmentId=${assignmentId}&userId=${user.id}`,
+          {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ answer, status: "inprogress" }),
+          }
+        );
       }
     );
 

@@ -55,11 +55,12 @@ export default function SwipeableAssignmentTabs({
             className="!w-auto"
           >
             <button
-              className={`px-4 py-2 text-base font-medium whitespace-nowrap ${
-                tab === t.key
-                  ? "border-b-2 border-black"
-                  : "text-gray-400 border-b-2 border-transparent"
-              }`}
+              className={`px-4 py-2 text-base font-medium whitespace-nowrap cursor-pointer transition-colors
+                ${
+                  tab === t.key
+                    ? "border-b-2 border-black"
+                    : "text-gray-400 border-b-2 border-transparent hover:text-[#0033CC] active:text-black active:border-black"
+                }`}
               onClick={() => setTab(t.key)}
             >
               {t.label}

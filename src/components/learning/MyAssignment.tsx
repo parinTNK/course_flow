@@ -13,10 +13,11 @@ type MyAssignmentProps = {
   onSubmit: () => void;
   onReset?: () => void;
   disabled?: boolean;
-  courseId: string; // <-- add this prop
-  onAutoSave?: () => void; // <-- add this prop
+  courseId: string; 
+  onAutoSave?: () => void; 
   lastSaved?: Date | null;
   lastSavedAnswer?: string;
+  solution?: string; 
 };
 
 export default function MyAssignment({
@@ -30,11 +31,12 @@ export default function MyAssignment({
   onReset,
   disabled = false,
   courseId,
-  onAutoSave, // <-- add this
+  onAutoSave, 
   lastSaved: propLastSaved,
   lastSavedAnswer: propLastSavedAnswer,
+  solution, 
 }: MyAssignmentProps) {
-  // Normalize status to match backend
+
   const normalizedStatus = status.replace(" ", "").toLowerCase() as
     | "submitted"
     | "inprogress"
@@ -71,6 +73,7 @@ export default function MyAssignment({
     "idle" | "saving" | "saved" | "error"
   >("idle");
   const autoSaveTimeout = useRef<NodeJS.Timeout | null>(null);
+  const [showSolution, setShowSolution] = useState(false);
 
   const handleLocalSubmit = async () => {
     if (!answer.trim()) {
@@ -102,10 +105,9 @@ export default function MyAssignment({
     }
   };
 
-  // Use navigateWithDraftCheck if available from window, fallback to normal navigation
   const handleOpenInCourse = (e: React.MouseEvent) => {
     e.preventDefault();
-    // Try to use the same modal logic as NavBar/Footer by dispatching the custom event
+
     window.dispatchEvent(
       new CustomEvent("navigateWithDraftCheck", {
         detail: `/course-learning/${courseId}/learning`,
@@ -113,7 +115,6 @@ export default function MyAssignment({
     );
   };
 
-  // Live status update on textarea change
   const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setLocalError(null);
     const val = e.target.value;
@@ -125,18 +126,15 @@ export default function MyAssignment({
     }
   };
 
-  // Auto-save effect: only save if answer changed from lastSavedAnswer (from props), and not submitted
   React.useEffect(() => {
     if (normalizedStatus === "submitted") return;
     if (autoSaveTimeout.current) clearTimeout(autoSaveTimeout.current);
 
-    // Only auto-save if answer changed since last save (from prop)
     if (answer === propLastSavedAnswer) {
       setAutoSaveStatus("idle");
       return;
     }
 
-    // Don't auto-save if answer is empty
     if (!answer.trim()) {
       setAutoSaveStatus("idle");
       return;
@@ -160,16 +158,15 @@ export default function MyAssignment({
     return () => {
       if (autoSaveTimeout.current) clearTimeout(autoSaveTimeout.current);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
   }, [answer, propLastSavedAnswer, normalizedStatus, onAutoSave]);
 
-  // Optionally, sync localStatus with prop changes (e.g., after parent reloads data)
   React.useEffect(() => {
     setLocalStatus(normalizedStatus);
   }, [normalizedStatus]);
 
   return (
-    <div className="bg-[#E5ECF8] rounded-lg py-4 sm:py-10 flex flex-col gap-0 w-[343px] h-auto sm:w-[1120px] sm:h-[378px] ">
+    <div className="bg-[#E5ECF8] rounded-lg py-4 sm:py-10 flex flex-col gap-0 w-[343px] h-auto sm:w-[1120px]  ">
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start px-6 sm:px-[96px] gap-2 sm:gap-0">
         <div>
           <div className="font-medium text-[20px] sm:text-[24px] mb-2 leading-tight">
@@ -192,7 +189,6 @@ export default function MyAssignment({
         className={`bg-white rounded-lg flex flex-col px-[16px] sm:px-[24px] py-1 gap-1 mx-[16px] lg:mx-[96px] w-[311px] sm:w-[auto] lg:w-[928px] h-auto justify-center border-1 border-[#D6D9E4] `}
       >
         <div className="text-[16px] mt-4 sm:mt-6 font-base">{question}</div>
-        {/* Show last saved only when in progress and lastSaved exists */}
         {localStatus === "inprogress" && propLastSaved && (
           <div className="flex items-center gap-3 mb-1 min-h-[24px]">
             <span className="text-[#646D89] text-xs">
@@ -206,16 +202,17 @@ export default function MyAssignment({
           </div>
         )}
         {/* Show auto-save status only if saving or error */}
-        {(autoSaveStatus === "saving" || autoSaveStatus === "error") && localStatus !== "submitted" && (
-          <div className="flex items-center gap-3 mb-1 min-h-[24px]">
-            {autoSaveStatus === "saving" && (
-              <span className="text-[#3557CF] text-xs">Saving...</span>
-            )}
-            {autoSaveStatus === "error" && (
-              <span className="text-red-500 text-xs">Auto-save failed</span>
-            )}
-          </div>
-        )}
+        {(autoSaveStatus === "saving" || autoSaveStatus === "error") &&
+          localStatus !== "submitted" && (
+            <div className="flex items-center gap-3 mb-1 min-h-[24px]">
+              {autoSaveStatus === "saving" && (
+                <span className="text-[#3557CF] text-xs">Saving...</span>
+              )}
+              {autoSaveStatus === "error" && (
+                <span className="text-red-500 text-xs">Auto-save failed</span>
+              )}
+            </div>
+          )}
         <div className="flex flex-col sm:flex-row sm:items-center gap-4">
           {/* Mobile: show readonly answer block if submitted, else textarea */}
           {normalizedStatus === "submitted" ? (
@@ -229,20 +226,22 @@ export default function MyAssignment({
           ) : null}
           {/* Show textarea on desktop always, and on mobile if not submitted */}
           {(normalizedStatus !== "submitted" || window.innerWidth >= 640) && (
-            <textarea
-              className={`w-full p-4 rounded-lg min-h-[120px] sm:mb-6 text-base placeholder:text-[#bfc6db] focus:outline-[#2957c2] resize-none ${
-                normalizedStatus === "submitted"
-                  ? "hidden sm:block text-[#9AA1B9] font-normal border-0"
-                  : "text-gray-700 border border-[#e0e4ef]"
-              }`}
-              placeholder="Answer..."
-              value={answer}
-              onChange={handleTextareaChange}
-              disabled={disabled || normalizedStatus === "submitted"}
-              style={
-                normalizedStatus === "submitted" ? { fontSize: 16 } : undefined
-              }
-            />
+            <>
+              <textarea
+                className={`w-full p-4 rounded-lg min-h-[120px] sm:mb-6 text-base placeholder:text-[#bfc6db] focus:outline-[#2957c2] resize-none ${
+                  normalizedStatus === "submitted"
+                    ? "hidden sm:block text-[#9AA1B9] font-normal border-0"
+                    : "text-gray-700 border border-[#e0e4ef]"
+                }`}
+                placeholder="Answer..."
+                value={answer}
+                onChange={handleTextareaChange}
+                disabled={disabled || normalizedStatus === "submitted"}
+                style={
+                  normalizedStatus === "submitted" ? { fontSize: 16 } : undefined
+                }
+              />
+            </>
           )}
           <div className="flex flex-col items-center gap-2 mb-4 sm:mb-0">
             {localError && (
@@ -282,6 +281,41 @@ export default function MyAssignment({
           </div>
         </div>
       </div>
+      {/* Show answer key below the white box if submitted and available */}
+      {normalizedStatus === "submitted" && solution && (
+        <div
+          className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4 mt-4 mx-[16px] lg:mx-[96px] w-[311px] sm:w-[auto] lg:w-[928px]"
+        >
+          <button
+            className="flex items-center gap-2 font-medium text-green-700 mb-2 text-sm focus:outline-none cursor-pointer"
+            onClick={() => setShowSolution((v) => !v)}
+            aria-expanded={showSolution}
+            aria-controls="answer-key-content"
+            type="button"
+          >
+            <span>
+              {showSolution ? "Hide Answer Key" : "Show Answer Key"}
+            </span>
+            <svg
+              className={`transition-transform duration-200 w-4 h-4 ${showSolution ? "rotate-180" : ""}`}
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={2}
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+          {showSolution && (
+            <div
+              id="answer-key-content"
+              className="text-green-800 whitespace-pre-line text-sm"
+            >
+              {solution}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

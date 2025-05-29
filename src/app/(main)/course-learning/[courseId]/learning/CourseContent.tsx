@@ -41,7 +41,9 @@ export default function CourseContent() {
   const [lessons, setLessons] = useState<Lesson[]>([]);
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [pendingNavDirection, setPendingNavDirection] = useState<"prev" | "next" | null>(null);
+  const [pendingNavDirection, setPendingNavDirection] = useState<
+    "prev" | "next" | null
+  >(null);
   const [showDraftModal, setShowDraftModal] = useState(false);
 
   const scrollToLessonSection = () => {
@@ -60,7 +62,9 @@ export default function CourseContent() {
 
   useEffect(() => {
     const checkSubscription = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) return router.push("/login");
 
       const { data, error } = await supabase
@@ -90,7 +94,9 @@ export default function CourseContent() {
 
   const findSubLessonIndex = () => {
     for (let lesson of lessons) {
-      const index = lesson.sub_lessons.findIndex(sl => sl.id === currentLesson?.id);
+      const index = lesson.sub_lessons.findIndex(
+        (sl) => sl.id === currentLesson?.id
+      );
       if (index !== -1) return { lesson, index };
     }
     return null;
@@ -103,10 +109,12 @@ export default function CourseContent() {
     if (index > 0) {
       setCurrentLesson(lesson.sub_lessons[index - 1]);
     } else {
-      const currentLessonIndex = lessons.findIndex(l => l.id === lesson.id);
+      const currentLessonIndex = lessons.findIndex((l) => l.id === lesson.id);
       if (currentLessonIndex > 0) {
         const prevLesson = lessons[currentLessonIndex - 1];
-        setCurrentLesson(prevLesson.sub_lessons[prevLesson.sub_lessons.length - 1]);
+        setCurrentLesson(
+          prevLesson.sub_lessons[prevLesson.sub_lessons.length - 1]
+        );
       }
     }
     scrollToLessonSection();
@@ -119,7 +127,7 @@ export default function CourseContent() {
     if (index < lesson.sub_lessons.length - 1) {
       setCurrentLesson(lesson.sub_lessons[index + 1]);
     } else {
-      const currentLessonIndex = lessons.findIndex(l => l.id === lesson.id);
+      const currentLessonIndex = lessons.findIndex((l) => l.id === lesson.id);
       if (currentLessonIndex < lessons.length - 1) {
         const nextLesson = lessons[currentLessonIndex + 1];
         setCurrentLesson(nextLesson.sub_lessons[0]);
@@ -132,7 +140,7 @@ export default function CourseContent() {
     const found = findSubLessonIndex();
     if (!found) return true;
     const { lesson, index } = found;
-    const lessonIndex = lessons.findIndex(l => l.id === lesson.id);
+    const lessonIndex = lessons.findIndex((l) => l.id === lesson.id);
     return index === 0 && lessonIndex === 0;
   };
 
@@ -140,32 +148,40 @@ export default function CourseContent() {
     const found = findSubLessonIndex();
     if (!found) return true;
     const { lesson, index } = found;
-    const lessonIndex = lessons.findIndex(l => l.id === lesson.id);
-    return index === lesson.sub_lessons.length - 1 && lessonIndex === lessons.length - 1;
+    const lessonIndex = lessons.findIndex((l) => l.id === lesson.id);
+    return (
+      index === lesson.sub_lessons.length - 1 &&
+      lessonIndex === lessons.length - 1
+    );
   };
 
-const handleDraftConfirm = useCallback(async () => {
-  if (window.__draftAnswers && Object.keys(window.__draftAnswers).length > 0) {
-    const dirtyDrafts = window.__draftAnswers;
-    const savePromises = Object.entries(dirtyDrafts).map(
-      async ([assignmentId, answer]) => {
-await fetch(`/api/submission?assignmentId=${assignmentId}&userId=${user.user_id}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ answer, status: "inprogress" }),
-        });
-      }
-    );
-    await Promise.all(savePromises);
-  }
+  const handleDraftConfirm = useCallback(async () => {
+    if (
+      window.__draftAnswers &&
+      Object.keys(window.__draftAnswers).length > 0
+    ) {
+      const dirtyDrafts = window.__draftAnswers;
+      const savePromises = Object.entries(dirtyDrafts).map(
+        async ([assignmentId, answer]) => {
+          await fetch(
+            `/api/submission?assignmentId=${assignmentId}&userId=${user.user_id}`,
+            {
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ answer, status: "inprogress" }),
+            }
+          );
+        }
+      );
+      await Promise.all(savePromises);
+    }
 
-  clearDrafts();
-  setShowDraftModal(false);
-  if (pendingNavDirection === "prev") goToPrevLesson();
-  else if (pendingNavDirection === "next") goToNextLesson();
-  setPendingNavDirection(null);
-}, [user?.id, pendingNavDirection, goToPrevLesson, goToNextLesson]);
-
+    clearDrafts();
+    setShowDraftModal(false);
+    if (pendingNavDirection === "prev") goToPrevLesson();
+    else if (pendingNavDirection === "next") goToNextLesson();
+    setPendingNavDirection(null);
+  }, [user?.id, pendingNavDirection, goToPrevLesson, goToNextLesson]);
 
   const handleDraftDiscard = useCallback(() => {
     setShowDraftModal(false);
@@ -193,13 +209,20 @@ await fetch(`/api/submission?assignmentId=${assignmentId}&userId=${user.user_id}
   };
 
   if (loading) {
-    return <div className="flex justify-center items-center min-h-screen"><LoadingSpinner /></div>;
+    return (
+      <div className="flex justify-center items-center min-h-screen">
+        <LoadingSpinner />
+      </div>
+    );
   }
 
   return (
     <div className="flex flex-col md:flex-row min-h-screen bg-gray-50 pt-24 md:pt-32 pb-10 max-w-screen-xl mx-auto px-4">
       <div className="md:sticky md:top-16 md:w-[260px] w-full mb-4 md:mb-0">
-        <Sidebar setLessons={setLessons} scrollToVideo={scrollToLessonSection} />
+        <Sidebar
+          setLessons={setLessons}
+          scrollToVideo={scrollToLessonSection}
+        />
       </div>
 
       <DraftDialog
@@ -227,8 +250,18 @@ await fetch(`/api/submission?assignmentId=${assignmentId}&userId=${user.user_id}
             disabled={isFirstSubLesson()}
           >
             <div className="flex items-center justify-center">
-              <svg className="w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" />
+              <svg
+                className="w-5 h-5 mr-2"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={1.5}
+                  d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18"
+                />
               </svg>
               Previous Lesson
             </div>
@@ -243,8 +276,18 @@ await fetch(`/api/submission?assignmentId=${assignmentId}&userId=${user.user_id}
             >
               <div className="flex items-center justify-center">
                 Next Lesson
-                <svg className="w-5 h-5 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" />
+                <svg
+                  className="w-5 h-5 ml-2"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={1.5}
+                    d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3"
+                  />
                 </svg>
               </div>
             </ButtonT>
