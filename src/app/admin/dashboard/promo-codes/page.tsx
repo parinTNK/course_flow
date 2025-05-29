@@ -1,59 +1,36 @@
 "use client";
 
-import React, { useEffect, useState, useCallback } from "react";
+import React from "react";
 import { FiPlus } from "react-icons/fi";
-import axios from "axios";
+import { ButtonT } from "@/components/ui/ButtonT";
+
 import SearchBar from "../../components/SearchBar";
 import Pagination from "../../components/Pagination";
 import LoadingSpinner from "../../components/LoadingSpinner";
-import { ButtonT } from "@/components/ui/ButtonT";
-import PromoCodesTable, { PromoCode } from "../../components/PromoCodesTable";
-import { useRouter } from "next/navigation";
+import PromoCodesTable from "../../components/PromoCodesTable";
+import ConfirmationModal from "../../components/ConfirmationModal";
+import { usePromoCodes } from "../../hooks/usePromoCodes";
 
 export default function PromoCodesPage() {
-  const router = useRouter();
-  const [promoCodes, setPromoCodes] = useState<PromoCode[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
+  const codesPerPage = 12;
 
-  const fetchPromoCodes = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const res = await axios.get("/api/promocodes");
-      setPromoCodes(res.data);
-      setTotalPages(1);
-    } catch (e: any) {
-      setError(e.message || "Failed to fetch promo codes");
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  console.log("Promo codes:", promoCodes);
-
-  useEffect(() => {
-    fetchPromoCodes();
-  }, [fetchPromoCodes]);
-
-  const handleAddPromoCode = () => {
-    router.push('/admin/dashboard/create-promo-codes');
-  };
-
-  const handleEditPromoCode = (id: string) => {
-    alert(`Edit promo code ${id} functionality to be implemented`);
-  };
-
-  const handleDeletePromoCode = (id: string) => {
-    alert(`Delete promo code ${id} functionality to be implemented`);
-  };
-
-  const filteredPromoCodes = promoCodes.filter((promo) =>
-    promo.code.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const {
+    searchTerm,
+    setSearchTerm,
+    currentPage,
+    setCurrentPage,
+    promoCodes,
+    isLoading,
+    error,
+    totalPages,
+    showConfirmModal,
+    selectedPromo,
+    handleAddPromoCode,
+    handleEditPromoCode,
+    handleDeletePromoCode,
+    handleCloseAll,
+    handleConfirmDelete,
+  } = usePromoCodes(codesPerPage);
 
   return (
     <div className="bg-gray-100 flex-1 h-screen overflow-hidden">
@@ -62,7 +39,10 @@ export default function PromoCodesPage() {
         <div className="flex items-center space-x-4">
           <SearchBar
             value={searchTerm}
-            onChange={setSearchTerm}
+            onChange={(val) => {
+              setSearchTerm(val);
+              setCurrentPage(1);
+            }}
             placeholder="Search..."
             className="w-64"
           />
@@ -76,24 +56,30 @@ export default function PromoCodesPage() {
         </div>
       </div>
       <div className="px-8 pb-8">
-        {isLoading && <LoadingSpinner text="Loading promo codes..." size="md" />}
+        {isLoading && (
+          <LoadingSpinner text="Loading promo codes..." size="md" />
+        )}
         {error && (
           <div className="text-center py-10 text-red-600 bg-red-100 p-4 rounded-md">
-            Error: {error}
+            Cant load promo codes. Please try again later.
+            {error && (
+              <div className="text-xs text-gray-500 mt-2">
+                Details: {error}
+              </div>
+            )}
           </div>
         )}
 
         {!isLoading && !error && (
           <PromoCodesTable
-            promoCodes={filteredPromoCodes}
+            promoCodes={promoCodes}
             isLoading={isLoading}
-            currentPage={currentPage}
             onEditPromoCode={handleEditPromoCode}
             onDeletePromoCode={handleDeletePromoCode}
           />
         )}
 
-        {filteredPromoCodes.length > 0 && (
+        {promoCodes.length > 0 && (
           <div className="mt-4">
             <Pagination
               currentPage={currentPage}
@@ -103,6 +89,17 @@ export default function PromoCodesPage() {
           </div>
         )}
       </div>
+      <ConfirmationModal
+        isOpen={showConfirmModal}
+        onClose={handleCloseAll}
+        onConfirm={handleConfirmDelete}
+        title="Delete Promo Code"
+        message={`Are you sure you want to delete this promo code: "${selectedPromo?.code}"?`}
+        confirmText="Yes, I want to delete"
+        cancelText="No, keep it"
+        requireCourseName={false}
+        courseName={selectedPromo?.code || ""}
+      />
     </div>
   );
 }

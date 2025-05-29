@@ -3,27 +3,48 @@ import { NextRequest } from 'next/server';
 
 export async function GET(request: NextRequest) {
   try {
-    // ดึง promo_codes พร้อมทั้ง count และชื่อ courses ที่ใช้ได้กับแต่ละ promo code
-    const { data, error } = await supabase
+    const { searchParams } = new URL(request.url);
+    const page = parseInt(searchParams.get('page') || '1', 10);
+    const limit = parseInt(searchParams.get('limit') || '10', 10);
+    const search = searchParams.get('search') || '';
+
+    const from = (page - 1) * limit;
+    const to = from + limit - 1;
+
+
+    let query = supabase
       .from('promo_codes')
-      .select(`
+      .select(
+        `
         *,
         promo_code_courses(
           courses(name)
         )
-      `);
+      `,
+        { count: 'exact' }
+      );
+
+    if (search) {
+      query = query.ilike('code', `%${search}%`);
+    }
+
+    query = query.range(from, to);
+
+    const { data, error, count } = await query;
 
     if (error) {
       return Response.json({ error: error.message }, { status: 500 });
     }
 
-    // แปลงข้อมูลให้มี courses_count และ course_names และลบ promo_code_courses ออก
     const result = data.map((promo: any) => {
-      const courses_count = promo.promo_code_courses ? promo.promo_code_courses.length : 0;
+      const courses_count = promo.promo_code_courses
+        ? promo.promo_code_courses.length
+        : 0;
       const course_names = promo.promo_code_courses
-        ? promo.promo_code_courses.map((rel: any) => rel.courses?.name).filter(Boolean)
+        ? promo.promo_code_courses
+            .map((rel: any) => rel.courses?.name)
+            .filter(Boolean)
         : [];
-      // ลบ promo_code_courses ออกจาก object
       const { promo_code_courses, ...rest } = promo;
       return {
         ...rest,
@@ -32,7 +53,13 @@ export async function GET(request: NextRequest) {
       };
     });
 
-    return Response.json(result);
+    return Response.json({
+      data: result,
+      page,
+      limit,
+      total: count || 0,
+      totalPages: Math.ceil((count || 0) / limit),
+    });
   } catch (err) {
     return Response.json(
       { error: (err as Error).message || 'Unknown error' },

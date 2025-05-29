@@ -1,14 +1,10 @@
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useCustomToast } from "@/components/ui/CustomToast";
-import {
-  ALL_COURSES_ID,
-  DISCOUNT_TYPE_PERCENT,
-  PromoCodeFormData,
-} from "@/types/promoCode";
+import {ALL_COURSES_ID, DISCOUNT_TYPE_PERCENT, PromoCodeFormData} from "@/types/promoCode";
 import axios from "axios";
 
-export function usePromoCodeForm() {
+export function usePromoCodeForm({ mode, id }: { mode: "create" | "edit"; id?: string }) {
   const router = useRouter();
   const { success: toastSuccess, error: toastError } = useCustomToast();
 
@@ -25,51 +21,38 @@ export function usePromoCodeForm() {
   const triggerRef = useRef<HTMLDivElement>(null);
   const [triggerWidth, setTriggerWidth] = useState<number>(0);
 
+
+  useEffect(() => {
+    const fetchPromo = async () => {
+      try {
+        const res = await axios.get(`/api/promocodes/${id}`);
+        const promo = res.data;
+        console.log("Fetched promo code:", promo);
+        setFormData({
+          code: promo.code || "",
+          min_purchase_amount: promo.min_purchase_amount?.toString() || "",
+          discount_type: promo.discount_type || "",
+          discount_value: promo.discount_value?.toString() || "",
+          course_ids:
+            promo.is_all_courses || !promo.course_ids?.length
+              ? [ALL_COURSES_ID]
+              : promo.course_ids,
+        });
+      } catch (e: any) {
+        toastError("Failed to load promo code");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    if (id) fetchPromo();
+
+  }, [id]);
+
   useEffect(() => {
     if (triggerRef.current) {
       setTriggerWidth(triggerRef.current.offsetWidth);
     }
   }, [popoverOpen]);
-
-  const validatePromoCodeForm = () => {
-    const newErrors: Record<string, string> = {};
-
-    if (!formData.code.trim()) {
-      newErrors.code = "Please fill out this field";
-    } else if (!/^[a-zA-Z0-9]+$/.test(formData.code)) {
-      newErrors.code = "Promo code must be alphabet and number only";
-    }
-
-    if (!formData.min_purchase_amount.trim()) {
-      newErrors.min_purchase_amount = "Please fill out this field";
-    } else if (
-      isNaN(Number(formData.min_purchase_amount)) ||
-      Number(formData.min_purchase_amount) < 0
-    ) {
-      newErrors.min_purchase_amount = "Please enter a valid amount";
-    }
-
-    if (!formData.discount_type.trim()) {
-      newErrors.discount_type = "Please select discount type";
-    }
-
-    if (!formData.discount_value.trim()) {
-      newErrors.discount_value = "Please fill out this field";
-    } else if (
-      isNaN(Number(formData.discount_value)) ||
-      Number(formData.discount_value) < 0
-    ) {
-      newErrors.discount_value = "Please enter a valid discount";
-    } else if (
-      formData.discount_type === DISCOUNT_TYPE_PERCENT &&
-      Number(formData.discount_value) > 100
-    ) {
-      newErrors.discount_value = "Percent must not exceed 100";
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
 
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
@@ -150,6 +133,47 @@ export function usePromoCodeForm() {
     router.back();
   };
 
+  const validatePromoCodeForm = () => {
+    const newErrors: Record<string, string> = {};
+
+    if (!formData.code.trim()) {
+      newErrors.code = "Please fill out this field";
+    } else if (!/^[a-zA-Z0-9]+$/.test(formData.code)) {
+      newErrors.code = "Promo code must be alphabet and number only";
+    }
+
+    if (!formData.min_purchase_amount.trim()) {
+      newErrors.min_purchase_amount = "Please fill out this field";
+    } else if (
+      isNaN(Number(formData.min_purchase_amount)) ||
+      Number(formData.min_purchase_amount) < 0
+    ) {
+      newErrors.min_purchase_amount = "Please enter a valid amount";
+    }
+
+    if (!formData.discount_type.trim()) {
+      newErrors.discount_type = "Please select discount type";
+    }
+
+    if (!formData.discount_value.trim()) {
+      newErrors.discount_value = "Please fill out this field";
+    } else if (
+      isNaN(Number(formData.discount_value)) ||
+      Number(formData.discount_value) < 0
+    ) {
+      newErrors.discount_value = "Please enter a valid discount";
+    } else if (
+      formData.discount_type === DISCOUNT_TYPE_PERCENT &&
+      Number(formData.discount_value) > 100
+    ) {
+      newErrors.discount_value = "Percent must not exceed 100";
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
@@ -175,9 +199,13 @@ export function usePromoCodeForm() {
     }
 
     try {
-      await axios.post("/api/promocodes/create", payload);
-      setIsLoading(false);
-      toastSuccess("Promo code created successfully!");
+      if (mode === "edit" && id) {
+        await axios.put(`/api/promocodes/${id}`, payload);
+        toastSuccess("Promo code updated successfully!");
+      } else {
+        await axios.post("/api/promocodes/create", payload);
+        toastSuccess("Promo code created successfully!");
+      }
       router.back();
     } catch (err: any) {
       setIsLoading(false);
@@ -188,6 +216,8 @@ export function usePromoCodeForm() {
           backendMsg ? `\nDetails: ${backendMsg}` : ""
         }`
       );
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -200,6 +230,7 @@ export function usePromoCodeForm() {
     setPopoverOpen,
     triggerRef,
     triggerWidth,
+
     handleInputChange,
     handleDiscountTypeChange,
     handleCoursesBlur,

@@ -1,10 +1,17 @@
 "use client";
 
-import PromoCodeFormView from "../../components/PromoCodeFormView";
-import { useCoursesSelect } from "../../hooks/useCourseSelect";
-import { usePromoCodeForm } from "../../hooks/usePromoCodeForm";
+import React from "react";
+import PromoCodeFormView from "../../../components/PromoCodeFormView";
+import { useCoursesSelect } from "../../../hooks/useCourseSelect";
+import { usePromoCodeForm } from "../../../hooks/usePromoCodeForm";
+import { useParams } from "next/navigation";
+import LoadingSpinner from "../../../components/LoadingSpinner";
 
-function CreatePromoCode() {
+
+export default function EditPromoCodePage() {
+  const params = useParams();
+  const id = params.Id as string;
+
   const {
     formData,
     setFormData,
@@ -19,8 +26,8 @@ function CreatePromoCode() {
     handleCoursesBlur,
     handlePercentBlur,
     handleCancel,
-    handleSubmit,
-  } = usePromoCodeForm({ mode: "create" });
+    handleSubmit
+  } = usePromoCodeForm({ mode: "edit", id });
 
   const {
     coursesList,
@@ -33,7 +40,16 @@ function CreatePromoCode() {
     setFormData((prev) => ({ ...prev, course_ids: ids }))
   );
 
-  const isCreateDisabled = isLoading || isLoadingCourses || (coursesList.length <= 1 && !isLoadingCourses);
+
+  const isSaveDisabled = isLoading || isLoadingCourses || (coursesList.length <= 1 && !isLoadingCourses);
+
+  if (isLoadingCourses) {
+    return (
+      <div className="flex justify-center items-center h-[60vh]">
+        <LoadingSpinner text="Loading promo code..." size="md" />
+      </div>
+    );
+  }
 
   return (
     <div className="bg-gray-100 flex-1 pb-10">
@@ -43,6 +59,7 @@ function CreatePromoCode() {
         errors={errors}
         coursesList={coursesList}
         popoverOpen={popoverOpen}
+        setPopoverOpen={setPopoverOpen}
         triggerRef={triggerRef}
         triggerWidth={triggerWidth}
         getSelectedCoursesDisplay={getSelectedCoursesDisplay}
@@ -50,16 +67,14 @@ function CreatePromoCode() {
         handleDiscountTypeChange={handleDiscountTypeChange}
         handleCancel={handleCancel}
         handleSubmit={handleSubmit}
-        setPopoverOpen={setPopoverOpen}
         handleCoursesBlur={handleCoursesBlur}
         handleToggleCourse={handleToggleCourse}
         handleRemoveTag={handleRemoveTag}
         handlePercentBlur={handlePercentBlur}
-        isCreateDisabled={isCreateDisabled}
+        isCreateDisabled={isSaveDisabled}
         isLoadingCourses={isLoadingCourses}
+        mode="edit"
       />
     </div>
   );
 }
-
-export default CreatePromoCode;
