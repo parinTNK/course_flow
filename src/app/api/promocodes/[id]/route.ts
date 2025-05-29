@@ -78,7 +78,6 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
 export async function DELETE(request: NextRequest,{ params }: {params: { id: string } }) {
   try {
     const { id } = params;
-    console.log(`Deleting promo code with ID: ${id}`);
     const { error } = await supabase
       .from('promo_codes')
       .delete()

@@ -71,7 +71,6 @@ const PromoCodeFormView: React.FC<PromoCodeFormViewProps> = ({
   mode = "create",
   onDeletePromoCode,
 }) => {
-  console.log("PromoCodeFormView rendered with formData:", formData);
   return (
     <>
       <div className="flex justify-between items-center mb-8 bg-white px-8 py-6 border-b-3 border-gray-200">
