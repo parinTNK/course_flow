@@ -67,20 +67,10 @@ export default function MyAssignment({
   const [localError, setLocalError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [localStatus, setLocalStatus] = useState(normalizedStatus);
-  const [lastSaved, setLastSaved] = useState<Date | null>(null);
-  const [lastSavedAnswer, setLastSavedAnswer] = useState<string>(""); // Track last saved answer
   const [autoSaveStatus, setAutoSaveStatus] = useState<
     "idle" | "saving" | "saved" | "error"
   >("idle");
   const autoSaveTimeout = useRef<NodeJS.Timeout | null>(null);
-
-  // Initialize lastSaved and lastSavedAnswer from props on first load
-  React.useEffect(() => {
-    // Always use updated_at (passed as propLastSaved) for lastSaved, not submission_date
-    if (propLastSaved) setLastSaved(new Date(propLastSaved)); // propLastSaved should be updated_at from submission table
-    if (propLastSavedAnswer !== undefined) setLastSavedAnswer(propLastSavedAnswer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   const handleLocalSubmit = async () => {
     if (!answer.trim()) {
@@ -89,16 +79,14 @@ export default function MyAssignment({
         "Answer is required",
         "Please type your answer before submitting."
       );
-      setLocalStatus("pending"); // Immediately set status to pending if empty
+      setLocalStatus("pending");
       return;
     }
     setLocalError(null);
     setLoading(true);
     try {
       await Promise.resolve(onSubmit());
-      setLocalStatus("submitted"); // <-- Update status tag after submit
-      setLastSaved(new Date()); // Set lastSaved on submit
-      setLastSavedAnswer(answer);
+      setLocalStatus("submitted");
     } finally {
       setLoading(false);
     }
@@ -108,9 +96,7 @@ export default function MyAssignment({
     setLoading(true);
     try {
       await Promise.resolve(onReset?.());
-      setLocalStatus("pending"); // <-- Update status tag after reset
-      setLastSaved(new Date()); // Set lastSaved on reset (like Assignment.tsx)
-      setLastSavedAnswer(""); // Clear lastSavedAnswer on reset
+      setLocalStatus("pending");
     } finally {
       setLoading(false);
     }
@@ -139,44 +125,43 @@ export default function MyAssignment({
     }
   };
 
-  // Auto-save effect (30s debounce, only if answer changed)
+  // Auto-save effect: only save if answer changed from lastSavedAnswer (from props), and not submitted
   React.useEffect(() => {
     if (normalizedStatus === "submitted") return;
     if (autoSaveTimeout.current) clearTimeout(autoSaveTimeout.current);
 
+    // Only auto-save if answer changed since last save (from prop)
+    if (answer === propLastSavedAnswer) {
+      setAutoSaveStatus("idle");
+      return;
+    }
+
+    // Don't auto-save if answer is empty
     if (!answer.trim()) {
       setAutoSaveStatus("idle");
       return;
     }
 
-    // Only auto-save if answer changed since last save
-    if (answer === lastSavedAnswer) {
-      setAutoSaveStatus("idle");
-      return;
-    }
-
-    setAutoSaveStatus("idle"); // Not saving during debounce
+    setAutoSaveStatus("idle");
     autoSaveTimeout.current = setTimeout(async () => {
-      setAutoSaveStatus("saving"); // Only set to saving when actually saving
+      setAutoSaveStatus("saving");
       try {
         if (onAutoSave) {
           await Promise.resolve(onAutoSave());
         }
-        setLastSaved(new Date());
-        setLastSavedAnswer(answer); // Update last saved answer
         setAutoSaveStatus("saved");
         toastInfo?.("Auto-saved", "Your answer was auto-saved.");
       } catch (e) {
         setAutoSaveStatus("error");
         toastError("Auto-save failed", "Could not auto-save your answer.");
       }
-    }, 30000); // 30s debounce
+    }, 30000);
 
     return () => {
       if (autoSaveTimeout.current) clearTimeout(autoSaveTimeout.current);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [answer]);
+  }, [answer, propLastSavedAnswer, normalizedStatus, onAutoSave]);
 
   // Optionally, sync localStatus with prop changes (e.g., after parent reloads data)
   React.useEffect(() => {
@@ -208,11 +193,11 @@ export default function MyAssignment({
       >
         <div className="text-[16px] mt-4 sm:mt-6 font-base">{question}</div>
         {/* Show last saved only when in progress and lastSaved exists */}
-        {localStatus === "inprogress" && lastSaved && (
+        {localStatus === "inprogress" && propLastSaved && (
           <div className="flex items-center gap-3 mb-1 min-h-[24px]">
             <span className="text-[#646D89] text-xs">
-              Last saved: {lastSaved.toLocaleDateString()}{" "}
-              {lastSaved.toLocaleTimeString([], {
+              Last saved: {new Date(propLastSaved).toLocaleDateString()}{" "}
+              {new Date(propLastSaved).toLocaleTimeString([], {
                 hour: "2-digit",
                 minute: "2-digit",
                 second: "2-digit",

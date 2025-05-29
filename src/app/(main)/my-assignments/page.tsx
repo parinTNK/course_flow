@@ -72,32 +72,36 @@ export default function MyAssignmentsPage() {
       setLastSavedAnswers({});
       return;
     }
+    // Only fetch assignments on first load or when user changes, not on every tab change
     setLoading(true);
     setError(null);
 
     axios
       .get(`/api/users/${user.user_id}/submission`)
       .then((res) => {
-        const assignmentsWithSubmission: AssignmentWithSubmission[] = res.data.data || [];
-        console.log("[Fetched assignmentsWithSubmission]:", assignmentsWithSubmission); 
+  const assignmentsWithSubmission: AssignmentWithSubmission[] = res.data.data || [];
+  console.log("[Fetched assignmentsWithSubmission]:", assignmentsWithSubmission); 
 
-        setAssignments(assignmentsWithSubmission);
-        const initialAnswers: Record<string, string> = {};
-        const initialLastSaved: Record<string, Date | null> = {};
-        assignmentsWithSubmission.forEach((a) => {
-          initialAnswers[a.id] = a.submission?.answer || "";
-          initialLastSaved[a.id] = a.submission?.updated_at
-            ? new Date(a.submission.updated_at)
-            : null;
-        });
-        setAnswers(initialAnswers);
-        setLastSaved(initialLastSaved);
-        setLastSavedAnswers(initialAnswers);
-      })
+  setAssignments(assignmentsWithSubmission);
+  const initialAnswers: Record<string, string> = {};
+  const initialLastSaved: Record<string, Date | null> = {};
+  assignmentsWithSubmission.forEach((a) => {
+    initialAnswers[a.id] = a.submission?.answer || "";
+    initialLastSaved[a.id] = a.submission?.updated_at
+      ? new Date(a.submission.updated_at)
+      : null;
+  });
+  setAnswers(initialAnswers);
+  setLastSaved(initialLastSaved);
+  setLastSavedAnswers(initialAnswers);
+  clearDrafts(); 
+})
+
       .catch((err) => {
         setError(err.message || "Failed to fetch assignments");
       })
       .finally(() => setLoading(false));
+  // Only depend on user?.user_id, not tab
   }, [user?.user_id]);
 
 
@@ -228,18 +232,20 @@ export default function MyAssignmentsPage() {
   };
 
   // Auto-save drafts every 30 seconds ONLY if answers changed since last save
-  useEffect(() => {
-    const interval = setInterval(() => {
-      // Only save if any dirty assignment's answer has changed since last save
-      const hasChanged = Array.from(dirtyAssignments).some(
-        (assignmentId) => answers[assignmentId] !== lastSavedAnswers[assignmentId]
-      );
-      if (dirtyAssignments.size > 0 && hasChanged) {
-        saveAllDrafts();
-      }
-    }, 30000);
-    return () => clearInterval(interval);
-  }, [dirtyAssignments, answers, lastSavedAnswers, saveAllDrafts]);
+useEffect(() => {
+  const interval = setInterval(() => {
+    const hasChanged = Array.from(dirtyAssignments).some(
+      (assignmentId) =>
+        answers[assignmentId] !== lastSavedAnswers[assignmentId]
+    );
+
+    if (dirtyAssignments.size > 0 && hasChanged) {
+      saveAllDrafts(); // Only save when changed
+    }
+  }, 30000);
+
+  return () => clearInterval(interval);
+}, [dirtyAssignments, answers, lastSavedAnswers, saveAllDrafts]);
 
   // Warn on browser/tab close if drafts exist
   useEffect(() => {
@@ -276,10 +282,13 @@ export default function MyAssignmentsPage() {
   // Move dirtyAssignments declaration above any useEffect or function that uses it
 
 const handleChangeAnswer = (assignmentId: string, val: string) => {
-  setAnswers((prev) => ({ ...prev, [assignmentId]: val }));
-  setDirty(assignmentId);
-    setAssignments((prev) =>
-      prev.map((a) =>
+  // Only update if changed
+  setAnswers((prev) => {
+    if (prev[assignmentId] === val) return prev;
+    // Only set dirty if the answer actually changed
+    setDirty(assignmentId);
+    setAssignments((prevAssignments) =>
+      prevAssignments.map((a) =>
         a.id === assignmentId && (!a.submission || a.submission.status !== "submitted")
           ? {
               ...a,
@@ -297,7 +306,9 @@ const handleChangeAnswer = (assignmentId: string, val: string) => {
           : a
       )
     );
-  };
+    return { ...prev, [assignmentId]: val };
+  });
+};
 
   const handleSubmit = async (assignment: AssignmentWithSubmission) => {
     console.log("[Submit] assignment.id:", assignment.id);
