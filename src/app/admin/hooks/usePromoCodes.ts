@@ -18,6 +18,8 @@ export function usePromoCodes(codesPerPage: number) {
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [selectedPromo, setSelectedPromo] = useState<PromoCode | null>(null);
 
+
+
   const fetchPromoCodes = useCallback(async () => {
     setIsLoading(true);
     setError(null);
@@ -43,10 +45,9 @@ export function usePromoCodes(codesPerPage: number) {
   }, [fetchPromoCodes]);
 
   const deletePromoCode = async (promoId: string) => {
-    await axios.delete(`/api/promocodes/delete/${promoId}`);
+    await axios.delete(`/api/promocodes/${promoId}`);
     await fetchPromoCodes();
   };
-
 
   // --- Handlers ---
   const handleAddPromoCode = () => {
@@ -54,7 +55,7 @@ export function usePromoCodes(codesPerPage: number) {
   };
 
   const handleEditPromoCode = (id: string) => {
-    alert(`Edit promo code ${id} functionality to be implemented`);
+    router.push(`/admin/dashboard/edit-promo-codes/${id}`);
   };
 
   const handleDeletePromoCode = (promo: PromoCode) => {
@@ -94,6 +95,7 @@ export function usePromoCodes(codesPerPage: number) {
     totalPages,
     showConfirmModal,
     selectedPromo,
+
     handleAddPromoCode,
     handleEditPromoCode,
     handleDeletePromoCode,

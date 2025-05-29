@@ -9,7 +9,6 @@ export async function POST(request: NextRequest) {
       min_purchase_amount,
       discount_type,
       discount_value,
-      discount_percentage,
       is_all_courses = false,
       course_ids = [],
     } = body;
@@ -40,7 +39,6 @@ export async function POST(request: NextRequest) {
           min_purchase_amount,
           discount_type,
           discount_value,
-          discount_percentage,
           is_all_courses,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),

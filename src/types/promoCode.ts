@@ -4,7 +4,6 @@ export interface PromoCode {
   min_purchase_amount: number;
   discount_type: string;
   discount_value: number | null;
-  discount_percentage: number | null;
   created_at: string;
   is_all_courses: boolean;
   course_names?: string[];

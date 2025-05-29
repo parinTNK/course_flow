@@ -6,7 +6,6 @@ interface PromoCode {
   min_purchase_amount?: number | null;
   discount_type?: 'fixed' | 'percentage' | null;
   discount_value?: number | null;
-  discount_percentage?: number | null;
 }
 
 interface PromoCodeSectionProps {

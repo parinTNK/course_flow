@@ -10,6 +10,7 @@ export function useCoursesSelect(
   setSelectedIds: (ids: string[]) => void
 ) {
   const { success: toastSuccess, error: toastError } = useCustomToast();
+  
   const [coursesList, setCoursesList] = useState<Course[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isLoadingCourses, setIsLoadingCourses] = useState(false);

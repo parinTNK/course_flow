@@ -45,7 +45,7 @@ const PromoRow: React.FC<PromoRowProps> = ({
       <td className="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
         <button
           onClick={onDelete}
-          className="text-blue-600 hover:text-blue-800 mr-3 transition"
+          className="text-blue-600 hover:text-blue-800 mr-3 transition cursor-pointer"
           aria-label="Delete promo code"
         >
           <Image
@@ -58,7 +58,7 @@ const PromoRow: React.FC<PromoRowProps> = ({
         </button>
         <button
           onClick={() => onEdit(promo.id)}
-          className="text-blue-600 hover:text-blue-800 transition"
+          className="text-blue-600 hover:text-blue-800 transition cursor-pointer"
           aria-label="Edit promo code"
         >
           <Image

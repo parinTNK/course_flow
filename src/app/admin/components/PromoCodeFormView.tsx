@@ -44,6 +44,8 @@ interface PromoCodeFormViewProps {
   handlePercentBlur: (e: React.FocusEvent<HTMLInputElement>) => void;
   isCreateDisabled?: boolean;
   isLoadingCourses?: boolean;
+  mode?: "create" | "edit";
+  onDeletePromoCode?: () => void;
 }
 
 const PromoCodeFormView: React.FC<PromoCodeFormViewProps> = ({
@@ -66,11 +68,16 @@ const PromoCodeFormView: React.FC<PromoCodeFormViewProps> = ({
   handlePercentBlur,
   isCreateDisabled = false,
   isLoadingCourses = false,
+  mode = "create",
+  onDeletePromoCode,
 }) => {
+  console.log("PromoCodeFormView rendered with formData:", formData);
   return (
     <>
       <div className="flex justify-between items-center mb-8 bg-white px-8 py-6 border-b-3 border-gray-200">
-        <h1 className="text-3xl font-semibold text-gray-800">Add Promo code</h1>
+        <h1 className="text-3xl font-semibold text-gray-800">
+          {mode === "edit" ? "Edit Promo code" : "Add Promo code"}
+        </h1>
         <div className="flex items-center space-x-4">
           <ButtonT
             variant="Secondary"
@@ -85,7 +92,13 @@ const PromoCodeFormView: React.FC<PromoCodeFormViewProps> = ({
             disabled={isCreateDisabled}
             onClick={handleSubmit}
           >
-            {isLoading ? "Creating..." : "Create"}
+            {isLoading
+    ? mode === "edit"
+      ? "Saving..."
+      : "Creating..."
+    : mode === "edit"
+      ? "Save"
+      : "Create"}
           </ButtonT>
         </div>
       </div>
@@ -364,6 +377,17 @@ const PromoCodeFormView: React.FC<PromoCodeFormViewProps> = ({
                 )}
               </div>
             </div>
+            {mode === "edit" && onDeletePromoCode && (
+              <div className="flex justify-end mt-4">
+                <button
+                  type="button"
+                  className="text-red-600 hover:underline"
+                  onClick={onDeletePromoCode}
+                >
+                  Delete Promo code
+                </button>
+              </div>
+            )}
           </form>
         </div>
       )}
