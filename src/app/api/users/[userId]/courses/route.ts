@@ -44,7 +44,8 @@ export async function GET(
       `,
         { count: "exact" }
       )
-      .eq("user_id", userId);
+      .eq("user_id", userId)
+      .order("subscription_date", { ascending: false });
 
 
     if (tab === "inprogress") {
