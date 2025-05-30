@@ -32,7 +32,7 @@ export default function Sidebar() {
     {
       id: "assignment",
       name: "Assignment",
-      path: "/admin/assignments",
+      path: "/admin/dashboard/assignments",
       icon: MdOutlineAssignmentTurnedIn,
     },
     {
