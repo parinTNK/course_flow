@@ -13,8 +13,11 @@ type MyAssignmentProps = {
   onSubmit: () => void;
   onReset?: () => void;
   disabled?: boolean;
-  courseId: string; // <-- add this prop
-  onAutoSave?: () => void; // <-- add this prop
+  courseId: string; 
+  onAutoSave?: () => void; 
+  lastSaved?: Date | null;
+  lastSavedAnswer?: string;
+  solution?: string; 
 };
 
 export default function MyAssignment({
@@ -28,9 +31,12 @@ export default function MyAssignment({
   onReset,
   disabled = false,
   courseId,
-  onAutoSave, // <-- add this
+  onAutoSave, 
+  lastSaved: propLastSaved,
+  lastSavedAnswer: propLastSavedAnswer,
+  solution, 
 }: MyAssignmentProps) {
-  // Normalize status to match backend
+
   const normalizedStatus = status.replace(" ", "").toLowerCase() as
     | "submitted"
     | "inprogress"
@@ -63,12 +69,11 @@ export default function MyAssignment({
   const [localError, setLocalError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [localStatus, setLocalStatus] = useState(normalizedStatus);
-  const [lastSaved, setLastSaved] = useState<Date | null>(null);
-  const [lastSavedAnswer, setLastSavedAnswer] = useState<string>(""); // Track last saved answer
   const [autoSaveStatus, setAutoSaveStatus] = useState<
     "idle" | "saving" | "saved" | "error"
   >("idle");
   const autoSaveTimeout = useRef<NodeJS.Timeout | null>(null);
+  const [showSolution, setShowSolution] = useState(false);
 
   const handleLocalSubmit = async () => {
     if (!answer.trim()) {
@@ -77,14 +82,14 @@ export default function MyAssignment({
         "Answer is required",
         "Please type your answer before submitting."
       );
-      setLocalStatus("pending"); // Immediately set status to pending if empty
+      setLocalStatus("pending");
       return;
     }
     setLocalError(null);
     setLoading(true);
     try {
       await Promise.resolve(onSubmit());
-      setLocalStatus("submitted"); // <-- Update status tag after submit
+      setLocalStatus("submitted");
     } finally {
       setLoading(false);
     }
@@ -94,16 +99,15 @@ export default function MyAssignment({
     setLoading(true);
     try {
       await Promise.resolve(onReset?.());
-      setLocalStatus("pending"); // <-- Update status tag after reset
+      setLocalStatus("pending");
     } finally {
       setLoading(false);
     }
   };
 
-  // Use navigateWithDraftCheck if available from window, fallback to normal navigation
   const handleOpenInCourse = (e: React.MouseEvent) => {
     e.preventDefault();
-    // Try to use the same modal logic as NavBar/Footer by dispatching the custom event
+
     window.dispatchEvent(
       new CustomEvent("navigateWithDraftCheck", {
         detail: `/course-learning/${courseId}/learning`,
@@ -111,7 +115,6 @@ export default function MyAssignment({
     );
   };
 
-  // Live status update on textarea change
   const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setLocalError(null);
     const val = e.target.value;
@@ -123,52 +126,47 @@ export default function MyAssignment({
     }
   };
 
-  // Auto-save effect (30s debounce, only if answer changed)
   React.useEffect(() => {
     if (normalizedStatus === "submitted") return;
     if (autoSaveTimeout.current) clearTimeout(autoSaveTimeout.current);
+
+    if (answer === propLastSavedAnswer) {
+      setAutoSaveStatus("idle");
+      return;
+    }
 
     if (!answer.trim()) {
       setAutoSaveStatus("idle");
       return;
     }
 
-    // Only auto-save if answer changed since last save
-    if (answer === lastSavedAnswer) {
-      setAutoSaveStatus("idle");
-      return;
-    }
-
-    setAutoSaveStatus("idle"); // Not saving during debounce
+    setAutoSaveStatus("idle");
     autoSaveTimeout.current = setTimeout(async () => {
-      setAutoSaveStatus("saving"); // Only set to saving when actually saving
+      setAutoSaveStatus("saving");
       try {
         if (onAutoSave) {
           await Promise.resolve(onAutoSave());
         }
-        setLastSaved(new Date());
-        setLastSavedAnswer(answer); // Update last saved answer
         setAutoSaveStatus("saved");
         toastInfo?.("Auto-saved", "Your answer was auto-saved.");
       } catch (e) {
         setAutoSaveStatus("error");
         toastError("Auto-save failed", "Could not auto-save your answer.");
       }
-    }, 30000); // 30s debounce
+    }, 30000);
 
     return () => {
       if (autoSaveTimeout.current) clearTimeout(autoSaveTimeout.current);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [answer]);
 
-  // Optionally, sync localStatus with prop changes (e.g., after parent reloads data)
+  }, [answer, propLastSavedAnswer, normalizedStatus, onAutoSave]);
+
   React.useEffect(() => {
     setLocalStatus(normalizedStatus);
   }, [normalizedStatus]);
 
   return (
-    <div className="bg-[#E5ECF8] rounded-lg py-4 sm:py-10 flex flex-col gap-0 w-[343px] h-auto sm:w-[1120px] sm:h-[378px] ">
+    <div className="bg-[#E5ECF8] rounded-lg py-4 sm:py-10 flex flex-col gap-0 w-[343px] h-auto sm:w-[1120px]  ">
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start px-6 sm:px-[96px] gap-2 sm:gap-0">
         <div>
           <div className="font-medium text-[20px] sm:text-[24px] mb-2 leading-tight">
@@ -191,34 +189,29 @@ export default function MyAssignment({
         className={`bg-white rounded-lg flex flex-col px-[16px] sm:px-[24px] py-1 gap-1 mx-[16px] lg:mx-[96px] w-[311px] sm:w-[auto] lg:w-[928px] h-auto justify-center border-1 border-[#D6D9E4] `}
       >
         <div className="text-[16px] mt-4 sm:mt-6 font-base">{question}</div>
-        {/* Last saved and auto-save status */}
-        {(autoSaveStatus === "saving" ||
-          (autoSaveStatus === "saved" && lastSaved) ||
-          autoSaveStatus === "error") &&
-          normalizedStatus !== "submitted" && (
+        {localStatus === "inprogress" && propLastSaved && (
+          <div className="flex items-center gap-3 mb-1 min-h-[24px]">
+            <span className="text-[#646D89] text-xs">
+              Last saved: {new Date(propLastSaved).toLocaleDateString()}{" "}
+              {new Date(propLastSaved).toLocaleTimeString([], {
+                hour: "2-digit",
+                minute: "2-digit",
+                second: "2-digit",
+              })}
+            </span>
+          </div>
+        )}
+        {/* Show auto-save status only if saving or error */}
+        {(autoSaveStatus === "saving" || autoSaveStatus === "error") &&
+          localStatus !== "submitted" && (
             <div className="flex items-center gap-3 mb-1 min-h-[24px]">
               {autoSaveStatus === "saving" && (
                 <span className="text-[#3557CF] text-xs">Saving...</span>
-              )}
-              {autoSaveStatus === "saved" && lastSaved && (
-                <span className="text-[#646D89] text-xs">
-                  Last saved: {lastSaved.toLocaleDateString()}{" "}
-                  {lastSaved.toLocaleTimeString([], {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                    second: "2-digit",
-                  })}
-                </span>
               )}
               {autoSaveStatus === "error" && (
                 <span className="text-red-500 text-xs">Auto-save failed</span>
               )}
             </div>
-          )}
-        {autoSaveStatus !== "saving" &&
-          !(autoSaveStatus === "saved" && lastSaved) &&
-          autoSaveStatus !== "error" && (
-            <div style={{ marginBottom: 0, minHeight: 0 }} />
           )}
         <div className="flex flex-col sm:flex-row sm:items-center gap-4">
           {/* Mobile: show readonly answer block if submitted, else textarea */}
@@ -233,20 +226,22 @@ export default function MyAssignment({
           ) : null}
           {/* Show textarea on desktop always, and on mobile if not submitted */}
           {(normalizedStatus !== "submitted" || window.innerWidth >= 640) && (
-            <textarea
-              className={`w-full p-4 rounded-lg min-h-[120px] sm:mb-6 text-base placeholder:text-[#bfc6db] focus:outline-[#2957c2] resize-none ${
-                normalizedStatus === "submitted"
-                  ? "hidden sm:block text-[#9AA1B9] font-normal border-0"
-                  : "text-gray-700 border border-[#e0e4ef]"
-              }`}
-              placeholder="Answer..."
-              value={answer}
-              onChange={handleTextareaChange}
-              disabled={disabled || normalizedStatus === "submitted"}
-              style={
-                normalizedStatus === "submitted" ? { fontSize: 16 } : undefined
-              }
-            />
+            <>
+              <textarea
+                className={`w-full p-4 rounded-lg min-h-[120px] sm:mb-6 text-base placeholder:text-[#bfc6db] focus:outline-[#2957c2] resize-none ${
+                  normalizedStatus === "submitted"
+                    ? "hidden sm:block text-[#9AA1B9] font-normal border-0"
+                    : "text-gray-700 border border-[#e0e4ef]"
+                }`}
+                placeholder="Answer..."
+                value={answer}
+                onChange={handleTextareaChange}
+                disabled={disabled || normalizedStatus === "submitted"}
+                style={
+                  normalizedStatus === "submitted" ? { fontSize: 16 } : undefined
+                }
+              />
+            </>
           )}
           <div className="flex flex-col items-center gap-2 mb-4 sm:mb-0">
             {localError && (
@@ -286,6 +281,41 @@ export default function MyAssignment({
           </div>
         </div>
       </div>
+      {/* Show answer key below the white box if submitted and available */}
+      {normalizedStatus === "submitted" && solution && (
+        <div
+          className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4 mt-4 mx-[16px] lg:mx-[96px] w-[311px] sm:w-[auto] lg:w-[928px]"
+        >
+          <button
+            className="flex items-center gap-2 font-medium text-green-700 mb-2 text-sm focus:outline-none cursor-pointer"
+            onClick={() => setShowSolution((v) => !v)}
+            aria-expanded={showSolution}
+            aria-controls="answer-key-content"
+            type="button"
+          >
+            <span>
+              {showSolution ? "Hide Answer Key" : "Show Answer Key"}
+            </span>
+            <svg
+              className={`transition-transform duration-200 w-4 h-4 ${showSolution ? "rotate-180" : ""}`}
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={2}
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+          {showSolution && (
+            <div
+              id="answer-key-content"
+              className="text-green-800 whitespace-pre-line text-sm"
+            >
+              {solution}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
