@@ -181,13 +181,16 @@ export default function AssignmentFormView({
 
         <div>
           <Label className="text-[16px] mb-2">Assignment *</Label>
-          <Input
+          <textarea
             name="description"
             value={formData.description}
-            onChange={handleInputChange}
+            onChange={handleInputChange as any}
             placeholder="Enter assignment description"
             minLength={5}
             maxLength={300}
+            className={`w-full border p-2 rounded-md text-[16px] resize-y min-h-[100px] ${
+              errors.description ? "border-red-500" : ""
+            }`}
           />
           {errors.description && (
             <p className="text-red-500 text-sm mt-1">{errors.description}</p>
@@ -196,12 +199,15 @@ export default function AssignmentFormView({
 
         <div>
           <Label className="text-[16px] mb-2">Solution *</Label>
-          <Input
+          <textarea
             name="solution"
             value={formData.solution}
-            onChange={handleInputChange}
+            onChange={handleInputChange as any}
             placeholder="Enter solution"
             maxLength={500}
+            className={`w-full border p-2 rounded-md text-[16px] resize-y min-h-[100px] ${
+              errors.solution ? "border-red-500" : ""
+            }`}
           />
           {errors.solution && (
             <p className="text-red-500 text-sm mt-1">{errors.solution}</p>
