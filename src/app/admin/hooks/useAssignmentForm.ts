@@ -12,7 +12,7 @@ interface AssignmentFormData {
   subLessonId: string;
 }
 
-export function useAssignmentForm() {
+export function useAssignmentForm(mode: "create" | "edit" = "create", assignmentId?: string) {
   const router = useRouter();
   const { success: toastSuccess, error: toastError } = useCustomToast();
 
@@ -100,6 +100,7 @@ export function useAssignmentForm() {
     if (formData.description.trim().length < 5) {
     newErrors.description = "Assignment must be at least 5 characters";
     }
+    
     if (!formData.description.trim()) {
       newErrors.description = "Please enter assignment";
     } else if (formData.description.length > 300) {
@@ -122,15 +123,17 @@ export function useAssignmentForm() {
     setIsLoading(true);
 
     try {
-      const { data: existing } = await supabase
-        .from("assignments")
-        .select("id")
-        .eq("sub_lesson_id", formData.subLessonId);
+      if (mode === "create") {
+        const { data: existing } = await supabase
+          .from("assignments")
+          .select("id")
+          .eq("sub_lesson_id", formData.subLessonId);
 
-      if (existing && existing.length > 0) {
-        toastError("This sub-lesson already has an assignment.");
-        setIsLoading(false);
-        return;
+        if (existing && existing.length > 0) {
+          toastError("This sub-lesson already has an assignment.");
+          setIsLoading(false);
+          return;
+        }
       }
 
       const now = getBangkokISOString();
@@ -156,6 +159,80 @@ export function useAssignmentForm() {
     }
   };
 
+  const handleUpdate = async () => {
+    if (!assignmentId) return;
+
+    const newErrors: Record<string, string> = {};
+
+    if (!formData.courseId) newErrors.courseId = "Please select course";
+    if (!formData.lessonId) newErrors.lessonId = "Please select lesson";
+    if (!formData.subLessonId) newErrors.subLessonId = "Please select sub-lesson";
+
+    if (!formData.description.trim()) {
+      newErrors.description = "Please enter assignment";
+    } else if (formData.description.length < 5) {
+      newErrors.description = "Minimum 5 characters required";
+    } else if (formData.description.length > 300) {
+      newErrors.description = "Too long (max 300 characters)";
+    }
+
+    if (!formData.solution.trim()) {
+      newErrors.solution = "Please enter solution";
+    } else if (formData.solution.length > 500) {
+      newErrors.solution = "Too long (max 500 characters)";
+    }
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      toastError("Please fix the errors in the form.");
+      return;
+    }
+
+    setErrors({});
+    setIsLoading(true);
+
+    const updated_at = getBangkokISOString();
+
+    const { error } = await supabase
+      .from("assignments")
+      .update({
+        description: formData.description.trim(),
+        solution: formData.solution.trim(),
+        course_id: formData.courseId,
+        lesson_id: formData.lessonId,
+        sub_lesson_id: formData.subLessonId,
+        updated_at,
+      })
+      .eq("id", assignmentId);
+
+    if (error) {
+      toastError("Failed to update assignment.");
+    } else {
+      toastSuccess("Assignment updated successfully!");
+      router.push("/admin/dashboard/assignments");
+    }
+
+    setIsLoading(false);
+  };
+
+  const handleDeleteAssignment = async () => {
+    if (!assignmentId) return;
+    
+    const { error } = await supabase
+      .from("assignments")
+      .delete()
+      .eq("id", assignmentId);
+
+    if (error) {
+      toastError("Failed to delete assignment.");
+      return;
+    }
+
+    toastSuccess("Assignment deleted successfully!");
+    router.push("/admin/dashboard/assignments");
+  };
+
+
   return {
     formData,
     setFormData,
@@ -168,5 +245,7 @@ export function useAssignmentForm() {
     handleSelect,
     handleCancel,
     handleSubmit,
+    handleUpdate,
+    handleDeleteAssignment,
   };
 }

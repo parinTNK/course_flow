@@ -2,6 +2,12 @@ import React from "react";
 import { Input } from "@/components/ui/input";
 import { ButtonT } from "@/components/ui/ButtonT";
 import { Label } from "@/components/ui/label";
+import { 
+  Tooltip, 
+  TooltipContent, 
+  TooltipProvider, 
+  TooltipTrigger 
+} from "@/components/ui/tooltip";
 
 interface AssignmentFormViewProps {
   formData: {
@@ -16,6 +22,11 @@ interface AssignmentFormViewProps {
   subLessons: { id: string; title: string }[];
   errors: Record<string, string>;
   isLoading: boolean;
+  mode?: "create" | "edit";
+  heading?: string;
+  showBackButton?: boolean;
+  onBack?: () => void;
+  onDelete?: () => void;
   handleInputChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   handleSelect: (field: string, value: string) => void;
   handleCancel: () => void;
@@ -29,6 +40,11 @@ export default function AssignmentFormView({
   subLessons,
   errors,
   isLoading,
+  mode = "create",
+  heading,
+  showBackButton = false,
+  onBack,
+  onDelete,
   handleInputChange,
   handleSelect,
   handleCancel,
@@ -36,20 +52,52 @@ export default function AssignmentFormView({
 }: AssignmentFormViewProps) {
   return (
     <>
+      {/* Header */}
       <div className="flex justify-between items-center mb-8 bg-white px-8 py-6 border-b border-gray-200">
-        <h1 className="text-3xl font-semibold text-gray-800">
-          Add Assignment
-        </h1>
+        <div className="flex items-center gap-4">
+          {showBackButton && (
+            <button
+              onClick={onBack}
+              className="text-2xl text-[#9AA1B9] font-semibold hover:text-gray-900"
+            >
+              ← Assignment
+            </button>
+          )}
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <h1 className="text-2xl font-semibold text-black max-w-[500px] truncate cursor-help">
+                  {heading ?? 
+                    (mode === "edit" 
+                      ? formData.description || "Edit Assignment" 
+                      : "Add Assignment")}
+                </h1>
+              </TooltipTrigger>
+              {formData.description && (
+                <TooltipContent className="max-w-xs whitespace-pre-wrap break-words text-sm">
+                  <p>{formData.description}</p>
+                </TooltipContent>
+              )}
+            </Tooltip>
+          </TooltipProvider>
+        </div>
         <div className="flex items-center space-x-4">
           <ButtonT variant="Secondary" onClick={handleCancel}>
             Cancel
           </ButtonT>
           <ButtonT variant="primary" onClick={(e) => handleSubmit(e as any)}>
-            {isLoading ? "Creating..." : "Create"}
+            {isLoading
+              ? mode === "edit"
+                ? "Saving..."
+                : "Creating..."
+              : mode === "edit"
+              ? "Save"
+              : "Create"}
           </ButtonT>
         </div>
       </div>
 
+      {/* Form */}
       <form
         onSubmit={(e) => {
           e.preventDefault();
@@ -159,6 +207,19 @@ export default function AssignmentFormView({
             <p className="text-red-500 text-sm mt-1">{errors.solution}</p>
           )}
         </div>
+
+        {/* Delete button (only on edit mode) */}
+        {mode === "edit" && onDelete && (
+          <div className="flex justify-end mt-6">
+            <button
+              type="button"
+              className="text-[#2F5FAC] text-[16px] font-bold hover:text-blue-500"
+              onClick={onDelete}
+            >
+              Delete Assignment
+            </button>
+          </div>
+        )}
       </form>
     </>
   );
