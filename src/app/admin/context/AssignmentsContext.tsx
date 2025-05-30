@@ -144,9 +144,9 @@ export const AssignmentsProvider = ({ children }: { children: ReactNode }) => {
           setAssignmentToDelete(null);
         }}
         onConfirm={confirmDeleteAssignment}
-        title="Delete Assignment"
-        message={<span className="text-red-600">Are you sure you want to delete this assignment?</span>}
-        confirmText="Yes, delete it"
+        title="Confirmation"
+        message={<span className="">Are you sure you want to delete this assignment?</span>}
+        confirmText="Yes, delete"
         cancelText="Cancel"
       />
     </AssignmentsContext.Provider>
