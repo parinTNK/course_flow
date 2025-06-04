@@ -21,7 +21,5 @@ export function useCourse(courseId: string) {
       .finally(() => setLoading(false));
   }, [courseId]);
 
-  console.log("useCourse", course);
-
   return { course, loading, error };
 }

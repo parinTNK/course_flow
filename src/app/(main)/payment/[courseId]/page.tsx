@@ -20,7 +20,7 @@ import {
   luhnCheck,
 } from "@/utils/paymentUtils";
 import InputField from "@/components/payment/InputField";
-import { DISCOUNT_TYPE_FIXED,DISCOUNT_TYPE_PERCENT } from "@/types/promoCode";
+import { DISCOUNT_TYPE_FIXED, DISCOUNT_TYPE_PERCENT } from "@/types/promoCode";
 
 // -------------------- Main Component --------------------
 export default function PaymentPage() {
@@ -42,6 +42,7 @@ export default function PaymentPage() {
     loading: isFetchingCourse,
     error: courseError,
   } = useCourse(courseId);
+
   const { promoResult, promoError, promoApplied, validatePromo, resetPromo } =
     usePromoCode();
 
@@ -72,12 +73,10 @@ export default function PaymentPage() {
     if (promoResult.discountType === DISCOUNT_TYPE_FIXED) {
       discount = promoResult.discountValue;
     } else if (promoResult.discountType === DISCOUNT_TYPE_PERCENT) {
-      discount =
-        course && promoResult.discountPercentage
-          ? (course.price * promoResult.discountPercentage) / 100
-          : 0;
+      discount = (course.price * promoResult.discountValue) / 100;
     }
   }
+
   const displayDiscount = Math.round(discount * 100) / 100;
   const rawTotal = (course?.price ?? 0) - discount;
   const total = Math.round(rawTotal * 100) / 100;

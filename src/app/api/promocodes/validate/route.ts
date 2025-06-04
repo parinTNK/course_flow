@@ -18,10 +18,10 @@ export async function POST(req: NextRequest) {
 
 
   const { data: mapping, error: mappingError } = await supabase
-    .from("promo_code_courses")
-    .select("*")
+    .from("courses")
+    .select("id, promo_code_id")
+    .eq("id", courseId)
     .eq("promo_code_id", promo.id)
-    .eq("course_id", courseId)
     .single();
 
   if (mappingError || !mapping) {
@@ -42,9 +42,8 @@ export async function POST(req: NextRequest) {
 
   return Response.json({
     valid: true,
-    discountType: promo.discount_type, // "THB" หรือ "PERCENT"
+    discountType: promo.discount_type,
     discountValue: promo.discount_value,
-    discountPercentage: promo.discount_percentage,
     promoCodeId: promo.id,
     message: "Promo code applied!",
   });
