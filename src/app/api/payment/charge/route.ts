@@ -9,9 +9,8 @@ export async function POST(req: NextRequest) {
     (event.key === "charge.complete" || event.key === "charge.create") &&
     event.data.status === "successful"
   ) {
-
     const charge = event.data;
-    const paymentDate = getBangkokISOString(charge.paid_at)
+    const paymentDate = getBangkokISOString(charge.paid_at);
 
     let paymentMethod = "Unknown";
     if (charge.source && charge.source.type === "promptpay") {
@@ -19,7 +18,6 @@ export async function POST(req: NextRequest) {
     } else if (charge.card) {
       paymentMethod = `Credit card - ${charge.card.brand} - ${charge.card.last_digits}`;
     }
-
 
     const { data: paymentData, error: paymentError } = await supabase
       .from("payments")
@@ -49,20 +47,20 @@ export async function POST(req: NextRequest) {
     }
 
     const { error: subscriptionError } = await supabase
-    .from("subscriptions")
-    .upsert(
-      [
-        {
-          user_id: charge.metadata.userId,
-          course_id: charge.metadata.courseId,
-          subscription_date: new Date().toISOString(),
-          progress: 0,
-          rating: null,
-          review: null,
-        },
-      ],
-      { onConflict: "user_id,course_id" }
-    );
+      .from("subscriptions")
+      .upsert(
+        [
+          {
+            user_id: charge.metadata.userId,
+            course_id: charge.metadata.courseId,
+            subscription_date: paymentDate,
+            progress: 0,
+            rating: null,
+            review: null,
+          },
+        ],
+        { onConflict: "user_id,course_id" }
+      );
 
     if (subscriptionError) {
       console.error("DB insert error (subscriptions):", subscriptionError);

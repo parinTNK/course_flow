@@ -1,6 +1,13 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+
+// Extend the Window interface to include __draftAnswers
+declare global {
+  interface Window {
+    __draftAnswers?: Record<string, any>;
+  }
+}
 import { useParams, useRouter } from "next/navigation";
 import { useLearning } from "@/components/learning/context/LearningContext";
 import { useDraft } from "@/app/context/draftContext";

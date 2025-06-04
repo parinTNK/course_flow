@@ -5,7 +5,7 @@ import { useAuth } from "@/app/context/authContext";
 
 type DraftContextType = {
   dirtyAssignments: Set<string>;
-  setDirty: (id: string) => void;
+  setDirty: (id: string, answer: string) => void;
   clearDrafts: () => void;
   saveAllDrafts: () => Promise<void>;
 };
