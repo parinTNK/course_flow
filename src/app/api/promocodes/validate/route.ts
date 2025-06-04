@@ -5,7 +5,7 @@ import { NextRequest } from 'next/server';
 export async function POST(req: NextRequest) {
   const { code, courseId, amount } = await req.json();
 
-  // 1. หา promo code ใน database
+
   const { data: promo, error: promoError } = await supabase
     .from("promo_codes")
     .select("*")
@@ -16,7 +16,7 @@ export async function POST(req: NextRequest) {
     return Response.json({ valid: false, message: "Promo code not found" });
   }
 
-  // 2. เช็คว่า promo code นี้ใช้กับ course นี้ได้หรือไม่ (table กลาง)
+
   const { data: mapping, error: mappingError } = await supabase
     .from("promo_code_courses")
     .select("*")
@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  // 3. เช็ค min_purchase_amount
+
   if (amount < promo.min_purchase_amount) {
     return Response.json({
       valid: false,
@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  // 4. คืนข้อมูล discount
+
   return Response.json({
     valid: true,
     discountType: promo.discount_type, // "THB" หรือ "PERCENT"

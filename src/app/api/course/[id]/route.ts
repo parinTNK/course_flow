@@ -19,7 +19,7 @@ export async function GET(
   try {
     const { data, error } = await supabase
       .from('courses')
-      .select('id, name, price')
+      .select('id, name, price, promo_code_id')
       .eq('id', courseId);
 
     if (error) {
