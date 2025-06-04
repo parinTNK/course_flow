@@ -92,12 +92,12 @@ const PromoCodeFormView: React.FC<PromoCodeFormViewProps> = ({
             onClick={handleSubmit}
           >
             {isLoading
-    ? mode === "edit"
-      ? "Saving..."
-      : "Creating..."
-    : mode === "edit"
-      ? "Save"
-      : "Create"}
+              ? mode === "edit"
+                ? "Saving..."
+                : "Creating..."
+              : mode === "edit"
+              ? "Save"
+              : "Create"}
           </ButtonT>
         </div>
       </div>
@@ -376,18 +376,18 @@ const PromoCodeFormView: React.FC<PromoCodeFormViewProps> = ({
                 )}
               </div>
             </div>
-            {mode === "edit" && onDeletePromoCode && (
-              <div className="flex justify-end mt-4">
-                <button
-                  type="button"
-                  className="text-red-600 hover:underline"
-                  onClick={onDeletePromoCode}
-                >
-                  Delete Promo code
-                </button>
-              </div>
-            )}
           </form>
+          {mode === "edit" && onDeletePromoCode && (
+            <div className="flex justify-end mt-6 mr-10">
+              <button
+                type="button"
+                className="text-[#2F5FAC] text-[16px] font-bold hover:text-blue-500"
+                onClick={onDeletePromoCode}
+              >
+                Delete Promo code
+              </button>
+            </div>
+          )}
         </div>
       )}
     </>

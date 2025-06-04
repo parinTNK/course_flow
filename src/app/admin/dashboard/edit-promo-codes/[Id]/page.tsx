@@ -1,11 +1,12 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import PromoCodeFormView from "../../../components/PromoCodeFormView";
 import { useCoursesSelect } from "../../../hooks/useCourseSelect";
 import { usePromoCodeForm } from "../../../hooks/usePromoCodeForm";
 import { useParams } from "next/navigation";
 import LoadingSpinner from "../../../components/LoadingSpinner";
+import ConfirmationModal from "../../../components/ConfirmationModal";
 
 
 export default function EditPromoCodePage() {
@@ -26,7 +27,8 @@ export default function EditPromoCodePage() {
     handleCoursesBlur,
     handlePercentBlur,
     handleCancel,
-    handleSubmit
+    handleSubmit,
+    handleDeletePromoCode,
   } = usePromoCodeForm({ mode: "edit", id });
 
   const {
@@ -39,7 +41,25 @@ export default function EditPromoCodePage() {
   } = useCoursesSelect(formData.course_ids, (ids) =>
     setFormData((prev) => ({ ...prev, course_ids: ids }))
   );
+  
 
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+
+
+  const onDeletePromoCode = () => {
+    setShowConfirmModal(true);
+  };
+
+
+  const handleConfirmDelete = async () => {
+    await handleDeletePromoCode();
+    setShowConfirmModal(false);
+  };
+
+
+  const handleCloseModal = () => {
+    setShowConfirmModal(false);
+  };
 
   const isSaveDisabled = isLoading || isLoadingCourses || (coursesList.length <= 1 && !isLoadingCourses);
 
@@ -74,6 +94,18 @@ export default function EditPromoCodePage() {
         isCreateDisabled={isSaveDisabled}
         isLoadingCourses={isLoadingCourses}
         mode="edit"
+        onDeletePromoCode={onDeletePromoCode}
+      />
+            <ConfirmationModal
+        isOpen={showConfirmModal}
+        onClose={handleCloseModal}
+        onConfirm={handleConfirmDelete}
+        title="Delete Promo Code"
+        message={`Are you sure you want to delete this promo code: "${formData.code}"?`}
+        confirmText="Yes, I want to delete"
+        cancelText="No, keep it"
+        requireCourseName={false}
+        courseName={formData.code || ""}
       />
     </div>
   );

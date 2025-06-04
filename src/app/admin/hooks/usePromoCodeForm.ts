@@ -221,6 +221,18 @@ export function usePromoCodeForm({ mode, id }: { mode: "create" | "edit"; id?: s
     }
   };
 
+  const handleDeletePromoCode = async () => {
+  if (!id) return;
+  console.log("Deleting promo code with ID:", id);
+  try {
+    await axios.delete(`/api/promocodes/${id}`);
+    toastSuccess("Promo code deleted successfully");
+    router.push("/admin/dashboard/promo-codes");
+  } catch (e: any) {
+    toastError(e.message || "Failed to delete promo code");
+  }
+};
+
   return {
     formData,
     setFormData,
@@ -237,5 +249,6 @@ export function usePromoCodeForm({ mode, id }: { mode: "create" | "edit"; id?: s
     handlePercentBlur,
     handleCancel,
     handleSubmit,
+    handleDeletePromoCode
   };
 }
