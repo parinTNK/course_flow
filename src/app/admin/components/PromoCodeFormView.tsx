@@ -71,6 +71,7 @@ const PromoCodeFormView: React.FC<PromoCodeFormViewProps> = ({
   mode = "create",
   onDeletePromoCode,
 }) => {
+
   return (
     <>
       <div className="flex justify-between items-center mb-8 bg-white px-8 py-6 border-b-3 border-gray-200">
@@ -342,33 +343,37 @@ const PromoCodeFormView: React.FC<PromoCodeFormViewProps> = ({
                           className="border-none"
                         />
                         <CommandList className="max-h-[200px]">
-                          {coursesList.map((course) => {
-                            const isChecked =
-                              formData.course_ids?.includes(course.id) || false;
-
-                            return (
-                              <CommandItem
-                                key={course.id}
-                                className="flex items-center px-3 py-2 cursor-pointer hover:bg-gray-50"
-                                onSelect={() => false}
-                              >
-                                <div
-                                  className="flex items-center w-full cursor-pointer"
-                                  onClick={() => {
-                                    handleToggleCourse(course.id);
-                                  }}
+                          {coursesList
+                            .map((course) => {
+                              const isChecked =
+                                formData.course_ids?.includes(course.id) || false;
+                              return (
+                                <CommandItem
+                                  key={course.id}
+                                  value={course.id}
+                                  className="flex items-center px-3 py-2 cursor-pointer hover:bg-gray-50"
+                                  onSelect={() => false}
                                 >
-                                  <Checkbox
-                                    checked={isChecked}
-                                    className="mr-2 pointer-events-none"
-                                  />
-                                  <span className="flex-1 select-none">
-                                    {course.name}
-                                  </span>
-                                </div>
-                              </CommandItem>
-                            );
-                          })}
+                                  <div
+                                    className="flex items-center w-full cursor-pointer"
+                                    onClick={() => {
+                                      handleToggleCourse(course.id);
+                                    }}
+                                  >
+                                    <Checkbox
+                                      checked={isChecked}
+                                      className="mr-2 pointer-events-none"
+                                    />
+                                    <span className="flex-1 select-none">
+                                      {course.name}
+                                    </span>
+                                      <span className="ml-2 text-xs text-gray-500">
+                                        {course.price}
+                                      </span>
+                                  </div>
+                                </CommandItem>
+                              );
+                            })}
                         </CommandList>
                       </Command>
                     </PopoverContent>

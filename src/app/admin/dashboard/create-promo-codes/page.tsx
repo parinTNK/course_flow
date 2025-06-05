@@ -24,13 +24,15 @@ function CreatePromoCode() {
 
   const {
     coursesList,
+    filteredCoursesList,
     error: coursesError,
     isLoadingCourses,
     handleToggleCourse,
     handleRemoveTag,
     getSelectedCoursesDisplay,
   } = useCoursesSelect(formData.course_ids, (ids) =>
-    setFormData((prev) => ({ ...prev, course_ids: ids }))
+    setFormData((prev) => ({ ...prev, course_ids: ids })),
+    formData.min_purchase_amount
   );
 
   const isCreateDisabled = isLoading || isLoadingCourses || (coursesList.length <= 1 && !isLoadingCourses);
@@ -41,7 +43,7 @@ function CreatePromoCode() {
         formData={formData}
         isLoading={isLoading}
         errors={errors}
-        coursesList={coursesList}
+        coursesList={filteredCoursesList}
         popoverOpen={popoverOpen}
         triggerRef={triggerRef}
         triggerWidth={triggerWidth}
