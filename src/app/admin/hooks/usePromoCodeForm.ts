@@ -4,7 +4,7 @@ import { useCustomToast } from "@/components/ui/CustomToast";
 import {ALL_COURSES_ID, DISCOUNT_TYPE_PERCENT, PromoCodeFormData} from "@/types/promoCode";
 import axios from "axios";
 
-export function usePromoCodeForm({ mode, id }: { mode: "create" | "edit"; id?: string }) {
+export function usePromoCodeForm({ mode, id }: { mode: "create" | "edit"; id?: string; coursesList?: any[]}) {
   const router = useRouter();
   const { success: toastSuccess, error: toastError } = useCustomToast();
 
@@ -242,6 +242,7 @@ export function usePromoCodeForm({ mode, id }: { mode: "create" | "edit"; id?: s
     setPopoverOpen,
     triggerRef,
     triggerWidth,
+    setErrors,
 
     handleInputChange,
     handleDiscountTypeChange,

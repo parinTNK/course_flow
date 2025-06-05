@@ -71,7 +71,6 @@ const PromoCodeFormView: React.FC<PromoCodeFormViewProps> = ({
   mode = "create",
   onDeletePromoCode,
 }) => {
-
   return (
     <>
       <div className="flex justify-between items-center mb-8 bg-white px-8 py-6 border-b-3 border-gray-200">
@@ -199,20 +198,13 @@ const PromoCodeFormView: React.FC<PromoCodeFormViewProps> = ({
                       }
                       onChange={handleInputChange}
                       className={`w-24 border border-gray-300 rounded-lg px-2 py-1 ml-2 ${
-                        formData.discount_type === DISCOUNT_TYPE_FIXED &&
-                        errors.discount_value
-                          ? "border-red-500"
+                        formData.discount_type === DISCOUNT_TYPE_FIXED
+                          ? "border-gray-300"
                           : ""
                       }`}
                       disabled={formData.discount_type !== DISCOUNT_TYPE_FIXED}
                       min={0}
                     />
-                    {formData.discount_type === DISCOUNT_TYPE_FIXED &&
-                      errors.discount_value && (
-                        <div className="text-red-500 text-xs mt-1">
-                          {errors.discount_value}
-                        </div>
-                      )}
                   </label>
                   {/* Percent */}
                   <label className="flex items-center gap-2 cursor-pointer">
@@ -238,9 +230,8 @@ const PromoCodeFormView: React.FC<PromoCodeFormViewProps> = ({
                       onChange={handleInputChange}
                       onBlur={handlePercentBlur}
                       className={`w-24 border border-gray-300 rounded-lg px-2 py-1 ml-2 ${
-                        formData.discount_type === DISCOUNT_TYPE_PERCENT &&
-                        errors.discount_value
-                          ? "border-red-500"
+                        formData.discount_type === DISCOUNT_TYPE_PERCENT
+                          ? "border-gray-300"
                           : ""
                       }`}
                       disabled={
@@ -249,12 +240,6 @@ const PromoCodeFormView: React.FC<PromoCodeFormViewProps> = ({
                       min={0}
                       max={100}
                     />
-                    {formData.discount_type === DISCOUNT_TYPE_PERCENT &&
-                      errors.discount_value && (
-                        <div className="text-red-500 text-xs mt-1">
-                          {errors.discount_value}
-                        </div>
-                      )}
                   </label>
                 </div>
               </div>
@@ -343,37 +328,44 @@ const PromoCodeFormView: React.FC<PromoCodeFormViewProps> = ({
                           className="border-none"
                         />
                         <CommandList className="max-h-[200px]">
-                          {coursesList
-                            .map((course) => {
-                              const isChecked =
-                                formData.course_ids?.includes(course.id) || false;
-                              return (
-                                <CommandItem
-                                  key={course.id}
-                                  value={course.id}
-                                  className="flex items-center px-3 py-2 cursor-pointer hover:bg-gray-50"
-                                  onSelect={() => false}
+                          {coursesList.map((course) => {
+                            const isChecked =
+                              formData.course_ids?.includes(course.id) || false;
+                            const isInvalid =
+                              formData.discount_type === DISCOUNT_TYPE_FIXED &&
+                              isChecked &&
+                              course.id !== ALL_COURSES_ID &&
+                              Number(course.price) < Number(formData.discount_value);
+
+                            return (
+                              <CommandItem
+                                key={course.id}
+                                value={course.id}
+                                className={`flex items-center px-3 py-2 cursor-pointer hover:bg-gray-50 ${
+                                  isInvalid ? "border border-red-500 bg-red-50" : ""
+                                }`}
+                                onSelect={() => false}
+                              >
+                                <div
+                                  className="flex items-center w-full cursor-pointer"
+                                  onClick={() => {
+                                    handleToggleCourse(course.id);
+                                  }}
                                 >
-                                  <div
-                                    className="flex items-center w-full cursor-pointer"
-                                    onClick={() => {
-                                      handleToggleCourse(course.id);
-                                    }}
-                                  >
-                                    <Checkbox
-                                      checked={isChecked}
-                                      className="mr-2 pointer-events-none"
-                                    />
-                                    <span className="flex-1 select-none">
-                                      {course.name}
-                                    </span>
-                                      <span className="ml-2 text-xs text-gray-500">
-                                        {course.price}
-                                      </span>
-                                  </div>
-                                </CommandItem>
-                              );
-                            })}
+                                  <Checkbox
+                                    checked={isChecked}
+                                    className="mr-2 pointer-events-none"
+                                  />
+                                  <span className="flex-1 select-none">
+                                    {course.name}
+                                  </span>
+                                  <span className="ml-2 text-xs text-gray-500">
+                                    {course.price}
+                                  </span>
+                                </div>
+                              </CommandItem>
+                            );
+                          })}
                         </CommandList>
                       </Command>
                     </PopoverContent>
@@ -391,6 +383,13 @@ const PromoCodeFormView: React.FC<PromoCodeFormViewProps> = ({
               >
                 Delete Promo code
               </button>
+            </div>
+          )}
+          {errors.discount_value && (
+            <div className="mx-20 mt-6">
+              <div className="bg-red-50 border border-red-400 text-red-700 px-4 py-3 rounded relative text-sm">
+                {errors.discount_value}
+              </div>
             </div>
           )}
         </div>

@@ -85,7 +85,6 @@ const filteredCoursesList = useMemo(() => {
     return filteredCoursesList.filter((c) => selectedIds?.includes(c.id));
   }, [selectedIds, filteredCoursesList]);
 
-  console.log("getSelectedDisplay:", getSelectedCoursesDisplay);
   return {
     coursesList,
     filteredCoursesList,
