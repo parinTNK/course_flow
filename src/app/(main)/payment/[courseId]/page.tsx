@@ -104,11 +104,31 @@ export default function PaymentPage() {
 
   // Form submit
   const onSubmit = async (data: CardForm) => {
+            console.log("Processing free course purchase");
     if (!user) {
       toastError("User not found. Please login again.");
       return;
     }
     try {
+      if ((course?.price ?? 0) === 0 || total === 0) {
+
+        let paymentMethodLabel =
+          (course?.price ?? 0) === 0
+            ? "free"
+            : promoCode
+            ? `free-by-promoCode:${promoCode}`
+            : "free-by-promoCode";
+        await axios.post("/api/payment/free-purchase", {
+          courseId: course?.id,
+          userId: user?.user_id,
+          courseName: course?.name,
+          userName: user?.full_name,
+          paymentMethod: paymentMethodLabel,
+          promoCode: promoCode || null,
+        });
+        router.push(`/payment/${courseId}/order-completed`);
+        return;
+      }
       const [expMonth, expYear] = data.expiry.split("/");
       const token = await createOmiseToken({
         name: data.nameOnCard,
@@ -166,6 +186,7 @@ export default function PaymentPage() {
     );
   }
 
+  const shouldShowCardForm = (course?.price ?? 0) > 0 && total > 0;
   // Render
   return (
     <div className="flex flex-col mt-14">
