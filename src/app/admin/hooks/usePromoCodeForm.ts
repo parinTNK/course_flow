@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useCustomToast } from "@/components/ui/CustomToast";
-import {ALL_COURSES_ID, DISCOUNT_TYPE_PERCENT, PromoCodeFormData} from "@/types/promoCode";
+import {ALL_COURSES_ID, DISCOUNT_TYPE_PERCENT, DISCOUNT_TYPE_FIXED, PromoCodeFormData} from "@/types/promoCode";
 import axios from "axios";
 
 export function usePromoCodeForm({ mode, id }: { mode: "create" | "edit"; id?: string; coursesList?: any[]}) {
@@ -129,6 +129,24 @@ export function usePromoCodeForm({ mode, id }: { mode: "create" | "edit"; id?: s
     }
   };
 
+  const handleFixedBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+  if (formData.discount_type === DISCOUNT_TYPE_FIXED) {
+    let value = Number(e.target.value);
+    const minPurchase = Number(formData.min_purchase_amount) || 0;
+    if (value > minPurchase) {
+      setFormData((prev) => ({
+        ...prev,
+        discount_value: minPurchase.toString(),
+      }));
+    } else if (value < 0) {
+      setFormData((prev) => ({
+        ...prev,
+        discount_value: "0",
+      }));
+    }
+  }
+};
+
   const handleCancel = () => {
     router.back();
   };
@@ -248,6 +266,7 @@ export function usePromoCodeForm({ mode, id }: { mode: "create" | "edit"; id?: s
     handleDiscountTypeChange,
     handleCoursesBlur,
     handlePercentBlur,
+    handleFixedBlur,
     handleCancel,
     handleSubmit,
     handleDeletePromoCode

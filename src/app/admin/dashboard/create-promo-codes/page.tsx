@@ -19,6 +19,7 @@ function CreatePromoCode() {
     handleInputChange,
     handleDiscountTypeChange,
     handleCoursesBlur,
+    handleFixedBlur,
     handlePercentBlur,
     handleCancel,
     handleSubmit,
@@ -97,6 +98,7 @@ function CreatePromoCode() {
         handleToggleCourse={handleToggleCourse}
         handleRemoveTag={handleRemoveTag}
         handlePercentBlur={handlePercentBlur}
+        handleFixedBlur={handleFixedBlur}
         isCreateDisabled={isCreateDisabled}
         isLoadingCourses={isLoadingCourses}
       />

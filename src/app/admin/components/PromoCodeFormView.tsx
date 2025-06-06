@@ -42,6 +42,7 @@ interface PromoCodeFormViewProps {
   handleToggleCourse: (courseId: string) => void;
   handleRemoveTag: (id: string) => void;
   handlePercentBlur: (e: React.FocusEvent<HTMLInputElement>) => void;
+  handleFixedBlur: (e: React.FocusEvent<HTMLInputElement>) => void;
   isCreateDisabled?: boolean;
   isLoadingCourses?: boolean;
   mode?: "create" | "edit";
@@ -66,6 +67,7 @@ const PromoCodeFormView: React.FC<PromoCodeFormViewProps> = ({
   handleToggleCourse,
   handleRemoveTag,
   handlePercentBlur,
+  handleFixedBlur,
   isCreateDisabled = false,
   isLoadingCourses = false,
   mode = "create",
@@ -197,6 +199,7 @@ const PromoCodeFormView: React.FC<PromoCodeFormViewProps> = ({
                           : ""
                       }
                       onChange={handleInputChange}
+                      onBlur={handleFixedBlur}
                       className={`w-24 border border-gray-300 rounded-lg px-2 py-1 ml-2 ${
                         formData.discount_type === DISCOUNT_TYPE_FIXED
                           ? "border-gray-300"
@@ -204,6 +207,7 @@ const PromoCodeFormView: React.FC<PromoCodeFormViewProps> = ({
                       }`}
                       disabled={formData.discount_type !== DISCOUNT_TYPE_FIXED}
                       min={0}
+                      max={formData.min_purchase_amount}
                     />
                   </label>
                   {/* Percent */}

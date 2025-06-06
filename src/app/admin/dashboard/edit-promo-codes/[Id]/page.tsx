@@ -26,6 +26,7 @@ export default function EditPromoCodePage() {
     handleDiscountTypeChange,
     handleCoursesBlur,
     handlePercentBlur,
+    handleFixedBlur,
     handleCancel,
     handleSubmit,
     handleDeletePromoCode,
@@ -130,6 +131,7 @@ export default function EditPromoCodePage() {
         handleToggleCourse={handleToggleCourse}
         handleRemoveTag={handleRemoveTag}
         handlePercentBlur={handlePercentBlur}
+        handleFixedBlur={handleFixedBlur}
         isCreateDisabled={isSaveDisabled}
         isLoadingCourses={isLoadingCourses}
         mode="edit"
