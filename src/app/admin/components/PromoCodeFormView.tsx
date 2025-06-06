@@ -42,6 +42,7 @@ interface PromoCodeFormViewProps {
   handleToggleCourse: (courseId: string) => void;
   handleRemoveTag: (id: string) => void;
   handlePercentBlur: (e: React.FocusEvent<HTMLInputElement>) => void;
+  handleFixedBlur: (e: React.FocusEvent<HTMLInputElement>) => void;
   isCreateDisabled?: boolean;
   isLoadingCourses?: boolean;
   mode?: "create" | "edit";
@@ -66,6 +67,7 @@ const PromoCodeFormView: React.FC<PromoCodeFormViewProps> = ({
   handleToggleCourse,
   handleRemoveTag,
   handlePercentBlur,
+  handleFixedBlur,
   isCreateDisabled = false,
   isLoadingCourses = false,
   mode = "create",
@@ -92,12 +94,12 @@ const PromoCodeFormView: React.FC<PromoCodeFormViewProps> = ({
             onClick={handleSubmit}
           >
             {isLoading
-    ? mode === "edit"
-      ? "Saving..."
-      : "Creating..."
-    : mode === "edit"
-      ? "Save"
-      : "Create"}
+              ? mode === "edit"
+                ? "Saving..."
+                : "Creating..."
+              : mode === "edit"
+              ? "Save"
+              : "Create"}
           </ButtonT>
         </div>
       </div>
@@ -197,21 +199,16 @@ const PromoCodeFormView: React.FC<PromoCodeFormViewProps> = ({
                           : ""
                       }
                       onChange={handleInputChange}
+                      onBlur={handleFixedBlur}
                       className={`w-24 border border-gray-300 rounded-lg px-2 py-1 ml-2 ${
-                        formData.discount_type === DISCOUNT_TYPE_FIXED &&
-                        errors.discount_value
-                          ? "border-red-500"
+                        formData.discount_type === DISCOUNT_TYPE_FIXED
+                          ? "border-gray-300"
                           : ""
                       }`}
                       disabled={formData.discount_type !== DISCOUNT_TYPE_FIXED}
                       min={0}
+                      max={formData.min_purchase_amount}
                     />
-                    {formData.discount_type === DISCOUNT_TYPE_FIXED &&
-                      errors.discount_value && (
-                        <div className="text-red-500 text-xs mt-1">
-                          {errors.discount_value}
-                        </div>
-                      )}
                   </label>
                   {/* Percent */}
                   <label className="flex items-center gap-2 cursor-pointer">
@@ -237,9 +234,8 @@ const PromoCodeFormView: React.FC<PromoCodeFormViewProps> = ({
                       onChange={handleInputChange}
                       onBlur={handlePercentBlur}
                       className={`w-24 border border-gray-300 rounded-lg px-2 py-1 ml-2 ${
-                        formData.discount_type === DISCOUNT_TYPE_PERCENT &&
-                        errors.discount_value
-                          ? "border-red-500"
+                        formData.discount_type === DISCOUNT_TYPE_PERCENT
+                          ? "border-gray-300"
                           : ""
                       }`}
                       disabled={
@@ -248,12 +244,6 @@ const PromoCodeFormView: React.FC<PromoCodeFormViewProps> = ({
                       min={0}
                       max={100}
                     />
-                    {formData.discount_type === DISCOUNT_TYPE_PERCENT &&
-                      errors.discount_value && (
-                        <div className="text-red-500 text-xs mt-1">
-                          {errors.discount_value}
-                        </div>
-                      )}
                   </label>
                 </div>
               </div>
@@ -345,11 +335,19 @@ const PromoCodeFormView: React.FC<PromoCodeFormViewProps> = ({
                           {coursesList.map((course) => {
                             const isChecked =
                               formData.course_ids?.includes(course.id) || false;
+                            const isInvalid =
+                              formData.discount_type === DISCOUNT_TYPE_FIXED &&
+                              isChecked &&
+                              course.id !== ALL_COURSES_ID &&
+                              Number(course.price) < Number(formData.discount_value);
 
                             return (
                               <CommandItem
                                 key={course.id}
-                                className="flex items-center px-3 py-2 cursor-pointer hover:bg-gray-50"
+                                value={course.id}
+                                className={`flex items-center px-3 py-2 cursor-pointer hover:bg-gray-50 ${
+                                  isInvalid ? "border border-red-500 bg-red-50" : ""
+                                }`}
                                 onSelect={() => false}
                               >
                                 <div
@@ -365,6 +363,9 @@ const PromoCodeFormView: React.FC<PromoCodeFormViewProps> = ({
                                   <span className="flex-1 select-none">
                                     {course.name}
                                   </span>
+                                  <span className="ml-2 text-xs text-gray-500">
+                                    {course.price}
+                                  </span>
                                 </div>
                               </CommandItem>
                             );
@@ -376,18 +377,25 @@ const PromoCodeFormView: React.FC<PromoCodeFormViewProps> = ({
                 )}
               </div>
             </div>
-            {mode === "edit" && onDeletePromoCode && (
-              <div className="flex justify-end mt-4">
-                <button
-                  type="button"
-                  className="text-red-600 hover:underline"
-                  onClick={onDeletePromoCode}
-                >
-                  Delete Promo code
-                </button>
-              </div>
-            )}
           </form>
+          {mode === "edit" && onDeletePromoCode && (
+            <div className="flex justify-end mt-6 mr-10">
+              <button
+                type="button"
+                className="text-[#2F5FAC] text-[16px] font-bold hover:text-blue-500"
+                onClick={onDeletePromoCode}
+              >
+                Delete Promo code
+              </button>
+            </div>
+          )}
+          {errors.discount_value && (
+            <div className="mx-20 mt-6">
+              <div className="bg-red-50 border border-red-400 text-red-700 px-4 py-3 rounded relative text-sm">
+                {errors.discount_value}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </>
