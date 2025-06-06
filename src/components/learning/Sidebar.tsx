@@ -4,9 +4,10 @@ import * as Accordion from "@radix-ui/react-accordion";
 import { useLearning } from "./context/LearningContext";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useProgress } from "./context/ProgressContext";
 import { ChevronDownIcon } from "lucide-react";
+
 
 type WatchStatus = "not_started" | "in_progress" | "completed";
 
@@ -121,12 +122,16 @@ export default function Sidebar({ setLessons: setParentLessons, scrollToVideo }:
     fetchCourseAndLessons();
   }, [courseId, setParentLessons, progressUpdated]);
 
-  const handleSubLessonClick = (subLesson: SubLesson) => {
-    setCurrentLesson(subLesson);
-    setTimeout(() => {
-      scrollToVideo();
-    }, 150);
-  };
+const router = useRouter();
+
+const handleSubLessonClick = (subLesson: SubLesson) => {
+  setCurrentLesson(subLesson);
+  router.push(`/course-learning/${courseId}/learning/${subLesson.id}`);
+  setTimeout(() => {
+    scrollToVideo();
+  }, 150);
+};
+
 
   if (loading) return <div className="p-4">Loading...</div>;
 

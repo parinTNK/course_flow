@@ -40,7 +40,7 @@ interface Lesson {
 
 export default function CourseContent() {
   const router = useRouter();
-  const { courseId } = useParams();
+  const { courseId, subLessonId } = useParams();
   const { currentLesson, setCurrentLesson } = useLearning();
   const { dirtyAssignments, clearDrafts } = useDraft();
   const { user } = useAuth();
@@ -89,11 +89,18 @@ export default function CourseContent() {
     checkSubscription();
   }, []);
 
-  useEffect(() => {
-    if (!currentLesson && lessons.length > 0) {
-      setCurrentLesson(lessons[0]?.sub_lessons[0]);
+useEffect(() => {
+  if (subLessonId && lessons.length > 0) {
+    for (let lesson of lessons) {
+      const found = lesson.sub_lessons.find(sl => sl.id === subLessonId);
+      if (found) {
+        setCurrentLesson(found);
+        break;
+      }
     }
-  }, [lessons]);
+  }
+}, [subLessonId, lessons]);
+
 
   useEffect(() => {
     if (currentLesson) scrollToLessonSection();

@@ -8,10 +8,7 @@ export async function GET(
   const userId = params.userId;
 
   if (!userId) {
-    return Response.json(
-      { error: "userId is required" },
-      { status: 400 }
-    );
+    return Response.json({ error: "userId is required" }, { status: 400 });
   }
 
   try {
@@ -33,7 +30,7 @@ export async function GET(
     // 2. Get all assignments for those courses
     const { data: assignments, error: assignError } = await supabase
       .from("assignments")
-      .select("*")
+      .select("id, course_id, title, description, solution, sub_lesson_id")
       .in("course_id", courseIds);
 
     if (assignError) {

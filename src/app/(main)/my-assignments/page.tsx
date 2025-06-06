@@ -17,6 +17,7 @@ import { getBangkokISOString } from "@/lib/bangkokTime";
 type Assignment = {
   id: string;
   course_id: string;
+  sub_lesson_id?: string;
   title: string;
   description: string;
   solution?: string; 
@@ -105,7 +106,10 @@ export default function MyAssignmentsPage() {
       .finally(() => setLoading(false));
   }, [user?.user_id]);
 
-  const { dirtyAssignments, setDirty, clearDrafts } = useDraft();
+  const draftContext = useDraft();
+  const dirtyAssignments = draftContext?.dirtyAssignments ?? new Set();
+  const setDirty = draftContext?.setDirty ?? (() => {});
+  const clearDrafts = draftContext?.clearDrafts ?? (() => {});
   const router = useRouter();
   const { success, error: toastError } = useCustomToast();
 
@@ -137,7 +141,7 @@ export default function MyAssignmentsPage() {
           });
         }
         setLastSaved((prev) => ({ ...prev, [assignmentId]: new Date() }));
-        setLastSavedAnswers((prev) => ({ ...prev, [assignmentId]: answer }));
+        setLastSavedAnswers((prev) => ({ ...prev, [assignmentId as string]: answer }));
       } catch (err) {
         console.error(`[Draft] Failed to save draft for ${assignmentId}`, err);
       }
@@ -273,7 +277,7 @@ export default function MyAssignmentsPage() {
     setAnswers((prev) => {
       if (prev[assignmentId] === val) return prev;
 
-      setDirty(assignmentId);
+      setDirty(assignmentId, val);
 
       if (typeof window !== "undefined") {
         window.__draftAnswers ??= {};
@@ -507,6 +511,7 @@ export default function MyAssignmentsPage() {
                       }
                       disabled={submitting[assignment.id]}
                       courseId={assignment.course_id}
+                      subLessonId={assignment.sub_lesson_id ?? ""}
                       lastSaved={lastSaved[assignment.id]}
                       lastSavedAnswer={lastSavedAnswers[assignment.id]}
                       solution={assignment.solution} 

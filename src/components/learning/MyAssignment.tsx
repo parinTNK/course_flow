@@ -2,6 +2,7 @@ import React, { useState, useRef } from "react";
 import { ButtonT } from "@/components/ui/ButtonT";
 import LoadingSpinner from "@/app/admin/components/LoadingSpinner";
 import { useCustomToast } from "@/components/ui/CustomToast";
+import { useRouter } from "next/navigation";
 
 type MyAssignmentProps = {
   title: string;
@@ -14,6 +15,7 @@ type MyAssignmentProps = {
   onReset?: () => void;
   disabled?: boolean;
   courseId: string; 
+  subLessonId: string; 
   onAutoSave?: () => void; 
   lastSaved?: Date | null;
   lastSavedAnswer?: string;
@@ -31,11 +33,14 @@ export default function MyAssignment({
   onReset,
   disabled = false,
   courseId,
+  subLessonId,
   onAutoSave, 
   lastSaved: propLastSaved,
   lastSavedAnswer: propLastSavedAnswer,
   solution, 
 }: MyAssignmentProps) {
+
+  const router = useRouter();
 
   const normalizedStatus = status.replace(" ", "").toLowerCase() as
     | "submitted"
@@ -105,15 +110,10 @@ export default function MyAssignment({
     }
   };
 
-  const handleOpenInCourse = (e: React.MouseEvent) => {
-    e.preventDefault();
-
-    window.dispatchEvent(
-      new CustomEvent("navigateWithDraftCheck", {
-        detail: `/course-learning/${courseId}/learning`,
-      })
-    );
-  };
+const handleOpenInCourse = (e: React.MouseEvent) => {
+  e.preventDefault();
+  router.push(`/course-learning/${courseId}/learning/${subLessonId}`);
+};
 
   const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setLocalError(null);
@@ -272,7 +272,7 @@ export default function MyAssignment({
               </ButtonT>
             )}
             <a
-              href={`/course-learning/${courseId}/learning`}
+              href={`/course-learning/${courseId}/learning/${subLessonId}`}
               className="text-[#2957c2] text-base mt-3 sm:mt-2 w-fit font-semibold cursor-pointer"
               onClick={handleOpenInCourse}
             >
