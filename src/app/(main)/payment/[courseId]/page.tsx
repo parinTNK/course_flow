@@ -104,14 +104,12 @@ export default function PaymentPage() {
 
   // Form submit
   const onSubmit = async (data: CardForm) => {
-            console.log("Processing free course purchase");
     if (!user) {
       toastError("User not found. Please login again.");
       return;
     }
     try {
       if ((course?.price ?? 0) === 0 || total === 0) {
-
         let paymentMethodLabel =
           (course?.price ?? 0) === 0
             ? "free"
@@ -186,7 +184,6 @@ export default function PaymentPage() {
     );
   }
 
-  const shouldShowCardForm = (course?.price ?? 0) > 0 && total > 0;
   // Render
   return (
     <div className="flex flex-col mt-14">
@@ -212,152 +209,162 @@ export default function PaymentPage() {
                 <div className="flex flex-col md:flex-row gap-6">
                   <div className="space-y-4 ">
                     {/* Card Payment */}
-                    <div
-                      className={`px-6${
-                        paymentMethod === "card"
-                          ? " border rounded-xl bg-[#F1F2F6] py-6"
-                          : ""
-                      }`}
-                    >
-                      <label className="flex items-center mb-4 cursor-pointer ">
-                        <input
-                          type="radio"
-                          name="payment"
-                          checked={paymentMethod === "card"}
-                          onChange={() => setPaymentMethod("card")}
-                          className="accent-blue-600 mr-2"
-                        />
-                        <span className="font-medium text-[#424C6B]">
-                          Credit card / Debit card
-                        </span>
-                      </label>
-                      <div className="flex flex-row md:pr-15">
-                        <form
-                          ref={formRef}
-                          className="space-y-6 md:px-5 pt-3"
-                          onSubmit={handleSubmit(onSubmit)}
-                          autoComplete="off"
-                        >
-                          <div>
+                    {total > 0 && (
+                      <div
+                        className={`px-6${
+                          paymentMethod === "card"
+                            ? " border rounded-xl bg-[#F1F2F6] py-6"
+                            : ""
+                        }`}
+                      >
+                        <label className="flex items-center mb-4 cursor-pointer ">
+                          <input
+                            type="radio"
+                            name="payment"
+                            checked={paymentMethod === "card"}
+                            onChange={() => setPaymentMethod("card")}
+                            className="accent-blue-600 mr-2"
+                          />
+                          <span className="font-medium text-[#424C6B]">
+                            Credit card / Debit card
+                          </span>
+                        </label>
+                        <div className="flex flex-row md:pr-15">
+                          <form
+                            ref={formRef}
+                            className="space-y-6 md:px-5 pt-3"
+                            onSubmit={handleSubmit(onSubmit)}
+                            autoComplete="off"
+                          >
+                            <div>
+                              <InputField
+                                label="Card number"
+                                placeholder="Card number"
+                                className="w-full"
+                                error={errors.cardNumber?.message}
+                                type="text"
+                                maxLength={19 + 3}
+                                {...register("cardNumber", {
+                                  required: "Card number is required",
+                                  validate: {
+                                    isNumber: (v) =>
+                                      /^\d{13,19}$/.test(v.replace(/\s/g, "")) ||
+                                      "Card number must be 13-19 digits",
+                                    luhn: (v) =>
+                                      luhnCheck(v.replace(/\s/g, "")) ||
+                                      "Invalid card number",
+                                  },
+                                })}
+                              />
+                              <div className="md:hidden flex flex-row gap-2">
+                                <img
+                                  src="/card-visa.svg"
+                                  alt="Visa"
+                                  className="h-12 w-12"
+                                />
+                                <img
+                                  src="/card-mastercard.svg"
+                                  alt="Mastercard"
+                                  className="h-12 w-12"
+                                />
+                              </div>
+                            </div>
                             <InputField
-                              label="Card number"
-                              placeholder="Card number"
+                              label="Name on card"
+                              placeholder="Name on card"
                               className="w-full"
-                              error={errors.cardNumber?.message}
+                              error={errors.nameOnCard?.message}
                               type="text"
-                              maxLength={19 + 3}
-                              {...register("cardNumber", {
-                                required: "Card number is required",
-                                validate: {
-                                  isNumber: (v) =>
-                                    /^\d{13,19}$/.test(v.replace(/\s/g, "")) ||
-                                    "Card number must be 13-19 digits",
-                                  luhn: (v) =>
-                                    luhnCheck(v.replace(/\s/g, "")) ||
-                                    "Invalid card number",
+                              {...register("nameOnCard", {
+                                required: "Name on card is required",
+                                pattern: {
+                                  value: /^[A-Za-z\s]+$/,
+                                  message: "Name must be alphabet only",
                                 },
                               })}
                             />
-                            <div className="md:hidden flex flex-row gap-2">
-                              <img
-                                src="/card-visa.svg"
-                                alt="Visa"
-                                className="h-12 w-12"
+
+                            <div className="flex gap-4">
+                              <InputField
+                                label="Expiry date"
+                                placeholder="MM/YY"
+                                className="w-1/2"
+                                error={errors.expiry?.message}
+                                type="text"
+                                maxLength={5}
+                                {...register("expiry", {
+                                  required: "Expiry date is required",
+                                  pattern: {
+                                    value: /^(0[1-9]|1[0-2])\/\d{2}$/,
+                                    message: "Invalid expiry date",
+                                  },
+                                  validate: {
+                                    notExpired: (v) =>
+                                      isExpiryValid(v) || "Card has expired",
+                                  },
+                                })}
                               />
-                              <img
-                                src="/card-mastercard.svg"
-                                alt="Mastercard"
-                                className="h-12 w-12"
+                              <InputField
+                                label="CVV"
+                                placeholder="CVV"
+                                className="w-1/2"
+                                error={errors.cvv?.message}
+                                type="text"
+                                maxLength={4}
+                                {...register("cvv", {
+                                  required: "CVV is required",
+                                  pattern: {
+                                    value: /^[0-9]{3,4}$/,
+                                    message: "Invalid CVV",
+                                  },
+                                })}
                               />
                             </div>
-                          </div>
-                          <InputField
-                            label="Name on card"
-                            placeholder="Name on card"
-                            className="w-full"
-                            error={errors.nameOnCard?.message}
-                            type="text"
-                            {...register("nameOnCard", {
-                              required: "Name on card is required",
-                              pattern: {
-                                value: /^[A-Za-z\s]+$/,
-                                message: "Name must be alphabet only",
-                              },
-                            })}
-                          />
-
-                          <div className="flex gap-4">
-                            <InputField
-                              label="Expiry date"
-                              placeholder="MM/YY"
-                              className="w-1/2"
-                              error={errors.expiry?.message}
-                              type="text"
-                              maxLength={5}
-                              {...register("expiry", {
-                                required: "Expiry date is required",
-                                pattern: {
-                                  value: /^(0[1-9]|1[0-2])\/\d{2}$/,
-                                  message: "Invalid expiry date",
-                                },
-                                validate: {
-                                  notExpired: (v) =>
-                                    isExpiryValid(v) || "Card has expired",
-                                },
-                              })}
+                          </form>
+                          <div className="hidden md:flex flex-row gap-2 mt-8">
+                            <img
+                              src="/card-visa.svg"
+                              alt="Visa"
+                              className="h-12 w-12"
                             />
-                            <InputField
-                              label="CVV"
-                              placeholder="CVV"
-                              className="w-1/2"
-                              error={errors.cvv?.message}
-                              type="text"
-                              maxLength={4}
-                              {...register("cvv", {
-                                required: "CVV is required",
-                                pattern: {
-                                  value: /^[0-9]{3,4}$/,
-                                  message: "Invalid CVV",
-                                },
-                              })}
+                            <img
+                              src="/card-mastercard.svg"
+                              alt="Mastercard"
+                              className="h-12 w-12"
                             />
                           </div>
-                        </form>
-                        <div className="hidden md:flex flex-row gap-2 mt-8">
-                          <img
-                            src="/card-visa.svg"
-                            alt="Visa"
-                            className="h-12 w-12"
-                          />
-                          <img
-                            src="/card-mastercard.svg"
-                            alt="Mastercard"
-                            className="h-12 w-12"
-                          />
                         </div>
                       </div>
-                    </div>
+                    )}
                     {/* QR Payment */}
-                    <div
-                      className={`px-6 ${
-                        paymentMethod === "qr"
-                          ? "border rounded-xl bg-[#F1F2F6] py-6"
-                          : ""
-                      }`}
-                    >
-                      <label className="flex items-center cursor-pointer w-full">
-                        <input
-                          type="radio"
-                          name="payment"
-                          checked={paymentMethod === "qr"}
-                          onChange={() => setPaymentMethod("qr")}
-                          className="accent-blue-600 mr-2"
-                        />
-                        <span className="font-medium text-gray-800">
-                          QR Payment
-                        </span>
-                      </label>
-                    </div>
+                    {total > 0 && (
+                      <div
+                        className={`px-6 ${
+                          paymentMethod === "qr"
+                            ? "border rounded-xl bg-[#F1F2F6] py-6"
+                            : ""
+                        }`}
+                      >
+                        <label className="flex items-center cursor-pointer w-full">
+                          <input
+                            type="radio"
+                            name="payment"
+                            checked={paymentMethod === "qr"}
+                            onChange={() => setPaymentMethod("qr")}
+                            className="accent-blue-600 mr-2"
+                          />
+                          <span className="font-medium text-gray-800">
+                            QR Payment
+                          </span>
+                        </label>
+                      </div>
+                    )}
+                    {/* Free course */}
+                    {total === 0 && (
+                      <div className="px-6 border rounded-xl bg-[#F1F2F6] py-6 text-center text-green-600 font-semibold">
+                        No payment information required. This course is free!
+                      </div>
+                    )}
                   </div>
                   {/* Order Summary */}
                   <OrderSummary
@@ -369,7 +376,7 @@ export default function PaymentPage() {
                     promoResult={promoResult}
                     discount={displayDiscount}
                     total={total}
-                    paymentMethod={paymentMethod}
+                    paymentMethod={total === 0 ? "free" : paymentMethod}
                     onPromoCodeChange={(v) => {
                       setPromoCode(v);
                       resetPromo();
@@ -382,18 +389,22 @@ export default function PaymentPage() {
                     isPromoDisabled={promoApplied || !promoCode}
                     isSubmitting={isSubmitting}
                     onPlaceOrder={async () => {
-                      if (paymentMethod === "card") {
-                        if (formRef.current) {
-                          formRef.current.requestSubmit();
+                      if (total > 0) {
+                        if (paymentMethod === "card") {
+                          if (formRef.current) {
+                            formRef.current.requestSubmit();
+                          }
+                        } else {
+                          const params = new URLSearchParams({
+                            promoCode: promoCode || "",
+                            amount: total.toString(),
+                          });
+                          router.push(
+                            `/payment/${courseId}/qr-code?${params.toString()}`
+                          );
                         }
                       } else {
-                        const params = new URLSearchParams({
-                          promoCode: promoCode || "",
-                          amount: total.toString(),
-                        });
-                        router.push(
-                          `/payment/${courseId}/qr-code?${params.toString()}`
-                        );
+                        await onSubmit({} as CardForm);
                       }
                     }}
                   />

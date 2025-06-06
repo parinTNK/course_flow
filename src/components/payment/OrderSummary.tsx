@@ -86,7 +86,11 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({
         <span className="text-[#646D89]">
           {paymentMethod === "card"
             ? "Credit card / Debit card"
-            : "QR Payment"}
+            : paymentMethod === "qr"
+            ? "QR Payment"
+            : paymentMethod === "free"
+            ? "Free Purchase"   
+            : ""}
         </span>
       </div>
       <div className="my-4" />
