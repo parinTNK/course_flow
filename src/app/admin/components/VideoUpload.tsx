@@ -4,6 +4,7 @@ import React, { useState, useCallback, forwardRef, useImperativeHandle } from 'r
 import { Upload, X, Play } from 'lucide-react'
 import { createUploadUrl, deleteCourseVideo, getAssetStatus } from '@/app/actions/mux-actions'
 import MuxPlayer from '@mux/mux-player-react'
+import ConfirmationModal from './ConfirmationModal'
 
 
 interface VideoUploadProps {
@@ -12,19 +13,16 @@ interface VideoUploadProps {
   existingPlaybackId?: string | null
   onVideoUpdate?: (assetId: string, playbackId: string) => void
   onVideoDelete?: (assetId?: string | null) => void
-  // Add prop to track if video is marked for deletion in edit mode
   isMarkedForDeletion?: boolean
-  // Add callback to expose upload state to parent
   onUploadStateChange?: (uploadState: {
     isUploading: boolean
     progress: number
     error: string | null
     success: boolean
-    currentAssetId?: string | null // Expose current asset ID for cancellation
+    currentAssetId?: string | null
   }) => void
 }
 
-// Define methods that can be called on VideoUpload ref
 export interface VideoUploadRef {
   cancelUpload: () => Promise<void>
 }
@@ -53,14 +51,14 @@ const VideoUpload = forwardRef<VideoUploadRef, VideoUploadProps>(({
   const [dragActive, setDragActive] = useState(false)
   const [uploadUrl, setUploadUrl] = useState<string | null>(null)
   const [tempAssetId, setTempAssetId] = useState<string | null>(null)
-  const [currentAssetId, setCurrentAssetId] = useState<string | null>(null) // Store the actual asset ID
-  const [showVideoModal, setShowVideoModal] = useState(false) // For video preview modal
+  const [currentAssetId, setCurrentAssetId] = useState<string | null>(null)
+  const [showVideoModal, setShowVideoModal] = useState(false)
+  const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false)
+  const [showRemoveVideoModal, setShowRemoveVideoModal] = useState(false)
   
-  // Add ref to store XMLHttpRequest for cancellation
   const xhrRef = React.useRef<XMLHttpRequest | null>(null)
   const pollTimeoutRef = React.useRef<NodeJS.Timeout | null>(null)
 
-  // Notify parent when upload state changes
   React.useEffect(() => {
     if (onUploadStateChange) {
       onUploadStateChange({
@@ -68,27 +66,22 @@ const VideoUpload = forwardRef<VideoUploadRef, VideoUploadProps>(({
         currentAssetId: currentAssetId
       })
     }
-  // We intentionally exclude onUploadStateChange from dependencies to prevent infinite loops
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [uploadState, currentAssetId])
 
-  // Cancel upload function
   const cancelUpload = React.useCallback(async () => {
     console.log('🔴 Cancelling video upload...')
     
-    // Cancel XMLHttpRequest if it exists
     if (xhrRef.current) {
       xhrRef.current.abort()
       xhrRef.current = null
     }
     
-    // Clear polling timeout
     if (pollTimeoutRef.current) {
       clearTimeout(pollTimeoutRef.current)
       pollTimeoutRef.current = null
     }
     
-    // Delete assets from Mux - handle both active uploads and completed uploads
     const assetToDelete = tempAssetId || currentAssetId
     
     if (assetToDelete) {
@@ -112,7 +105,6 @@ const VideoUpload = forwardRef<VideoUploadRef, VideoUploadProps>(({
       console.log('⚠️ No asset to delete during cancel')
     }
     
-    // Reset state
     setUploadState({
       isUploading: false,
       progress: 0,
@@ -125,7 +117,32 @@ const VideoUpload = forwardRef<VideoUploadRef, VideoUploadProps>(({
     console.log('✅ Upload cancelled successfully')
   }, [tempAssetId, currentAssetId])
 
-  // Expose cancel function to parent
+  const handleDeleteUploadClick = () => {
+    setShowDeleteConfirmModal(true)
+  }
+
+  const handleConfirmDeleteUpload = async () => {
+    setShowDeleteConfirmModal(false)
+    await cancelUpload()
+  }
+
+  const handleCancelDeleteUpload = () => {
+    setShowDeleteConfirmModal(false)
+  }
+
+  const handleRemoveVideoClick = () => {
+    setShowRemoveVideoModal(true)
+  }
+
+  const handleConfirmRemoveVideo = async () => {
+    setShowRemoveVideoModal(false)
+    await handleDeleteVideo()
+  }
+
+  const handleCancelRemoveVideo = () => {
+    setShowRemoveVideoModal(false)
+  }
+
   useImperativeHandle(ref, () => ({
     cancelUpload
   }), [cancelUpload])
@@ -166,7 +183,7 @@ const VideoUpload = forwardRef<VideoUploadRef, VideoUploadProps>(({
       return
     }
 
-    const maxSize = 10 * 1024 * 1024 // 10MB in bytes
+    const maxSize = 10 * 1024 * 1024
     if (file.size > maxSize) {
       setUploadState(prev => ({
         ...prev,
@@ -175,7 +192,6 @@ const VideoUpload = forwardRef<VideoUploadRef, VideoUploadProps>(({
       return
     }
 
-    // Reset states when starting new upload (important for replace video)
     setUploadState({
       isUploading: true,
       progress: 0,
@@ -183,12 +199,10 @@ const VideoUpload = forwardRef<VideoUploadRef, VideoUploadProps>(({
       success: false,
     })
     
-    // Clear previous asset IDs when replacing
     setTempAssetId(null)
     setCurrentAssetId(null)
 
     try {
-      // Get upload URL from server
       const uploadResult = await createUploadUrl()
       
       if (!uploadResult.success) {
@@ -199,9 +213,8 @@ const VideoUpload = forwardRef<VideoUploadRef, VideoUploadProps>(({
       const uploadId = uploadResult.data.upload_id
       setTempAssetId(uploadId)
 
-      // Upload file directly to Mux
       const xhr = new XMLHttpRequest()
-      xhrRef.current = xhr // Store reference for cancellation
+      xhrRef.current = xhr
 
       xhr.upload.addEventListener('progress', (e) => {
         if (e.lengthComputable) {
@@ -214,9 +227,8 @@ const VideoUpload = forwardRef<VideoUploadRef, VideoUploadProps>(({
       })
 
       xhr.addEventListener('load', async () => {
-        xhrRef.current = null // Clear reference when done
+        xhrRef.current = null
         if (xhr.status === 200 || xhr.status === 201) {
-          // Poll for asset status
           const pollForAsset = async () => {
             try {
               const statusResult = await getAssetStatus(uploadId)
@@ -224,12 +236,9 @@ const VideoUpload = forwardRef<VideoUploadRef, VideoUploadProps>(({
               if (statusResult.success && statusResult.status === 'ready') {
                 const { assetId, playbackId } = statusResult
                 
-                // Store the actual asset ID for potential deletion
                 setCurrentAssetId(assetId)
                 console.log('Video upload successful - stored currentAssetId:', assetId)
                 
-                // For new courses, don't update database yet - just store the data
-                // The course will be created when user clicks Create/Draft
                 onVideoUpdate?.(assetId, playbackId)
                 setUploadState(prev => ({
                   ...prev,
@@ -239,7 +248,6 @@ const VideoUpload = forwardRef<VideoUploadRef, VideoUploadProps>(({
               } else if (statusResult.status === 'error') {
                 throw new Error(statusResult.error || 'Video processing failed')
               } else {
-                // Still processing, poll again
                 pollTimeoutRef.current = setTimeout(pollForAsset, 3000)
               }
             } catch (error) {
@@ -251,7 +259,6 @@ const VideoUpload = forwardRef<VideoUploadRef, VideoUploadProps>(({
             }
           }
           
-          // Start polling after a short delay
           pollTimeoutRef.current = setTimeout(pollForAsset, 2000)
         } else {
           throw new Error('Upload failed')
@@ -259,7 +266,7 @@ const VideoUpload = forwardRef<VideoUploadRef, VideoUploadProps>(({
       })
 
       xhr.addEventListener('error', () => {
-        xhrRef.current = null // Clear reference on error
+        xhrRef.current = null
         setUploadState(prev => ({
           ...prev,
           error: 'Upload failed',
@@ -268,7 +275,7 @@ const VideoUpload = forwardRef<VideoUploadRef, VideoUploadProps>(({
       })
 
       xhr.addEventListener('abort', () => {
-        xhrRef.current = null // Clear reference on abort
+        xhrRef.current = null
         console.log('Upload aborted by user')
       })
 
@@ -287,31 +294,46 @@ const VideoUpload = forwardRef<VideoUploadRef, VideoUploadProps>(({
   const handleDeleteVideo = async () => {
     console.log('VideoUpload handleDeleteVideo called - existingAssetId:', existingAssetId, 'currentAssetId:', currentAssetId, 'tempAssetId:', tempAssetId, 'uploadState.success:', uploadState.success);
     
-    // In edit mode, just call the parent's delete handler for soft delete logic
-    // The parent (useCourseForm) will handle marking for deletion vs immediate deletion
+    const assetToDelete = existingAssetId || currentAssetId
+    
+    // Delete from Mux first if there's an asset
+    if (assetToDelete) {
+      try {
+        console.log('🗑️ Deleting video asset from Mux:', assetToDelete)
+        const deleteResponse = await fetch(`/api/mux-delete-asset?assetId=${assetToDelete}`, {
+          method: 'DELETE',
+        })
+        
+        if (deleteResponse.ok) {
+          const result = await deleteResponse.json()
+          console.log('✅ Video deleted from Mux:', result.message)
+        } else {
+          const errorResult = await deleteResponse.json()
+          console.warn('⚠️ Mux delete failed:', errorResult)
+        }
+      } catch (error) {
+        console.warn('Failed to delete video from Mux:', error)
+      }
+    }
+
     if (courseId) {
-      // Edit mode - let parent handle soft delete logic
       onVideoDelete?.(existingAssetId || currentAssetId)
     } else {
-      // Create mode - immediate deletion as before
       if (!existingAssetId && !currentAssetId && !tempAssetId && !uploadState.success) {
         console.log('No video to delete, returning early');
         return
       }
 
       try {
-        // For new courses (no courseId), call the callback to update the form state and handle deletion
-        // Pass the currentAssetId so the parent can use it for deletion
         onVideoDelete?.(currentAssetId)
         
-        // Reset local state
         setUploadState(prev => ({
           ...prev,
           success: false,
           error: null,
         }))
         setTempAssetId(null)
-        setCurrentAssetId(null) // Reset the current asset ID
+        setCurrentAssetId(null)
         
       } catch (error) {
         setUploadState(prev => ({
@@ -323,11 +345,10 @@ const VideoUpload = forwardRef<VideoUploadRef, VideoUploadProps>(({
   }
 
   const hasExistingVideo = (existingAssetId && existingPlaybackId) || uploadState.success
-  const showVideoPreview = hasExistingVideo && !isMarkedForDeletion && !uploadState.isUploading // Hide preview during upload
+  const showVideoPreview = hasExistingVideo && !isMarkedForDeletion && !uploadState.isUploading
 
   return (
     <div className="space-y-2">
-      {/* Video preview and upload area similar to cover image */}
       <div 
         className={`relative w-[240px] h-[240px] flex items-center justify-center cursor-pointer rounded-lg p-4 text-center transition-all duration-200 ${
           dragActive 
@@ -348,9 +369,7 @@ const VideoUpload = forwardRef<VideoUploadRef, VideoUploadProps>(({
       >
         {showVideoPreview ? (
           <>
-            {/* Video preview in square container */}
             <div className="w-full h-full rounded-lg overflow-hidden pt-6 relative flex flex-col">
-              {/* Video thumbnail section (16:9 aspect ratio) */}
               <div 
                 className="w-full aspect-video bg-black rounded-lg relative cursor-pointer group overflow-hidden"
                 onClick={(e) => {
@@ -359,7 +378,6 @@ const VideoUpload = forwardRef<VideoUploadRef, VideoUploadProps>(({
                   setShowVideoModal(true);
                 }}
               >
-                {/* Actual video thumbnail */}
                 {existingPlaybackId && (
                   <img
                     src={`https://image.mux.com/${existingPlaybackId}/thumbnail.png?width=320&height=180&fit_mode=pad&time=0`}
@@ -368,18 +386,13 @@ const VideoUpload = forwardRef<VideoUploadRef, VideoUploadProps>(({
                   />
                 )}
                 
-                {/* Play button overlay */}
                 <div className="absolute inset-0 bg-black/30 group-hover:bg-black/50 transition-all duration-200 flex items-center justify-center">
                   <div className="w-12 h-12 bg-white bg-opacity-90 rounded-full flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-200">
                     <Play className="h-6 w-6 text-gray-800 ml-0.5" />
                   </div>
                 </div>
-                
-                {/* Video indicator */}
-               
               </div>
               
-              {/* Bottom section for replace button */}
               <div className="flex-1 flex items-center justify-center p-3 bg-gray-50">
                 <button
                   type="button"
@@ -397,13 +410,12 @@ const VideoUpload = forwardRef<VideoUploadRef, VideoUploadProps>(({
               </div>
             </div>
             
-            {/* Delete button - X at top right corner */}
             <button
               type="button"
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                handleDeleteVideo();
+                handleRemoveVideoClick();
               }}
               className="absolute top-8 right-2 w-6 h-6 bg-orange-500 hover:bg-orange-600 text-white rounded-full flex items-center justify-center shadow-lg transition-colors duration-200 z-10"
               title={courseId ? 'Remove video' : 'Delete video'}
@@ -413,7 +425,6 @@ const VideoUpload = forwardRef<VideoUploadRef, VideoUploadProps>(({
           </>
         ) : isMarkedForDeletion ? (
           <>
-            {/* Marked for deletion state */}
             <div className="flex flex-col items-center justify-center text-red-500 space-y-2">
               <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
                 <X className="h-6 w-6" />
@@ -422,13 +433,12 @@ const VideoUpload = forwardRef<VideoUploadRef, VideoUploadProps>(({
               <p className="text-xs text-center text-red-400">Will be removed when you save</p>
             </div>
             
-            {/* Restore button */}
             <button
               type="button"
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                handleDeleteVideo(); // This will restore the video in edit mode
+                handleDeleteVideo();
               }}
               className="absolute -top-2 -right-2 w-6 h-6 bg-blue-500 hover:bg-blue-600 text-white rounded-full flex items-center justify-center shadow-lg transition-colors duration-200 z-10"
               title="Restore video"
@@ -438,7 +448,6 @@ const VideoUpload = forwardRef<VideoUploadRef, VideoUploadProps>(({
           </>
         ) : uploadState.isUploading ? (
           <>
-            {/* Upload progress state */}
             <div className="flex flex-col items-center justify-center space-y-3 w-full">
               <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
                 <Upload className="h-6 w-6 text-blue-500 animate-pulse" />
@@ -457,63 +466,12 @@ const VideoUpload = forwardRef<VideoUploadRef, VideoUploadProps>(({
               </div>
             </div>
             
-            {/* Cancel button during upload */}
             <button
               type="button"
-              onClick={async (e) => {
+              onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                
-                // console.log('🚫 VideoUpload: Inline cancel clicked');
-                // console.log('🚫 VideoUpload: Current state - tempAssetId:', tempAssetId, 'currentAssetId:', currentAssetId);
-                
-                // Cancel XMLHttpRequest if active
-                if (xhrRef.current) {
-                  // console.log('🚫 VideoUpload: Aborting XMLHttpRequest');
-                  xhrRef.current.abort();
-                  xhrRef.current = null;
-                }
-
-                // Clear polling timeout
-                if (pollTimeoutRef.current) {
-                  // console.log('🚫 VideoUpload: Clearing polling timeout');
-                  clearTimeout(pollTimeoutRef.current);
-                  pollTimeoutRef.current = null;
-                }
-
-                // Delete assets from Mux - handle both active uploads and completed uploads
-                const assetToDelete = tempAssetId || currentAssetId;
-                
-                if (assetToDelete) {
-                  // console.log('🚫 VideoUpload: Deleting asset:', assetToDelete, '(type:', tempAssetId ? 'active upload' : 'completed upload', ')');
-                  try {
-                    const deleteResponse = await fetch(`/api/mux-delete-asset?assetId=${assetToDelete}`, {
-                      method: 'DELETE',
-                    });
-                    
-                    if (deleteResponse.ok) {
-                      const result = await deleteResponse.json();
-                      console.log('✅ VideoUpload: Delete response:', result.message);
-                    } else {
-                      const errorResult = await deleteResponse.json();
-                      console.warn('⚠️ VideoUpload: Delete failed:', errorResult);
-                    }
-                  } catch (error) {
-                    console.error('❌ VideoUpload: Failed to delete asset:', error);
-                  }
-                } else {
-                  console.log('⚠️ VideoUpload: No asset to delete during cancel');
-                }
-
-                // Reset state
-                setUploadState({
-                  isUploading: false,
-                  progress: 0,
-                  error: null,
-                  success: false,
-                });
-                setTempAssetId(null);
-                setCurrentAssetId(null);
+                handleDeleteUploadClick();
               }}
               className="absolute -top-2 -right-2 w-6 h-6 bg-orange-500 hover:bg-orange-600 text-white rounded-full flex items-center justify-center shadow-lg transition-colors duration-200 z-10"
               title="Cancel upload"
@@ -523,7 +481,6 @@ const VideoUpload = forwardRef<VideoUploadRef, VideoUploadProps>(({
           </>
         ) : (
           <>
-            {/* Upload prompt state */}
             <div className="flex flex-col items-center justify-center space-y-2">
               <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
                 <Play className="h-6 w-6 text-blue-500" />
@@ -535,7 +492,6 @@ const VideoUpload = forwardRef<VideoUploadRef, VideoUploadProps>(({
         )}
       </div>
 
-      {/* Hidden file input */}
       <input
         id="video-file-input"
         type="file"
@@ -544,27 +500,18 @@ const VideoUpload = forwardRef<VideoUploadRef, VideoUploadProps>(({
         onChange={handleFileSelect}
       />
 
-      {/* Error message */}
       {uploadState.error && (
         <div className="bg-red-50 border border-red-200 rounded-lg p-3">
           <p className="text-red-600 text-sm">{uploadState.error}</p>
         </div>
       )}
 
-      {/* Success message for completed uploads */}
       {uploadState.success && !showVideoPreview && !isMarkedForDeletion && (
         <div className="bg-green-50 border border-green-200 rounded-lg p-3">
           <p className="text-green-600 text-sm">Video uploaded successfully! Processing may take a few minutes.</p>
         </div>
       )}
 
-      {/* Helper text
-      <div className="text-xs text-gray-500 space-y-1">
-        <p>Supported formats: MP4, MOV, AVI, MKV</p>
-        <p>Maximum file size: 5GB • Recommended: 1080p, H.264 codec</p>
-      </div> */}
-
-      {/* Video Modal */}
       {showVideoModal && showVideoPreview && (
         <div 
           className="fixed inset-0 bg-gray-900/25 flex items-center justify-center z-50"
@@ -574,7 +521,6 @@ const VideoUpload = forwardRef<VideoUploadRef, VideoUploadProps>(({
             className="relative w-full max-w-4xl mx-4"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Close button */}
             <button
               onClick={() => setShowVideoModal(false)}
               className="absolute -top-12 right-0 text-white hover:text-gray-300 transition-colors"
@@ -582,7 +528,6 @@ const VideoUpload = forwardRef<VideoUploadRef, VideoUploadProps>(({
               <X className="h-8 w-8" />
             </button>
             
-            {/* Video player */}
             <div className="bg-black rounded-lg overflow-hidden">
               {existingPlaybackId && (
                 <MuxPlayer
@@ -597,6 +542,30 @@ const VideoUpload = forwardRef<VideoUploadRef, VideoUploadProps>(({
           </div>
         </div>
       )}
+
+      <ConfirmationModal
+        isOpen={showDeleteConfirmModal}
+        onClose={handleCancelDeleteUpload}
+        onConfirm={handleConfirmDeleteUpload}
+        title="Cancel Video Upload"
+        message="Are you sure you want to cancel this video upload? The video will be permanently deleted from Mux."
+        confirmText="Yes, Cancel Upload"
+        cancelText="No, Continue Upload"
+        confirmButtonClass="bg-white border border-orange-500 text-orange-500 hover:bg-orange-50"
+        cancelButtonClass="bg-blue-600 text-white hover:bg-blue-700"
+      />
+
+      <ConfirmationModal
+        isOpen={showRemoveVideoModal}
+        onClose={handleCancelRemoveVideo}
+        onConfirm={handleConfirmRemoveVideo}
+        title="Remove Video"
+        message="Are you sure you want to remove this video?"
+        confirmText="Yes, Remove Video"
+        cancelText="No, Keep Video"
+        confirmButtonClass="bg-white border border-orange-500 text-orange-500 hover:bg-orange-50"
+        cancelButtonClass="bg-blue-600 text-white hover:bg-blue-700"
+      />
     </div>
   )
 })

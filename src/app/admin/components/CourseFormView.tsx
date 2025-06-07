@@ -4,7 +4,7 @@ import { PromoCodeSection } from '@/app/admin/components/PromoCodeSection';
 import { CourseFormData, Lesson } from '@/types/courseAdmin';
 import { DndContext, closestCenter, DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
-import { SortableRow } from './SortableRow'; // Adjusted import
+import { SortableRow } from './SortableRow';
 import { useRouter } from 'next/navigation';
 import VideoUpload, { VideoUploadRef } from '@/app/admin/components/VideoUpload';
 import ConfirmationModal from '@/app/admin/components/ConfirmationModal';
@@ -33,8 +33,7 @@ interface CourseFormViewProps {
   handleVideoUploadError: (error: string) => void;
   handleVideoDelete: (assetId?: string | null) => void;
   videoMarkedForDeletion?: string | null;
-  dndSensors: any; // Type properly from @dnd-kit/core if possible
-  // New props for video upload state tracking
+  dndSensors: any;
   videoUploadState: {
     isUploading: boolean
     progress: number
@@ -50,7 +49,8 @@ interface CourseFormViewProps {
     currentAssetId?: string | null
   }) => void;
   cancelVideoUpload: () => Promise<void>;
-  onDeleteCourse?: (id: string) => void; // เพิ่ม prop นี้
+  onDeleteCourse?: (id: string) => void;
+  handlePromoCodeChange?: (promoCodeId: string | null) => void;
 }
 
 export const CourseFormView: React.FC<CourseFormViewProps> = ({
@@ -59,17 +59,15 @@ export const CourseFormView: React.FC<CourseFormViewProps> = ({
   handleAddLesson, handleDeleteLesson, handleEditLesson, handleDragEndLessons,
   handleVideoUploadSuccess, handleVideoUploadError, handleVideoDelete, videoMarkedForDeletion, dndSensors,
   videoUploadState, handleVideoUploadStateChange, cancelVideoUpload, onDeleteCourse,
+  handlePromoCodeChange,
 }) => {
   const router = useRouter();
   
-  // Create ref for VideoUpload component
   const videoUploadRef = useRef<VideoUploadRef>(null)
 
-  // Navigation blocker for browser navigation
   const { showConfirmModal, handleConfirmNavigation, handleCancelNavigation, triggerConfirmModal } = useNavigationBlocker({
     isBlocked: videoUploadState.isUploading,
     onConfirmNavigation: async () => {
-      // Cancel upload and cleanup asset
       await cancelVideoUpload()
       if (videoUploadRef.current) {
         await videoUploadRef.current.cancelUpload()
@@ -78,25 +76,19 @@ export const CourseFormView: React.FC<CourseFormViewProps> = ({
     }
   })
 
-  // Handler for Cancel button click
   const handleCancelButtonClick = () => {
     if (videoUploadState.isUploading) {
-      // Show confirmation modal when video is uploading
       triggerConfirmModal()
     } else {
-      // Direct cancel when no upload in progress
       handleCancel()
     }
   }
 
-  // Handler for back arrow button click
   const handleBackButtonClick = () => {
     if (videoUploadState.isUploading) {
-      // Show confirmation modal when video is uploading
       triggerConfirmModal()
     } else {
-      // Direct navigation when no upload in progress
-      router.push('/admin/dashboard')
+      handleCancel()
     }
   }
 
@@ -199,7 +191,13 @@ export const CourseFormView: React.FC<CourseFormViewProps> = ({
             </div>
 
             <div className="mt-4">
-              <PromoCodeSection />
+              <PromoCodeSection 
+                selectedPromoCodeId={formData.promo_code_id}
+                courseId={formData.id}
+                mode={formData.id ? 'edit' : 'create'}
+                onChange={handlePromoCodeChange}
+                coursePrice={parseFloat(String(formData.price)) || 0}
+              />
             </div>
 
 

@@ -43,16 +43,13 @@ export function SortableSubLessonItem({
     transition
   };
   
-  // Create ref for the video uploader
   const videoUploadRef = useRef<SubLessonVideoUploadRef>(null);
   const [refReady, setRefReady] = useState(false);
   const lastLogTime = useRef<number>(0);
   
-  // Store ref in parent's refs collection when it becomes available
   React.useEffect(() => {
     if (videoUploadRefs && videoUploadRef.current && !refReady) {
       const now = Date.now();
-      // Only log if enough time has passed since last log
       if (now - lastLogTime.current > 3000) {
         console.log(`✅ SubLesson[${subLesson.id}]: Video ref registered`);
         lastLogTime.current = now;
@@ -62,7 +59,6 @@ export function SortableSubLessonItem({
     }
   });
   
-  // Cleanup when component unmounts
   React.useEffect(() => {
     return () => {
       if (videoUploadRefs && subLesson.id) {
@@ -71,7 +67,6 @@ export function SortableSubLessonItem({
     };
   }, [subLesson.id, videoUploadRefs]);
 
-  // Custom ref callback to detect when ref is set
   const setVideoUploadRef = React.useCallback((ref: SubLessonVideoUploadRef | null) => {
     videoUploadRef.current = ref;
     

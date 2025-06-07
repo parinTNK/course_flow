@@ -253,6 +253,10 @@ export const useCourseForm = (props?: UseCourseFormProps) => {
     const formKey = keyMap[id] || id as keyof CourseFormData;
     _setFormData((prevData) => ({ ...prevData, [formKey]: value }));
   };
+
+  const handlePromoCodeChange = (promoCodeId: string | null) => {
+    _setFormData((prevData) => ({ ...prevData, promo_code_id: promoCodeId }));
+  };
   
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
@@ -589,6 +593,7 @@ export const useCourseForm = (props?: UseCourseFormProps) => {
     handleCoverChange,
     handleCoverRemove,
     handleInputChange,
+    handlePromoCodeChange,
     validateForm,
     validateNameOnly,
     handleSubmit,

@@ -18,7 +18,6 @@ export const useNavigationBlocker = ({
   const [showConfirmModal, setShowConfirmModal] = useState(false)
   const [pendingNavigation, setPendingNavigation] = useState<(() => void) | null>(null)
 
-  // Block browser navigation (back/forward/refresh)
   useEffect(() => {
     if (!isBlocked) return
 
@@ -30,7 +29,6 @@ export const useNavigationBlocker = ({
 
     const handlePopState = (e: PopStateEvent) => {
       if (isBlocked) {
-        // Push the state back to prevent actual navigation
         window.history.pushState(null, '', window.location.pathname)
         
         if (onNavigationAttempt) {
@@ -38,18 +36,15 @@ export const useNavigationBlocker = ({
         } else {
           setShowConfirmModal(true)
           setPendingNavigation(() => () => {
-            // Allow the navigation to proceed
             window.history.back()
           })
         }
       }
     }
 
-    // Add event listeners
     window.addEventListener('beforeunload', handleBeforeUnload)
     window.addEventListener('popstate', handlePopState)
 
-    // Push a dummy state to detect back navigation
     window.history.pushState(null, '', window.location.pathname)
 
     return () => {
@@ -66,7 +61,6 @@ export const useNavigationBlocker = ({
       
       setShowConfirmModal(false)
       
-      // Execute pending navigation
       if (pendingNavigation) {
         pendingNavigation()
         setPendingNavigation(null)
@@ -77,7 +71,6 @@ export const useNavigationBlocker = ({
     }
   }, [onConfirmNavigation, pendingNavigation])
 
-  // Add manual trigger function for Cancel button
   const triggerConfirmModal = useCallback(() => {
     if (isBlocked) {
       setShowConfirmModal(true)

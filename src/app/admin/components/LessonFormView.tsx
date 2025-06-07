@@ -1,10 +1,10 @@
 import React, { useState, useRef, useCallback } from 'react';
 import { ButtonT } from '@/components/ui/ButtonT';
-import { Lesson, SubLesson } from '@/types/courseAdmin'; // Assuming SubLesson is also in types
+import { Lesson, SubLesson } from '@/types/courseAdmin';
 import { DndContext, closestCenter, DragEndEvent }
 from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
-import { SortableSubLessonItem } from './SortableSubLessonItem'; // Adjusted import
+import { SortableSubLessonItem } from './SortableSubLessonItem';
 import { SubLessonVideoUploadRef } from './SubLessonVideoUpload';
 import ConfirmationModal from './ConfirmationModal';
 import { useNavigationBlocker } from '@/app/admin/hooks/useNavigationBlocker';
@@ -14,7 +14,7 @@ interface LessonFormViewProps {
   currentEditingLesson: { 
     id: number | string | null; 
     name: string; 
-    title?: string; // Add database field name
+    title?: string;
     subLessons: SubLesson[] 
   };
   setCurrentEditingLessonName: (name: string) => void;
@@ -24,13 +24,10 @@ interface LessonFormViewProps {
   handleRemoveSubLesson: (id: number | string) => void;
   handleSubLessonNameChange: (id: number | string, newName: string) => void;
   handleDragEndSubLessons: (event: DragEndEvent) => void;
-  dndSensors: any; // Type properly
-  // Video management functions
+  dndSensors: any;
   handleSubLessonVideoUpdate?: (subLessonId: number | string, assetId: string, playbackId: string) => void;
   handleSubLessonVideoDelete?: (subLessonId: number | string) => void;
-  // Optional callback for cancelling all uploads before navigation
   onCancelAllUploads?: () => Promise<void>;
-  // Optional callback to register refs with parent
   onRegisterRefs?: (refs: Record<string | number, SubLessonVideoUploadRef | null>) => void;
 }
 
@@ -40,7 +37,6 @@ export const LessonFormView: React.FC<LessonFormViewProps> = ({
   handleRemoveSubLesson, handleSubLessonNameChange, handleDragEndSubLessons, dndSensors,
   handleSubLessonVideoUpdate, handleSubLessonVideoDelete, onCancelAllUploads, onRegisterRefs
 }) => {
-  // Manage video upload state
   const [videoUploadsState, setVideoUploadsState] = useState<Record<string | number, {
     isUploading: boolean
     progress: number
@@ -49,20 +45,16 @@ export const LessonFormView: React.FC<LessonFormViewProps> = ({
     currentAssetId?: string | null
   }>>({});
 
-  // Keep track of any active uploads
   const isUploading = Object.values(videoUploadsState).some(state => state.isUploading);
 
-  // Store refs to all video uploaders for cancellation
   const videoUploadRefs = useRef<Record<string | number, SubLessonVideoUploadRef | null>>({});
 
-  // Register refs with parent when they change
   React.useEffect(() => {
     if (onRegisterRefs) {
       onRegisterRefs(videoUploadRefs.current);
     }
   }, [onRegisterRefs]);
 
-  // Also register refs whenever the refs object changes
   const lastLoggedRefs = useRef<string>('');
   const lastRegisteredTime = useRef<number>(0);
   
@@ -72,11 +64,10 @@ export const LessonFormView: React.FC<LessonFormViewProps> = ({
         const currentRefs = videoUploadRefs.current;
         const refKeys = Object.keys(currentRefs);
         if (refKeys.length > 0) {
-          // Only log significant changes and not too frequently
           const refsString = refKeys.sort().join(',');
           const now = Date.now();
           const shouldLog = lastLoggedRefs.current !== refsString && 
-                           (now - lastRegisteredTime.current > 5000); // Log at most every 5 seconds
+                           (now - lastRegisteredTime.current > 5000);
           
           if (shouldLog) {
             console.log('📝 LessonFormView: Video refs updated:', refKeys.length);
@@ -85,13 +76,12 @@ export const LessonFormView: React.FC<LessonFormViewProps> = ({
           }
           onRegisterRefs(currentRefs);
         }
-      }, 2000); // Check every 2 seconds (less frequent)
+      }, 2000);
 
       return () => clearInterval(timer);
     }
   }, [onRegisterRefs]);
 
-  // Handle video upload state change
   const handleVideoUploadStateChange = React.useCallback((subLessonId: number | string, state: {
     isUploading: boolean
     progress: number
@@ -105,30 +95,23 @@ export const LessonFormView: React.FC<LessonFormViewProps> = ({
     }));
   }, []);
 
-  // Cancel all active uploads
   const cancelAllUploads = useCallback(async () => {
     const refCount = Object.keys(videoUploadRefs.current).length;
     if (refCount > 0) {
       console.log(`🚫 LessonFormView: Cancelling ${refCount} video uploads`);
     }
-    
-    // Cancel uploads via refs
     const cancelPromises = Object.entries(videoUploadRefs.current).map(([id, ref]) => {
       if (ref) {
         return ref.cancelUpload();
       }
       return Promise.resolve();
     });
-    
     await Promise.all(cancelPromises);
-    
-    // Also call parent cancellation if provided
     if (onCancelAllUploads) {
       await onCancelAllUploads();
     }
   }, [onCancelAllUploads]);
 
-  // Navigation blocker
   const { showConfirmModal, handleConfirmNavigation, handleCancelNavigation, triggerConfirmModal } = useNavigationBlocker({
     isBlocked: isUploading,
     onConfirmNavigation: async () => {
@@ -137,24 +120,18 @@ export const LessonFormView: React.FC<LessonFormViewProps> = ({
     }
   });
 
-  // Handler for Cancel button click
   const handleCancelButtonClick = () => {
     if (isUploading) {
-      // Show confirmation modal when video is uploading
       triggerConfirmModal();
     } else {
-      // Direct cancel when no upload in progress
       handleCancelAddLesson();
     }
   };
 
-  // Handler for back arrow button click
   const handleBackButtonClick = () => {
     if (isUploading) {
-      // Show confirmation modal when video is uploading
       triggerConfirmModal();
     } else {
-      // Direct navigation when no upload in progress
       handleCancelAddLesson();
     }
   };
@@ -240,7 +217,6 @@ export const LessonFormView: React.FC<LessonFormViewProps> = ({
         </div>
       </main>
 
-      {/* Navigation Confirmation Modal */}
       <ConfirmationModal
         isOpen={showConfirmModal}
         onConfirm={handleConfirmNavigation}
