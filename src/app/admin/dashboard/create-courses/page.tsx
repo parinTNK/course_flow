@@ -27,17 +27,14 @@ function CreateCourse() {
     handleVideoUploadError,
     handleVideoDelete,
     videoMarkedForDeletion,
-    // New video upload state tracking
+    handlePromoCodeChange,
     videoUploadState,
     handleVideoUploadStateChange,
     cancelVideoUpload,
   } = useCourseForm();
 
-  // Use an empty string initially to avoid dependency issues
   const lessonManagement = useLessonManagement('');
-  
-  // Update the course name in lessonManagement when formData.name changes
-  // This avoids re-creating the hook instance when the name changes
+
   useEffect(() => {
     if (formData.name) {
       lessonManagement.updateCourseName(formData.name);
@@ -53,20 +50,16 @@ function CreateCourse() {
   };
   
   const setCurrentEditingLessonName = (name: string) => {
-    // Use our new method that sets both name and title
     lessonManagement.setCurrentEditingLessonName(name);
   };
 
-  // Enhanced cancel handler that also cancels sub-lesson video uploads
   const handleCancelWithCleanup = async () => {
-    // Cancel all sub-lesson video uploads first
     try {
       await lessonManagement.cancelAllUploads();
     } catch (error) {
       console.error('❌ CreateCourse: Error cancelling sub-lesson uploads:', error);
     }
     
-    // Then proceed with the original cancel (which handles trailer video)
     handleCancel();
   };
 
@@ -98,6 +91,7 @@ function CreateCourse() {
           videoUploadState={videoUploadState}
           handleVideoUploadStateChange={handleVideoUploadStateChange}
           cancelVideoUpload={cancelVideoUpload}
+          handlePromoCodeChange={handlePromoCodeChange}
         />
       ) : (
         <LessonFormView

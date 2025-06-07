@@ -65,7 +65,6 @@ export function useAssignmentForm(mode: "create" | "edit" = "create", assignment
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
 
-    // Auto show warning if reaching maxLength
     if (name === "description" && value.length >= 300) {
       setErrors((prev) => ({
         ...prev,
@@ -77,7 +76,7 @@ export function useAssignmentForm(mode: "create" | "edit" = "create", assignment
         solution: "You've reached the 500 character limit.",
       }));
     } else {
-    // Clear limit-related errors
+
       setErrors((prev) => ({
         ...prev,
         [name]: prev[name] === "You've reached the 300 character limit." ||

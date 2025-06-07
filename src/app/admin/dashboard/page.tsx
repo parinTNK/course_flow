@@ -26,12 +26,10 @@ function DashboardContent() {
     setCurrentPage,
   } = useCoursesContext();
   
-  // Check if we need to refresh the courses (e.g., after creating or editing a course)
   useEffect(() => {
     const shouldRefresh = searchParams.get('refresh') === 'true';
     if (shouldRefresh) {
       fetchCourses();
-      // Clean up the URL without refreshing the page
       const newUrl = window.location.pathname;
       window.history.replaceState({}, '', newUrl);
     }
@@ -77,18 +75,17 @@ function DashboardContent() {
             value={searchTerm}
             onChange={setSearchTerm}
             placeholder="Search courses..."
-            className="w-full sm:w-64 md:w-72" // Adjusted width
+            className="w-full sm:w-64 md:w-72" 
           />
           <ButtonT
             onClick={handleAddCourse}
-            className='w-full sm:w-auto px-4 py-2 flex justify-center items-center gap-3' // Adjusted width and padding
+            className='w-full sm:w-auto px-4 py-2 flex justify-center items-center gap-3'
           >
             <FiPlus size={20} />
             <span>Add Course</span>
           </ButtonT>
         </div>
       </div>
-      {/* Content Area */}
       <div className="flex-1 px-4 sm:px-8 pb-8 overflow-y-auto">
         {isLoading && <LoadingSpinner text="Loading courses..." size="md" />}
         {error && (

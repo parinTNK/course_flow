@@ -23,7 +23,6 @@ export async function DELETE(request: NextRequest) {
 
     console.log(`🗑️ Attempting to delete Mux asset: ${assetId}`);
 
-    // First try to delete as asset ID directly
     try {
       console.log(`🎯 Step 1: Trying direct asset deletion for: ${assetId}`);
       await mux.video.assets.delete(assetId);
@@ -34,16 +33,12 @@ export async function DELETE(request: NextRequest) {
       );
     } catch (assetError: any) {
       console.log(`❌ Step 1 failed - Direct asset deletion failed: ${assetError.message}`);
-      
-      // If direct deletion failed, try to find asset by upload ID
       try {
         console.log(`🔍 Step 2: Checking if ${assetId} is an upload ID...`);
         const upload = await mux.video.uploads.retrieve(assetId);
         console.log(`📊 Upload data:`, JSON.stringify(upload, null, 2));
-        
         if (upload.asset_id) {
           console.log(`🔄 Found asset ${upload.asset_id} for upload ${assetId}`);
-          
           try {
             await mux.video.assets.delete(upload.asset_id);
             console.log(`✅ Successfully deleted asset: ${upload.asset_id}`);
@@ -52,7 +47,6 @@ export async function DELETE(request: NextRequest) {
               { status: 200 }
             );
           } catch (deleteError: any) {
-            // If can't delete because asset is preparing, try to cancel the upload instead
             if (deleteError.message?.includes("Can't delete a preparing asset")) {
               console.log(`⚠️ Asset ${upload.asset_id} is still preparing, trying to cancel upload instead`);
               try {
@@ -64,23 +58,15 @@ export async function DELETE(request: NextRequest) {
                 );
               } catch (cancelError: any) {
                 console.log(`❌ Failed to cancel upload: ${cancelError.message}`);
-                
-                // If upload is already completed, try to wait and delete the asset
                 if (cancelError.message?.includes("The upload has already completed")) {
                   console.log(`🔄 Upload completed, checking asset status and attempting deletion...`);
-                  
-                  // Try multiple attempts with increasing wait times
                   const maxAttempts = 3;
                   let attempt = 1;
-                  
                   while (attempt <= maxAttempts) {
                     try {
                       console.log(`🔍 Attempt ${attempt}/${maxAttempts}: Checking asset status...`);
-                      
-                      // Check current asset status
                       const asset = await mux.video.assets.retrieve(upload.asset_id);
                       console.log(`📊 Asset ${upload.asset_id} status: ${asset.status}`);
-                      
                       if (asset.status === 'ready' || asset.status === 'errored') {
                         console.log(`✅ Asset is now ${asset.status}, attempting deletion...`);
                         await mux.video.assets.delete(upload.asset_id);
@@ -91,7 +77,6 @@ export async function DELETE(request: NextRequest) {
                         );
                       } else if (asset.status === 'preparing') {
                         console.log(`⏳ Asset still preparing, waiting before retry...`);
-                        // Wait longer with each attempt: 3s, 7s, 15s
                         const waitTime = Math.pow(2, attempt + 1) * 1000 + 1000;
                         console.log(`⏰ Waiting ${waitTime}ms before next attempt...`);
                         await new Promise(resolve => setTimeout(resolve, waitTime));
@@ -109,7 +94,6 @@ export async function DELETE(request: NextRequest) {
                       console.log(`❌ Attempt ${attempt} failed: ${retryError.message}`);
                       if (attempt === maxAttempts) {
                         console.log(`❌ All ${maxAttempts} attempts failed`);
-                        // If still can't delete, return success with note for manual cleanup
                         return NextResponse.json(
                           { 
                             message: 'Asset exists but cannot be deleted automatically - will need manual cleanup later', 
@@ -124,7 +108,6 @@ export async function DELETE(request: NextRequest) {
                     }
                   }
                 } else {
-                  // If we can't cancel either, just return success and log for manual cleanup
                   console.log(`⚠️ Asset ${upload.asset_id} will remain in preparing state - may need manual cleanup`);
                   return NextResponse.json(
                     { 
@@ -142,7 +125,6 @@ export async function DELETE(request: NextRequest) {
             }
           }
         } else {
-          // Upload exists but no asset created yet - cancel the upload
           console.log(`⚠️ Upload ${assetId} exists but no asset created yet - attempting to cancel`);
           try {
             await mux.video.uploads.cancel(assetId);
@@ -159,8 +141,6 @@ export async function DELETE(request: NextRequest) {
       } catch (uploadError: any) {
         console.log(`❌ Step 2 failed - Upload retrieval failed: ${uploadError.message}`);
         console.log(`📊 Upload error details:`, JSON.stringify(uploadError, null, 2));
-        
-        // Finally, try to search all assets for a match
         try {
           console.log(`🔍 Step 3: Searching all assets for ID: ${assetId}`);
           const assets = await mux.video.assets.list({ limit: 100 });
@@ -170,7 +150,6 @@ export async function DELETE(request: NextRequest) {
             asset.id.includes(assetId) ||
             assetId.includes(asset.id)
           );
-          
           if (matchingAsset) {
             console.log(`🎯 Found matching asset: ${matchingAsset.id}`);
             try {
@@ -183,19 +162,13 @@ export async function DELETE(request: NextRequest) {
             } catch (deleteError: any) {
               if (deleteError.message?.includes("Can't delete a preparing asset")) {
                 console.log(`⚠️ Matching asset ${matchingAsset.id} is still preparing - trying retry logic...`);
-                
-                // Try multiple attempts with increasing wait times for preparing assets
                 const maxAttempts = 3;
                 let attempt = 1;
-                
                 while (attempt <= maxAttempts) {
                   try {
                     console.log(`🔍 Retry attempt ${attempt}/${maxAttempts}: Checking asset status...`);
-                    
-                    // Check current asset status
                     const asset = await mux.video.assets.retrieve(matchingAsset.id);
                     console.log(`📊 Asset ${matchingAsset.id} status: ${asset.status}`);
-                    
                     if (asset.status === 'ready' || asset.status === 'errored') {
                       console.log(`✅ Asset is now ${asset.status}, attempting deletion...`);
                       await mux.video.assets.delete(matchingAsset.id);
@@ -206,7 +179,6 @@ export async function DELETE(request: NextRequest) {
                       );
                     } else if (asset.status === 'preparing') {
                       console.log(`⏳ Asset still preparing, waiting before retry...`);
-                      // Wait longer with each attempt: 3s, 7s, 15s
                       const waitTime = Math.pow(2, attempt + 1) * 1000 + 1000;
                       console.log(`⏰ Waiting ${waitTime}ms before next retry...`);
                       await new Promise(resolve => setTimeout(resolve, waitTime));
@@ -249,8 +221,6 @@ export async function DELETE(request: NextRequest) {
           console.log(`📊 Search error details:`, JSON.stringify(searchError, null, 2));
         }
       }
-      
-      // If all attempts failed, throw the original error
       console.log(`❌ All deletion attempts failed, throwing original error: ${assetError.message}`);
       throw assetError;
     }
@@ -271,7 +241,6 @@ export async function DELETE(request: NextRequest) {
       fullError: JSON.stringify(error, null, 2)
     });
 
-    // Check if it's a "not found" error - this is okay, asset might already be deleted
     if (error.status === 404 || error.message?.includes('not found')) {
       console.log('Asset not found - probably already deleted');
       return NextResponse.json(

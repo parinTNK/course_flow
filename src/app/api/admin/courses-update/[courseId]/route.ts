@@ -21,6 +21,7 @@ interface SubLessonAttributes {
   name?: string; 
   video_url?: string;
   videoUrl?: string;
+  mux_asset_id?: string;
   order_no?: number;
   lesson_id?: string;
                                                    
@@ -40,7 +41,6 @@ export async function PUT(
     const formData: CourseFormData = await request.json();
     const { lessons_attributes, cover_image_url, promo_code_id, ...courseData } = formData;
 
-    // Log the data being updated (excluding sensitive info)
     console.log('Updating course with data:', {
       ...courseData,
       video_trailer_fields: {
@@ -49,13 +49,51 @@ export async function PUT(
       }
     });
 
+    if (!formData.video_trailer_mux_asset_id || !formData.video_trailer_url) {
+      return NextResponse.json(
+        { error: "Video trailer is required for course update" },
+        { status: 400 }
+      );
+    }
+
+    const lessonsData = lessons_attributes || [];
+    if (!lessonsData || !Array.isArray(lessonsData) || lessonsData.length === 0) {
+      return NextResponse.json(
+        { error: "At least one lesson is required for course update" },
+        { status: 400 }
+      );
+    }
+
+    for (let i = 0; i < lessonsData.length; i++) {
+      const lesson = lessonsData[i];
+      const subLessonsData = lesson.sub_lessons_attributes || lesson.sub_lessons || [];
+      
+      if (!subLessonsData || !Array.isArray(subLessonsData) || subLessonsData.length === 0) {
+        return NextResponse.json(
+          { error: `Lesson "${lesson.title || lesson.name || `Lesson ${i + 1}`}" must have at least one sub-lesson` },
+          { status: 400 }
+        );
+      }
+
+      for (let j = 0; j < subLessonsData.length; j++) {
+        const subLesson = subLessonsData[j];
+        const videoUrl = subLesson.video_url || subLesson.videoUrl;
+        
+        if (!videoUrl || videoUrl.trim() === '') {
+          return NextResponse.json(
+            { error: `Sub-lesson "${subLesson.title || subLesson.name || `Sub-lesson ${j + 1}`}" in "${lesson.title || lesson.name || `Lesson ${i + 1}`}" must have a video` },
+            { status: 400 }
+          );
+        }
+      }
+    }
+
     const { data: updatedCourse, error: courseError } = await supabase
       .from('courses')
       .update({
         ...courseData,
         ...(cover_image_url && { cover_image_url }),
         promo_code_id: promo_code_id,
-        // Explicitly include video trailer fields
         video_trailer_mux_asset_id: formData.video_trailer_mux_asset_id || null,
         video_trailer_url: formData.video_trailer_url || null,
         updated_at: getBangkokISOString(),
@@ -87,7 +125,7 @@ export async function PUT(
     const existingLessonPayloadsForUpsert: (Omit<LessonAttributes, 'created_at' | 'sub_lessons_attributes' | 'client_side_key'> & { id: string })[] = [];
     
     const allSubLessonsToProcess: (SubLessonAttributes & { parent_lesson_client_side_key: string | number })[] = [];
-    const lessonClientKeysFromPayload: (string | number)[] = []; // Store client-side keys or DB IDs from payload
+    const lessonClientKeysFromPayload: (string | number)[] = [];
     const subLessonDbIdsToKeep: string[] = [];
 
     if (lessons_attributes && Array.isArray(lessons_attributes)) {
@@ -119,6 +157,7 @@ export async function PUT(
               order_no: subLessonIndex,
               title: subLessonDetails.title || subLessonDetails.name || '',
               video_url: subLessonDetails.video_url || subLessonDetails.videoUrl || '',
+              mux_asset_id: subLessonDetails.mux_asset_id || null,
               updated_at: getBangkokISOString(),
             };
             
@@ -168,7 +207,6 @@ export async function PUT(
       processedExistingLessons = data || [];
     }
 
-    // Insert new lessons
     let insertedNewLessons: any[] = [];
     if (newLessonPayloads.length > 0) {
       const { data, error: insertError } = await supabase
@@ -244,7 +282,6 @@ export async function PUT(
     }
 
     if (existingSubLessonsToUpdate.length > 0) {
-      // console.log('Updating existing sub-lessons:', existingSubLessonsToUpdate);
       
       const updatePromises = existingSubLessonsToUpdate.map(subLesson => {
         const { id, ...updateData } = subLesson;
@@ -272,7 +309,6 @@ export async function PUT(
     }
 
     if (newSubLessonsToInsert.length > 0) {
-      // console.log('Inserting new sub-lessons:', newSubLessonsToInsert);
       const { error: insertSubLessonsError } = await supabase
         .from('sub_lessons')
         .insert(newSubLessonsToInsert)

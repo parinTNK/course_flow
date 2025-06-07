@@ -12,9 +12,7 @@ interface SubLessonVideoUploadProps {
   onVideoUpdate?: (subLessonId: string | number, assetId: string, playbackId: string) => void
   onVideoDelete?: (subLessonId: string | number) => void
   disabled?: boolean
-  // Add prop to track if video is marked for deletion in edit mode
   isMarkedForDeletion?: boolean
-  // Add callback to expose upload state to parent
   onUploadStateChange?: (subLessonId: string | number, uploadState: {
     isUploading: boolean
     progress: number
@@ -24,7 +22,6 @@ interface SubLessonVideoUploadProps {
   }) => void
 }
 
-// Define methods that can be called on SubLessonVideoUpload ref
 export interface SubLessonVideoUploadRef {
   cancelUpload: () => Promise<void>
 }
@@ -57,11 +54,9 @@ const SubLessonVideoUpload = forwardRef<SubLessonVideoUploadRef, SubLessonVideoU
   const [currentPlaybackId, setCurrentPlaybackId] = useState<string | null>(existingPlaybackId)
   const [showVideoModal, setShowVideoModal] = useState(false)
 
-  // Refs for upload cancellation
   const xhrRef = useRef<XMLHttpRequest | null>(null)
   const pollingTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
-  // Expose upload state to parent component
   useEffect(() => {
     if (onUploadStateChange) {
       onUploadStateChange(subLessonId, {
@@ -69,48 +64,31 @@ const SubLessonVideoUpload = forwardRef<SubLessonVideoUploadRef, SubLessonVideoU
         currentAssetId
       })
     }
-  // We intentionally exclude onUploadStateChange from dependencies to prevent infinite loops
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [uploadState, subLessonId, currentAssetId])
 
-  // Expose cancel functionality through ref
   useImperativeHandle(ref, () => ({
     cancelUpload: async () => {
-      // Cancel XMLHttpRequest if active
       if (xhrRef.current) {
         xhrRef.current.abort()
         xhrRef.current = null
       }
-
-      // Clear polling timeout
       if (pollingTimeoutRef.current) {
         clearTimeout(pollingTimeoutRef.current)
         pollingTimeoutRef.current = null
       }
-
-      // Delete assets from Mux - handle both active uploads and completed uploads
       const assetToDelete = tempAssetId || currentAssetId
-      
       if (assetToDelete) {
-        console.log(`🚫 SubLessonVideoUpload[${subLessonId}]: Deleting asset:`, assetToDelete.substring(0, 8) + '...')
         try {
           const deleteResponse = await fetch(`/api/mux-delete-asset?assetId=${assetToDelete}`, {
             method: 'DELETE',
           })
-          
           if (deleteResponse.ok) {
-            const result = await deleteResponse.json()
-            console.log(`✅ SubLessonVideoUpload[${subLessonId}]: Asset deleted successfully`)
+            await deleteResponse.json()
           } else {
-            const errorResult = await deleteResponse.json()
-            console.warn(`⚠️ SubLessonVideoUpload[${subLessonId}]: Delete failed:`, errorResult)
+            await deleteResponse.json()
           }
-        } catch (error) {
-          console.error(`❌ SubLessonVideoUpload[${subLessonId}]: Failed to delete asset:`, error)
-        }
+        } catch (error) {}
       }
-
-      // Reset state
       setUploadState({
         isUploading: false,
         progress: 0,
@@ -136,7 +114,6 @@ const SubLessonVideoUpload = forwardRef<SubLessonVideoUploadRef, SubLessonVideoU
     e.preventDefault()
     e.stopPropagation()
     setDragActive(false)
-
     if (e.dataTransfer.files && e.dataTransfer.files[0] && !disabled) {
       handleFileUpload(e.dataTransfer.files[0])
     }
@@ -156,35 +133,24 @@ const SubLessonVideoUpload = forwardRef<SubLessonVideoUploadRef, SubLessonVideoU
       }))
       return
     }
-
-    // Reset states when starting new upload
     setUploadState({
       isUploading: true,
       progress: 0,
       error: null,
       success: false,
     })
-    
-    // Clear previous asset IDs when replacing
     setTempAssetId(null)
     setCurrentAssetId(null)
-
     try {
-      // Get upload URL from server
       const uploadResult = await createUploadUrl()
-      
       if (!uploadResult.success) {
         throw new Error(uploadResult.error)
       }
-
       const uploadUrl = uploadResult.data.upload_url
       const uploadId = uploadResult.data.upload_id
       setTempAssetId(uploadId)
-
-      // Upload file directly to Mux
       const xhr = new XMLHttpRequest()
-      xhrRef.current = xhr // Store reference for cancellation
-
+      xhrRef.current = xhr
       xhr.upload.addEventListener('progress', (e) => {
         if (e.lengthComputable) {
           const progress = Math.round((e.loaded / e.total) * 100)
@@ -194,8 +160,6 @@ const SubLessonVideoUpload = forwardRef<SubLessonVideoUploadRef, SubLessonVideoU
           }))
         }
       })
-
-      // Handle abort event
       xhr.addEventListener('abort', () => {
         setUploadState({
           isUploading: false,
@@ -205,40 +169,27 @@ const SubLessonVideoUpload = forwardRef<SubLessonVideoUploadRef, SubLessonVideoU
         })
         xhrRef.current = null
       })
-
       xhr.addEventListener('load', async () => {
         if (xhr.status === 200 || xhr.status === 201) {
-          // Clear XMLHttpRequest reference since upload is complete
           xhrRef.current = null
-          
-          // Poll for asset status
           const pollForAsset = async () => {
             try {
               const statusResult = await getAssetStatus(uploadId)
-              
               if (statusResult.success && statusResult.status === 'ready') {
                 const { assetId, playbackId } = statusResult
-                
-                // Store the asset data
                 setCurrentAssetId(assetId)
                 setCurrentPlaybackId(playbackId)
-                console.log(`🎉 SubLessonVideoUpload[${subLessonId}]: Upload successful`)
-                
-                // Notify parent component
                 onVideoUpdate?.(subLessonId, assetId, playbackId)
-                
                 setUploadState(prev => ({
                   ...prev,
                   success: true,
                   isUploading: false,
                 }))
-                // Clear polling timeout reference
                 pollingTimeoutRef.current = null
               } else if (statusResult.status === 'error') {
                 pollingTimeoutRef.current = null
                 throw new Error(statusResult.error || 'Video processing failed')
               } else {
-                // Still processing, poll again
                 pollingTimeoutRef.current = setTimeout(pollForAsset, 3000)
               }
             } catch (error) {
@@ -250,26 +201,21 @@ const SubLessonVideoUpload = forwardRef<SubLessonVideoUploadRef, SubLessonVideoU
               }))
             }
           }
-          
-          // Start polling after a short delay
           pollingTimeoutRef.current = setTimeout(pollForAsset, 2000)
         } else {
           throw new Error('Upload failed')
         }
       })
-
       xhr.addEventListener('error', () => {
-        xhrRef.current = null // Clear reference on error
+        xhrRef.current = null
         setUploadState(prev => ({
           ...prev,
           error: 'Upload failed',
           isUploading: false,
         }))
       })
-
       xhr.open('PUT', uploadUrl)
       xhr.send(file)
-
     } catch (error) {
       setUploadState(prev => ({
         ...prev,
@@ -281,10 +227,7 @@ const SubLessonVideoUpload = forwardRef<SubLessonVideoUploadRef, SubLessonVideoU
 
   const handleDeleteVideo = async () => {
     try {
-      // Notify parent component - let parent handle the deletion logic
       onVideoDelete?.(subLessonId)
-      
-      // Reset local state only if not in edit mode or not marking for deletion
       if (!isMarkedForDeletion) {
         setUploadState(prev => ({
           ...prev,
@@ -295,7 +238,6 @@ const SubLessonVideoUpload = forwardRef<SubLessonVideoUploadRef, SubLessonVideoU
         setCurrentAssetId(null)
         setCurrentPlaybackId(null)
       }
-      
     } catch (error) {
       setUploadState(prev => ({
         ...prev,
@@ -306,11 +248,10 @@ const SubLessonVideoUpload = forwardRef<SubLessonVideoUploadRef, SubLessonVideoU
 
   const displayPlaybackId = currentPlaybackId || existingPlaybackId
   const hasExistingVideo = (existingAssetId && existingPlaybackId) || uploadState.success
-  const showVideoPreview = hasExistingVideo && !isMarkedForDeletion && !uploadState.isUploading // Hide preview during upload
+  const showVideoPreview = hasExistingVideo && !isMarkedForDeletion && !uploadState.isUploading
 
   return (
     <div className="space-y-2">
-      {/* Video preview and upload area similar to cover image */}
       <div 
         className={`relative w-[240px] h-[240px] flex items-center justify-center cursor-pointer rounded-lg p-4 text-center transition-all duration-200 ${
           disabled 
@@ -333,9 +274,7 @@ const SubLessonVideoUpload = forwardRef<SubLessonVideoUploadRef, SubLessonVideoU
       >
         {showVideoPreview ? (
           <>
-            {/* Video preview in square container */}
             <div className="w-full h-full rounded-lg overflow-hidden pt-6 relative flex flex-col">
-              {/* Video thumbnail section (16:9 aspect ratio) */}
               <div 
                 className="w-full aspect-video bg-black rounded-lg relative cursor-pointer group overflow-hidden"
                 onClick={(e) => {
@@ -346,7 +285,6 @@ const SubLessonVideoUpload = forwardRef<SubLessonVideoUploadRef, SubLessonVideoU
                   }
                 }}
               >
-                {/* Actual video thumbnail */}
                 {displayPlaybackId && (
                   <img
                     src={`https://image.mux.com/${displayPlaybackId}/thumbnail.png?width=320&height=180&fit_mode=pad&time=0`}
@@ -354,16 +292,12 @@ const SubLessonVideoUpload = forwardRef<SubLessonVideoUploadRef, SubLessonVideoU
                     className="w-full h-full object-cover"
                   />
                 )}
-                
-                {/* Play button overlay */}
                 <div className="absolute inset-0 bg-black/30 group-hover:bg-black/50 transition-all duration-200 flex items-center justify-center">
                   <div className="w-12 h-12 bg-white bg-opacity-90 rounded-full flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-200">
                     <Play className="h-6 w-6 text-gray-800 ml-0.5" />
                   </div>
                 </div>
               </div>
-              
-              {/* Bottom section for replace button */}
               <div className="flex-1 flex items-center justify-center p-3 bg-gray-50">
                 {!disabled && (
                   <button
@@ -382,8 +316,6 @@ const SubLessonVideoUpload = forwardRef<SubLessonVideoUploadRef, SubLessonVideoU
                 )}
               </div>
             </div>
-            
-            {/* Delete button - X at top right corner */}
             {!disabled && (
               <button
                 type="button"
@@ -401,7 +333,6 @@ const SubLessonVideoUpload = forwardRef<SubLessonVideoUploadRef, SubLessonVideoU
           </>
         ) : isMarkedForDeletion ? (
           <>
-            {/* Marked for deletion state */}
             <div className="flex flex-col items-center justify-center text-red-500 space-y-2">
               <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
                 <X className="h-6 w-6" />
@@ -409,15 +340,13 @@ const SubLessonVideoUpload = forwardRef<SubLessonVideoUploadRef, SubLessonVideoU
               <p className="text-sm font-medium">Video Marked for Removal</p>
               <p className="text-xs text-center text-red-400">Will be removed when you save</p>
             </div>
-            
-            {/* Restore button */}
             {!disabled && (
               <button
                 type="button"
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
-                  handleDeleteVideo(); // This will restore the video in edit mode
+                  handleDeleteVideo();
                 }}
                 className="absolute -top-2 -right-2 w-6 h-6 bg-blue-500 hover:bg-blue-600 text-white rounded-full flex items-center justify-center shadow-lg transition-colors duration-200 z-10"
                 title="Restore video"
@@ -428,7 +357,6 @@ const SubLessonVideoUpload = forwardRef<SubLessonVideoUploadRef, SubLessonVideoU
           </>
         ) : uploadState.isUploading ? (
           <>
-            {/* Upload progress state */}
             <div className="flex flex-col items-center justify-center space-y-3 w-full">
               <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
                 <Upload className="h-6 w-6 text-blue-500 animate-pulse" />
@@ -446,47 +374,31 @@ const SubLessonVideoUpload = forwardRef<SubLessonVideoUploadRef, SubLessonVideoU
                 </div>
               </div>
             </div>
-            
-            {/* Cancel button for upload in progress */}
             <button
               type="button"
               onClick={async (e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                
-                // Cancel XMLHttpRequest if active
                 if (xhrRef.current) {
                   xhrRef.current.abort();
                   xhrRef.current = null;
                 }
-
-                // Clear polling timeout
                 if (pollingTimeoutRef.current) {
                   clearTimeout(pollingTimeoutRef.current);
                   pollingTimeoutRef.current = null;
                 }
-
-                // Delete assets from Mux - handle both active uploads and completed uploads
                 const assetToDelete = tempAssetId || currentAssetId;
-                
                 if (assetToDelete) {
                   try {
                     const deleteResponse = await fetch(`/api/mux-delete-asset?assetId=${assetToDelete}`, {
                       method: 'DELETE',
                     });
-                    
                     if (deleteResponse.ok) {
-                      console.log(`✅ SubLessonVideoUpload[${subLessonId}]: Asset cancelled and deleted`);
                     } else {
-                      const errorResult = await deleteResponse.json();
-                      console.warn(`⚠️ SubLessonVideoUpload[${subLessonId}]: Delete failed:`, errorResult);
+                      await deleteResponse.json();
                     }
-                  } catch (error) {
-                    console.error(`❌ SubLessonVideoUpload[${subLessonId}]: Failed to delete asset:`, error);
-                  }
+                  } catch (error) {}
                 }
-
-                // Reset state
                 setUploadState({
                   isUploading: false,
                   progress: 0,
@@ -504,7 +416,6 @@ const SubLessonVideoUpload = forwardRef<SubLessonVideoUploadRef, SubLessonVideoU
           </>
         ) : (
           <>
-            {/* Upload prompt state */}
             <div className="flex flex-col items-center justify-center space-y-2">
               <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
                 <Play className="h-6 w-6 text-blue-500" />
@@ -515,8 +426,6 @@ const SubLessonVideoUpload = forwardRef<SubLessonVideoUploadRef, SubLessonVideoU
           </>
         )}
       </div>
-
-      {/* Hidden file input */}
       <input
         id={`video-file-input-${subLessonId}`}
         type="file"
@@ -525,22 +434,16 @@ const SubLessonVideoUpload = forwardRef<SubLessonVideoUploadRef, SubLessonVideoU
         onChange={handleFileSelect}
         disabled={disabled}
       />
-
-      {/* Error message */}
       {uploadState.error && (
         <div className="bg-red-50 border border-red-200 rounded-lg p-3">
           <p className="text-red-600 text-sm">{uploadState.error}</p>
         </div>
       )}
-
-      {/* Success message for completed uploads */}
       {uploadState.success && !showVideoPreview && !isMarkedForDeletion && (
         <div className="bg-green-50 border border-green-200 rounded-lg p-3">
           <p className="text-green-600 text-sm">Video uploaded successfully! Processing may take a few minutes.</p>
         </div>
       )}
-
-      {/* Video Modal */}
       {showVideoModal && displayPlaybackId && (
         <div 
           className="fixed inset-0 bg-gray-900/25 flex items-center justify-center z-50"
@@ -550,15 +453,12 @@ const SubLessonVideoUpload = forwardRef<SubLessonVideoUploadRef, SubLessonVideoU
             className="relative w-full max-w-4xl mx-4"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Close button */}
             <button
               onClick={() => setShowVideoModal(false)}
               className="absolute -top-12 right-0 text-white hover:text-gray-300 transition-colors"
             >
               <X className="h-8 w-8" />
             </button>
-            
-            {/* Video player */}
             <div className="bg-black rounded-lg overflow-hidden">
               <MuxPlayer
                 playbackId={displayPlaybackId}

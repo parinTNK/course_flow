@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { CourseFormView } from '@/app/admin/components/CourseFormView';
-import { LessonFormView } from '@/app/admin/components/LessonFormView'; // Import LessonFormView
+import { LessonFormView } from '@/app/admin/components/LessonFormView';
 import { Lesson } from '@/types/courseAdmin';
 import { useCustomToast } from '@/components/ui/CustomToast';
 import { useSensors, useSensor, PointerSensor, KeyboardSensor } from '@dnd-kit/core';
@@ -21,12 +21,10 @@ const EditCoursePage = () => {
 
   const [initialDataLoaded, setInitialDataLoaded] = useState(false);
   
-  // Modal states for deletion functionality
   const [showWarningModal, setShowWarningModal] = useState(false);
   const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false);
   const [hasSubscription, setHasSubscription] = useState(false);
 
-  // Initialize useCourseForm hook with courseId for edit mode
   const {
     formData,
     setFormData,
@@ -50,7 +48,7 @@ const EditCoursePage = () => {
     originalVideoData,
     setOriginalVideoData,
     videoMarkedForDeletion,
-    // New video upload state tracking
+    handlePromoCodeChange,
     videoUploadState,
     handleVideoUploadStateChange,
     cancelVideoUpload,
@@ -168,16 +166,13 @@ const EditCoursePage = () => {
     return <div className="flex justify-center items-center h-screen"><p>Loading course data...</p></div>;
   }
 
-  // Enhanced cancel handler that also cancels sub-lesson video uploads
   const handleCancelWithCleanup = async () => {
-    // Cancel all sub-lesson video uploads first
     try {
       await lessonManagement.cancelAllUploads();
     } catch (error) {
       console.error('❌ EditCourse: Error cancelling sub-lesson uploads:', error);
     }
     
-    // Then proceed with the original cancel (which handles trailer video)
     handleCancel();
   };
 
@@ -279,6 +274,7 @@ const EditCoursePage = () => {
           videoUploadState={videoUploadState}
           handleVideoUploadStateChange={handleVideoUploadStateChange}
           cancelVideoUpload={cancelVideoUpload}
+          handlePromoCodeChange={handlePromoCodeChange}
         />
       ) : (
         <LessonFormView
