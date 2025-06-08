@@ -2,7 +2,7 @@ import React, { useState, useRef, useCallback } from 'react';
 import { ButtonT } from '@/components/ui/ButtonT';
 import { Lesson, SubLesson } from '@/types/courseAdmin';
 import { DndContext, closestCenter, DragEndEvent }
-from '@dnd-kit/core';
+  from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { SortableSubLessonItem } from './SortableSubLessonItem';
 import { SubLessonVideoUploadRef } from './SubLessonVideoUpload';
@@ -11,11 +11,11 @@ import { useNavigationBlocker } from '@/app/admin/hooks/useNavigationBlocker';
 
 interface LessonFormViewProps {
   courseName: string;
-  currentEditingLesson: { 
-    id: number | string | null; 
-    name: string; 
+  currentEditingLesson: {
+    id: number | string | null;
+    name: string;
     title?: string;
-    subLessons: SubLesson[] 
+    subLessons: SubLesson[]
   };
   setCurrentEditingLessonName: (name: string) => void;
   handleSaveNewLesson: () => void;
@@ -57,7 +57,7 @@ export const LessonFormView: React.FC<LessonFormViewProps> = ({
 
   const lastLoggedRefs = useRef<string>('');
   const lastRegisteredTime = useRef<number>(0);
-  
+
   React.useEffect(() => {
     if (onRegisterRefs) {
       const timer = setInterval(() => {
@@ -66,9 +66,9 @@ export const LessonFormView: React.FC<LessonFormViewProps> = ({
         if (refKeys.length > 0) {
           const refsString = refKeys.sort().join(',');
           const now = Date.now();
-          const shouldLog = lastLoggedRefs.current !== refsString && 
-                           (now - lastRegisteredTime.current > 5000);
-          
+          const shouldLog = lastLoggedRefs.current !== refsString &&
+            (now - lastRegisteredTime.current > 5000);
+
           if (shouldLog) {
             console.log('📝 LessonFormView: Video refs updated:', refKeys.length);
             lastLoggedRefs.current = refsString;
@@ -150,23 +150,23 @@ export const LessonFormView: React.FC<LessonFormViewProps> = ({
               <h1 className="text-3xl font-semibold">
                 {currentEditingLesson.id === null ? 'Add Lesson' : 'Edit Lesson'}
               </h1>
-               <div className="text-3xl font-bold text-gray-500">Course: '{courseName}'</div>
+              <div className="text-3xl font-bold text-gray-500">Course: '{courseName}'</div>
             </div>
           </div>
           <div className="flex space-x-2">
-            <ButtonT 
-              variant="Secondary" 
+            <ButtonT
+              variant="Secondary"
               onClick={handleCancelButtonClick}
             >
               Cancel
             </ButtonT>
-            <ButtonT 
-                variant="primary" 
-                onClick={handleSaveNewLesson}
-                disabled={isUploading}
-              >
-                {currentEditingLesson.id === null ? 'Create' : 'Update'}
-              </ButtonT>
+            <ButtonT
+              variant="primary"
+              onClick={handleSaveNewLesson}
+              disabled={isUploading}
+            >
+              {currentEditingLesson.id === null ? 'Create' : 'Update'}
+            </ButtonT>
           </div>
         </div>
       </header>
@@ -225,7 +225,8 @@ export const LessonFormView: React.FC<LessonFormViewProps> = ({
         message="Video upload is still in progress. If you leave this page, the upload will be cancelled. Do you want to continue?"
         confirmText="Yes, Leave Page"
         cancelText="Stay on Page"
-        confirmButtonClass="bg-red-500 text-white hover:bg-red-600"
+        confirmButtonClass="bg-white border border-orange-500 text-orange-500 hover:bg-orange-50"
+        cancelButtonClass="bg-blue-600 text-white hover:bg-blue-700"
       />
     </div>
   );

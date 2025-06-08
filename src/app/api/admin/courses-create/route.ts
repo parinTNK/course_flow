@@ -24,7 +24,6 @@ export async function POST(req: NextRequest) {
 
     const lessonsData = lessons_attributes || lessons;
 
-    // ตรวจสอบข้อมูลที่จำเป็น
     if (!name) {
       return NextResponse.json(
         { error: "Course name is required" },
@@ -39,7 +38,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Validate video trailer is required
     if (!video_trailer_mux_asset_id || !video_trailer_url) {
       return NextResponse.json(
         { error: "Video trailer is required for course creation" },
@@ -47,34 +45,50 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Validate lessons are required
-    if (!lessonsData || !Array.isArray(lessonsData) || lessonsData.length === 0) {
+    if (
+      !lessonsData ||
+      !Array.isArray(lessonsData) ||
+      lessonsData.length === 0
+    ) {
       return NextResponse.json(
         { error: "At least one lesson is required for course creation" },
         { status: 400 }
       );
     }
 
-    // Validate each lesson has at least one sub-lesson with video
     for (let i = 0; i < lessonsData.length; i++) {
       const lesson = lessonsData[i];
-      const subLessonsData = lesson.sub_lessons_attributes || lesson.sub_lessons || [];
-      
-      if (!subLessonsData || !Array.isArray(subLessonsData) || subLessonsData.length === 0) {
+      const subLessonsData =
+        lesson.sub_lessons_attributes || lesson.sub_lessons || [];
+
+      if (
+        !subLessonsData ||
+        !Array.isArray(subLessonsData) ||
+        subLessonsData.length === 0
+      ) {
         return NextResponse.json(
-          { error: `Lesson "${lesson.title || lesson.name || `Lesson ${i + 1}`}" must have at least one sub-lesson` },
+          {
+            error: `Lesson "${
+              lesson.title || lesson.name || `Lesson ${i + 1}`
+            }" must have at least one sub-lesson`,
+          },
           { status: 400 }
         );
       }
 
-      // Validate each sub-lesson has a video
       for (let j = 0; j < subLessonsData.length; j++) {
         const subLesson = subLessonsData[j];
         const videoUrl = subLesson.video_url || subLesson.videoUrl;
-        
-        if (!videoUrl || videoUrl.trim() === '') {
+
+        if (!videoUrl || videoUrl.trim() === "") {
           return NextResponse.json(
-            { error: `Sub-lesson "${subLesson.title || subLesson.name || `Sub-lesson ${j + 1}`}" in "${lesson.title || lesson.name || `Lesson ${i + 1}`}" must have a video` },
+            {
+              error: `Sub-lesson "${
+                subLesson.title || subLesson.name || `Sub-lesson ${j + 1}`
+              }" in "${
+                lesson.title || lesson.name || `Lesson ${i + 1}`
+              }" must have a video`,
+            },
             { status: 400 }
           );
         }
@@ -83,7 +97,6 @@ export async function POST(req: NextRequest) {
 
     const bangkok = getBangkokISOString();
 
-    // 1. สร้าง course ก่อน
     const { data: courseData, error: courseError } = await supabase
       .from("courses")
       .insert({
@@ -107,12 +120,10 @@ export async function POST(req: NextRequest) {
 
     const courseId = courseData[0].id;
 
-    // 2. ถ้ามี lessons ให้สร้าง lessons
     if (lessonsData && Array.isArray(lessonsData) && lessonsData.length > 0) {
       for (let i = 0; i < lessonsData.length; i++) {
         const lesson = lessonsData[i];
 
-        // 2.1 สร้าง lesson
         const { data: lessonData, error: lessonError } = await supabase
           .from("lessons")
           .insert({
@@ -126,12 +137,11 @@ export async function POST(req: NextRequest) {
 
         if (lessonError) {
           console.error("Error creating lesson:", lessonError);
-          continue; // แม้ error ก็ให้ทำงานต่อกับ lesson อื่น
+          continue;
         }
 
         const lessonId = lessonData[0].id;
 
-        // 2.2 ถ้ามี sub_lessons ให้สร้าง sub_lessons
         const subLessonsData =
           lesson.sub_lessons_attributes || lesson.sub_lessons || [];
 

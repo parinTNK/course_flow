@@ -20,7 +20,7 @@ const EditCoursePage = () => {
   const { success, error } = useCustomToast();
 
   const [initialDataLoaded, setInitialDataLoaded] = useState(false);
-  
+
   const [showWarningModal, setShowWarningModal] = useState(false);
   const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false);
   const [hasSubscription, setHasSubscription] = useState(false);
@@ -56,7 +56,7 @@ const EditCoursePage = () => {
 
 
   const lessonManagement = useLessonManagement('');
-  
+
 
   useEffect(() => {
     if (formData.name) {
@@ -75,14 +75,14 @@ const EditCoursePage = () => {
   useEffect(() => {
     const fetchCourseData = async () => {
       if (!courseId) return;
-      setIsLoading(true); 
+      setIsLoading(true);
       try {
         const response = await fetch(`/api/admin/courses/${courseId}`);
         if (!response.ok) {
           throw new Error('Failed to fetch course data');
         }
         const data = await response.json();
-        
+
         const formDataToSet = {
           id: courseId as string,
           name: data.name || '',
@@ -96,16 +96,16 @@ const EditCoursePage = () => {
           video_trailer_mux_asset_id: data.video_trailer_mux_asset_id || null,
           video_trailer_url: data.video_trailer_url || null,
         };
-        
+
         if (!initialDataLoaded) {
           setFormData(formDataToSet);
         }
 
 
         const normalizedLessons = (data.lessons_attributes || data.lessons || []).map(lesson => {
-          const subLessonsSource = 
+          const subLessonsSource =
             lesson.sub_lessons_attributes || lesson.subLessons || lesson.sub_lessons || [];
-          
+
           const normalizedSubLessons = subLessonsSource.map(sl => ({
             ...sl,
             id: sl.id,
@@ -116,7 +116,7 @@ const EditCoursePage = () => {
             order: sl.order || sl.order_no || 0,
             order_no: sl.order_no || sl.order || 0
           }));
-          
+
           return {
             ...lesson,
             id: lesson.id,
@@ -131,18 +131,18 @@ const EditCoursePage = () => {
         });
 
         lessonManagement.setLessons(normalizedLessons);
-        
+
 
         if (data.cover_image_url) {
           setCoverPreview(data.cover_image_url);
         }
-        
+
         setInitialDataLoaded(true);
       } catch (error: any) {
         console.error('Error fetching course:', error);
         error('Error', 'Could not load course data.');
       }
-      setIsLoading(false); 
+      setIsLoading(false);
     };
 
     fetchCourseData();
@@ -151,7 +151,7 @@ const EditCoursePage = () => {
   const handleDragEndLessons = (event: any) => {
     const { active, over } = event;
     if (active.id !== over.id) {
-      lessonManagement.setLessons((items) => { 
+      lessonManagement.setLessons((items) => {
         const oldIndex = items.findIndex(item => item.id === active.id);
         const newIndex = items.findIndex(item => item.id === over.id);
         const newItems = Array.from(items);
@@ -161,8 +161,8 @@ const EditCoursePage = () => {
       });
     }
   };
-  
-  if (isLoading && !initialDataLoaded) { 
+
+  if (isLoading && !initialDataLoaded) {
     return <div className="flex justify-center items-center h-screen"><p>Loading course data...</p></div>;
   }
 
@@ -172,7 +172,7 @@ const EditCoursePage = () => {
     } catch (error) {
       console.error('❌ EditCourse: Error cancelling sub-lesson uploads:', error);
     }
-    
+
     handleCancel();
   };
 
@@ -246,7 +246,7 @@ const EditCoursePage = () => {
 
   return (
 
-    <div className="bg-gray-100 flex-1 pb-10"> 
+    <div className="bg-gray-100 flex-1 pb-10">
       {!lessonManagement.isAddLessonView ? (
         <CourseFormView
           formData={formData}
@@ -263,8 +263,8 @@ const EditCoursePage = () => {
           handleCancel={handleCancelWithCleanup}
           onDeleteCourse={handleDeleteCourse}
           handleAddLesson={lessonManagement.handleAddLesson}
-          handleDeleteLesson={lessonManagement.handleDeleteLesson} 
-          handleEditLesson={lessonManagement.handleEditLesson} 
+          handleDeleteLesson={lessonManagement.handleDeleteLesson}
+          handleEditLesson={lessonManagement.handleEditLesson}
           handleDragEndLessons={handleDragEndLessons}
           handleVideoUploadSuccess={handleVideoUploadSuccess}
           handleVideoUploadError={handleVideoUploadError}
@@ -280,7 +280,7 @@ const EditCoursePage = () => {
         <LessonFormView
           courseName={formData.name || ''}
           currentEditingLesson={lessonManagement.currentEditingLesson}
-          setCurrentEditingLessonName={lessonManagement.setCurrentEditingLessonName} 
+          setCurrentEditingLessonName={lessonManagement.setCurrentEditingLessonName}
           handleSaveNewLesson={lessonManagement.handleSaveNewLesson}
           handleCancelAddLesson={lessonManagement.handleCancelAddLesson}
           handleAddSubLesson={lessonManagement.handleAddSubLesson}
@@ -293,7 +293,7 @@ const EditCoursePage = () => {
           onCancelAllUploads={lessonManagement.cancelAllUploads}
         />
       )}
-      
+
       <StudentSubscriptionWarningModal
         isOpen={showWarningModal}
         onClose={handleCloseAll}
@@ -310,6 +310,8 @@ const EditCoursePage = () => {
         cancelText="No, keep it"
         requireCourseName={false}
         courseName={formData.name || ""}
+        confirmButtonClass="bg-white border border-orange-500 text-orange-500 hover:bg-orange-50"
+        cancelButtonClass="bg-blue-600 text-white hover:bg-blue-700"
       />
     </div>
   );

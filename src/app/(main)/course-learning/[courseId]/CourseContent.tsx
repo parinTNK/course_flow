@@ -2,13 +2,12 @@
 
 import { useEffect, useState, useCallback } from "react";
 
-// Extend the Window interface to include __draftAnswers
 declare global {
   interface Window {
     __draftAnswers?: Record<string, any>;
   }
 }
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useLearning } from "@/components/learning/context/LearningContext";
 import { useDraft } from "@/app/context/draftContext";
 import { useAuth } from "@/app/context/authContext";
@@ -40,23 +39,23 @@ interface Lesson {
 
 export default function CourseContent() {
   const router = useRouter();
-  const { courseId, subLessonId } = useParams();
+  const { courseId } = useParams();
+  const searchParams = useSearchParams();
+  const subLessonId = searchParams.get("subLessonId");
   const { currentLesson, setCurrentLesson } = useLearning();
   const { dirtyAssignments, clearDrafts } = useDraft();
   const { user } = useAuth();
 
   const [lessons, setLessons] = useState<Lesson[]>([]);
+  const [isAutoResumeComplete, setIsAutoResumeComplete] = useState(false);
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [pendingNavDirection, setPendingNavDirection] = useState<
-    "prev" | "next" | null
-  >(null);
+  const [pendingNavDirection, setPendingNavDirection] = useState<"prev" | "next" | null>(null);
   const [showDraftModal, setShowDraftModal] = useState(false);
 
   const scrollToLessonSection = () => {
     const el = document.getElementById("lesson-section");
     if (!el) return;
-
     const rect = el.getBoundingClientRect();
     if (rect.height < 100) {
       setTimeout(scrollToLessonSection, 100);
@@ -73,34 +72,67 @@ export default function CourseContent() {
         data: { user },
       } = await supabase.auth.getUser();
       if (!user) return router.push("/login");
-
       const { data, error } = await supabase
         .from("subscriptions")
         .select("*")
         .eq("user_id", user.id)
         .eq("course_id", courseId)
         .single();
-
       if (error || !data) return router.push(`/course-detail/${courseId}`);
       setIsSubscribed(true);
       setLoading(false);
     };
-
     checkSubscription();
   }, []);
 
-useEffect(() => {
-  if (subLessonId && lessons.length > 0) {
-    for (let lesson of lessons) {
-      const found = lesson.sub_lessons.find(sl => sl.id === subLessonId);
-      if (found) {
-        setCurrentLesson(found);
-        break;
+  const loadInitialLesson = useCallback(async () => {
+    if (lessons.length === 0) return;
+    if (isAutoResumeComplete) return;
+    if (subLessonId) {
+      for (let lesson of lessons) {
+        const found = lesson.sub_lessons.find(sl => sl.id === subLessonId);
+        if (found) {
+          setCurrentLesson(found);
+          setIsAutoResumeComplete(true);
+          return;
+        }
       }
     }
-  }
-}, [subLessonId, lessons]);
+    try {
+      const response = await fetch(`/api/progress/course/${courseId}/latest`);
+      if (response.ok) {
+        const data = await response.json();
+        if (data.hasProgress && data.latestSubLesson) {
+          for (let lesson of lessons) {
+            const found = lesson.sub_lessons.find(sl => sl.id === data.latestSubLesson.id);
+            if (found) {
+              setCurrentLesson(found);
+              if (!subLessonId) {
+                router.replace(`/course-learning/${courseId}?subLessonId=${found.id}`);
+              }
+              setIsAutoResumeComplete(true);
+              return;
+            }
+          }
+        }
+      }
+    } catch {}
+    if (lessons[0]?.sub_lessons[0]) {
+      setCurrentLesson(lessons[0].sub_lessons[0]);
+      if (!subLessonId) {
+        router.replace(`/course-learning/${courseId}?subLessonId=${lessons[0].sub_lessons[0].id}`);
+      }
+      setIsAutoResumeComplete(true);
+    }
+  }, [lessons, subLessonId, courseId, router, setCurrentLesson, isAutoResumeComplete]);
 
+  useEffect(() => {
+    loadInitialLesson();
+  }, [loadInitialLesson]);
+
+  useEffect(() => {
+    setIsAutoResumeComplete(false);
+  }, [courseId, subLessonId]);
 
   useEffect(() => {
     if (currentLesson) scrollToLessonSection();
@@ -120,16 +152,26 @@ useEffect(() => {
     const found = findSubLessonIndex();
     if (!found) return;
     const { lesson, index } = found;
+    let nextSubLesson;
     if (index > 0) {
-      setCurrentLesson(lesson.sub_lessons[index - 1]);
+      nextSubLesson = lesson.sub_lessons[index - 1];
     } else {
       const currentLessonIndex = lessons.findIndex((l) => l.id === lesson.id);
       if (currentLessonIndex > 0) {
         const prevLesson = lessons[currentLessonIndex - 1];
-        setCurrentLesson(
-          prevLesson.sub_lessons[prevLesson.sub_lessons.length - 1]
-        );
+        nextSubLesson = prevLesson.sub_lessons[prevLesson.sub_lessons.length - 1];
       }
+    }
+    if (nextSubLesson) {
+      setCurrentLesson(nextSubLesson);
+      
+      // Update URL without page reload using History API
+      const newUrl = `/course-learning/${courseId}?subLessonId=${nextSubLesson.id}`;
+      window.history.replaceState(
+        { ...window.history.state, as: newUrl, url: newUrl },
+        '',
+        newUrl
+      );
     }
     scrollToLessonSection();
   };
@@ -138,14 +180,26 @@ useEffect(() => {
     const found = findSubLessonIndex();
     if (!found) return;
     const { lesson, index } = found;
+    let nextSubLesson;
     if (index < lesson.sub_lessons.length - 1) {
-      setCurrentLesson(lesson.sub_lessons[index + 1]);
+      nextSubLesson = lesson.sub_lessons[index + 1];
     } else {
       const currentLessonIndex = lessons.findIndex((l) => l.id === lesson.id);
       if (currentLessonIndex < lessons.length - 1) {
         const nextLesson = lessons[currentLessonIndex + 1];
-        setCurrentLesson(nextLesson.sub_lessons[0]);
+        nextSubLesson = nextLesson.sub_lessons[0];
       }
+    }
+    if (nextSubLesson) {
+      setCurrentLesson(nextSubLesson);
+      
+      // Update URL without page reload using History API
+      const newUrl = `/course-learning/${courseId}?subLessonId=${nextSubLesson.id}`;
+      window.history.replaceState(
+        { ...window.history.state, as: newUrl, url: newUrl },
+        '',
+        newUrl
+      );
     }
     scrollToLessonSection();
   };
@@ -189,7 +243,6 @@ useEffect(() => {
       );
       await Promise.all(savePromises);
     }
-
     clearDrafts();
     setShowDraftModal(false);
     if (pendingNavDirection === "prev") goToPrevLesson();
@@ -222,10 +275,14 @@ useEffect(() => {
     }
   };
 
-  if (loading) {
+  if (loading || (!isAutoResumeComplete && lessons.length > 0)) {
+    const loadingMessage = !isAutoResumeComplete && lessons.length > 0 
+      ? "Loading your progress..." 
+      : "Loading course...";
     return (
-      <div className="flex justify-center items-center min-h-screen">
+      <div className="flex flex-col justify-center items-center min-h-screen">
         <LoadingSpinner />
+        <p className="mt-4 text-gray-600">{loadingMessage}</p>
       </div>
     );
   }
@@ -236,6 +293,7 @@ useEffect(() => {
         <Sidebar
           setLessons={setLessons}
           scrollToVideo={scrollToLessonSection}
+          isAutoResumeComplete={isAutoResumeComplete}
         />
       </div>
 

@@ -126,9 +126,8 @@ const CoursesTable: React.FC<CoursesTableProps> = ({
               ].map((header, idx) => (
                 <th
                   key={idx}
-                  className={`${tableHeaderClasses} ${
-                    header === "Action" ? "text-center" : ""
-                  }`}
+                  className={`${tableHeaderClasses} ${header === "Action" ? "text-center" : ""
+                    }`}
                 >
                   {header}
                 </th>
@@ -165,6 +164,8 @@ const CoursesTable: React.FC<CoursesTableProps> = ({
         cancelText="No, keep it"
         requireCourseName={false}
         courseName={selectedCourse?.name || ""}
+        confirmButtonClass="bg-white border border-orange-500 text-orange-500 hover:bg-orange-50"
+        cancelButtonClass="bg-blue-600 text-white hover:bg-blue-700"
       />
     </div>
   );
