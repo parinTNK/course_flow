@@ -57,7 +57,7 @@ const CourseRow: React.FC<CourseRowProps> = ({
           ? `${course.price.toFixed(2)}`
           : "N/A"}
       </td>
-      <td className="px-6 py-4 whitespace-nowrap text-sm">
+      {/* <td className="px-6 py-4 whitespace-nowrap text-sm">
         <span
           className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusBadgeClass(
             course.status
@@ -65,7 +65,7 @@ const CourseRow: React.FC<CourseRowProps> = ({
         >
           {course.status || "N/A"}
         </span>
-      </td>
+      </td> */}
       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
         {formatDate(course.created_at)}
       </td>

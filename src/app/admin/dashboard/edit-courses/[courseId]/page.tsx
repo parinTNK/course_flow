@@ -1,25 +1,30 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { CourseFormView } from '@/app/admin/components/CourseFormView';
-import { LessonFormView } from '@/app/admin/components/LessonFormView'; // Import LessonFormView
-import { Lesson, PromoCode } from '@/types/courseAdmin';
+import { LessonFormView } from '@/app/admin/components/LessonFormView';
+import { Lesson } from '@/types/courseAdmin';
 import { useCustomToast } from '@/components/ui/CustomToast';
 import { useSensors, useSensor, PointerSensor, KeyboardSensor } from '@dnd-kit/core';
 import { sortableKeyboardCoordinates } from '@dnd-kit/sortable';
 import { useCourseForm } from '@/app/admin/hooks/useCourseForm';
 import { useLessonManagement } from '@/app/admin/hooks/useLessonManagement';
+import StudentSubscriptionWarningModal from '@/app/admin/components/StudentSubscriptionWarningModal';
+import ConfirmationModal from '@/app/admin/components/ConfirmationModal';
 
 const EditCoursePage = () => {
   const params = useParams();
+  const router = useRouter();
   const { courseId } = params;
-  const { error } = useCustomToast();
+  const { success, error } = useCustomToast();
 
   const [initialDataLoaded, setInitialDataLoaded] = useState(false);
-  const [allPromoCodes, setAllPromoCodes] = useState<PromoCode[]>([]);
+  
+  const [showWarningModal, setShowWarningModal] = useState(false);
+  const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false);
+  const [hasSubscription, setHasSubscription] = useState(false);
 
-  // Initialize useCourseForm hook with courseId for edit mode
   const {
     formData,
     setFormData,
@@ -33,14 +38,31 @@ const EditCoursePage = () => {
     coverRef,
     handleCoverClick,
     handleCoverChange,
+    handleCoverRemove,
     handleInputChange,
     handleSubmit,
     handleCancel,
+    handleVideoUploadSuccess,
+    handleVideoUploadError,
+    handleVideoDelete,
+    originalVideoData,
+    setOriginalVideoData,
+    videoMarkedForDeletion,
+    handlePromoCodeChange,
+    videoUploadState,
+    handleVideoUploadStateChange,
+    cancelVideoUpload,
   } = useCourseForm({ courseId: courseId as string });
 
-  // Initialize with our useLessonManagement hook for better field handling
-  // formData.name might be empty initially, this is acceptable for now as courseName is mainly for a toast in the hook.
-  const lessonManagement = useLessonManagement(formData.name || '');
+
+  const lessonManagement = useLessonManagement('');
+  
+
+  useEffect(() => {
+    if (formData.name) {
+      lessonManagement.updateCourseName(formData.name);
+    }
+  }, [formData.name, lessonManagement]);
 
 
   const sensors = useSensors(
@@ -53,7 +75,7 @@ const EditCoursePage = () => {
   useEffect(() => {
     const fetchCourseData = async () => {
       if (!courseId) return;
-      setIsLoading(true); // Use from useCourseForm
+      setIsLoading(true); 
       try {
         const response = await fetch(`/api/admin/courses/${courseId}`);
         if (!response.ok) {
@@ -61,8 +83,7 @@ const EditCoursePage = () => {
         }
         const data = await response.json();
         
-        // Set form data with the response
-        setFormData({
+        const formDataToSet = {
           id: courseId as string,
           name: data.name || '',
           price: data.price || 0,
@@ -72,15 +93,19 @@ const EditCoursePage = () => {
           status: data.status || 'draft',
           cover_image_url: data.cover_image_url || null,
           promo_code_id: data.promo_code_id || null,
-        });
+          video_trailer_mux_asset_id: data.video_trailer_mux_asset_id || null,
+          video_trailer_url: data.video_trailer_url || null,
+        };
+        
+        if (!initialDataLoaded) {
+          setFormData(formDataToSet);
+        }
 
-        // Process lessons to ensure all field names are consistent
+
         const normalizedLessons = (data.lessons_attributes || data.lessons || []).map(lesson => {
-          // Get subLessons from any available property
           const subLessonsSource = 
             lesson.sub_lessons_attributes || lesson.subLessons || lesson.sub_lessons || [];
           
-          // Normalize subLessons to have all field variations
           const normalizedSubLessons = subLessonsSource.map(sl => ({
             ...sl,
             id: sl.id,
@@ -99,17 +124,15 @@ const EditCoursePage = () => {
             title: lesson.title || lesson.name || '',
             order: lesson.order || lesson.order_no || 0,
             order_no: lesson.order_no || lesson.order || 0,
-            // Set all variations of subLessons properties
             sub_lessons_attributes: normalizedSubLessons,
             subLessons: normalizedSubLessons,
             sub_lessons: normalizedSubLessons
           };
         });
 
-        // Set lessons state for DnD functionality using lessonManagement
         lessonManagement.setLessons(normalizedLessons);
         
-        // Set cover preview if available
+
         if (data.cover_image_url) {
           setCoverPreview(data.cover_image_url);
         }
@@ -119,35 +142,16 @@ const EditCoursePage = () => {
         console.error('Error fetching course:', error);
         error('Error', 'Could not load course data.');
       }
-      setIsLoading(false); // Use from useCourseForm
-    };
-
-    const fetchPromoCodes = async () => {
-      try {
-        const response = await fetch('/api/admin/promo-codes');
-        if (!response.ok) {
-          throw new Error('Failed to fetch promo codes');
-        }
-        const data = await response.json();
-        setAllPromoCodes(data);
-      } catch (error: any) {
-        console.error('Error fetching promo codes:', error);
-        error('Error', 'Could not load promo codes.');
-      }
+      setIsLoading(false); 
     };
 
     fetchCourseData();
-    fetchPromoCodes();
-  }, [courseId, setFormData, setCoverPreview, setIsLoading, lessonManagement.setLessons]); // Removed error from dependencies
-
-  const handlePromoCodeChange = (selectedPromoCode: PromoCode | null) => {
-    setFormData(prev => ({ ...prev, promo_code_id: selectedPromoCode ? selectedPromoCode.id : null }));
-  };
+  }, [courseId, setFormData, setCoverPreview, setIsLoading, lessonManagement.setLessons]);
 
   const handleDragEndLessons = (event: any) => {
     const { active, over } = event;
     if (active.id !== over.id) {
-      lessonManagement.setLessons((items) => { // Use lessonManagement
+      lessonManagement.setLessons((items) => { 
         const oldIndex = items.findIndex(item => item.id === active.id);
         const newIndex = items.findIndex(item => item.id === over.id);
         const newItems = Array.from(items);
@@ -158,23 +162,90 @@ const EditCoursePage = () => {
     }
   };
   
-  // Helper function for CourseFormView to show errors via toast
-  const showErrorToast = (title: string, description?: string) => {
-    error(title, description);
-  };
-
-  // Show loading state until initial data is loaded
-  if (isLoading && !initialDataLoaded) { // Use isLoading from useCourseForm
+  if (isLoading && !initialDataLoaded) { 
     return <div className="flex justify-center items-center h-screen"><p>Loading course data...</p></div>;
   }
 
-  // Use the handleSubmit from useCourseForm but adapt it for our component's needs
+  const handleCancelWithCleanup = async () => {
+    try {
+      await lessonManagement.cancelAllUploads();
+    } catch (error) {
+      console.error('❌ EditCourse: Error cancelling sub-lesson uploads:', error);
+    }
+    
+    handleCancel();
+  };
+
   const submitHandler = (e: React.FormEvent, status: 'draft' | 'published', validateNameOnlyFlag = false) => {
-    handleSubmit(e, status, lessonManagement.lessons, validateNameOnlyFlag); // Use lessonManagement.lessons
+    handleSubmit(e, status, lessonManagement.lessons, validateNameOnlyFlag);
+  };
+
+  const checkSubscription = async (courseId: string) => {
+    const res = await fetch(`/api/admin/courses/${courseId}/has-subscription`);
+    const data = await res.json();
+    return data.hasSubscription;
+  };
+
+  const handleDeleteCourse = async () => {
+    if (!courseId) return;
+    setShowDeleteConfirmModal(true);
+  };
+
+  const handleActualDeleteCourse = async (courseIdToDelete: string) => {
+    try {
+      const response = await fetch(
+        `/api/admin/courses-delete/${courseIdToDelete}`,
+        {
+          method: "DELETE",
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to delete course");
+      }
+
+      success(
+        "Course deleted successfully",
+        "The course has been removed from the system."
+      );
+
+      router.push('/admin/dashboard?refresh=true');
+    } catch (err) {
+      error(
+        "Failed to delete course",
+        err instanceof Error ? err.message : "Unknown error"
+      );
+      console.error("Error deleting course:", err);
+    } finally {
+      handleCloseAll();
+    }
+  };
+
+  const handleProceedWarning = () => {
+    if (!courseId) return;
+    handleActualDeleteCourse(courseId as string);
+  };
+
+  const handleCloseAll = () => {
+    setShowWarningModal(false);
+    setShowDeleteConfirmModal(false);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!courseId) return;
+    const hasSub = await checkSubscription(courseId as string);
+    setHasSubscription(hasSub);
+    if (hasSub) {
+      setShowDeleteConfirmModal(false);
+      setShowWarningModal(true);
+    } else {
+      handleActualDeleteCourse(courseId as string);
+    }
   };
 
   return (
-    // Add a wrapper div similar to create-courses page if needed, e.g., for styling
+
     <div className="bg-gray-100 flex-1 pb-10"> 
       {!lessonManagement.isAddLessonView ? (
         <CourseFormView
@@ -184,25 +255,32 @@ const EditCoursePage = () => {
           coverPreview={coverPreview}
           coverRef={coverRef}
           lessons={lessonManagement.lessons}
-          allPromoCodes={allPromoCodes}
           handleInputChange={handleInputChange}
           handleCoverClick={handleCoverClick}
           handleCoverChange={handleCoverChange}
+          handleCoverRemove={handleCoverRemove}
           handleSubmit={submitHandler}
-          handleCancel={handleCancel}
+          handleCancel={handleCancelWithCleanup}
+          onDeleteCourse={handleDeleteCourse}
           handleAddLesson={lessonManagement.handleAddLesson}
-          handleDeleteLesson={lessonManagement.handleDeleteLesson} // Use from hook
-          handleEditLesson={lessonManagement.handleEditLesson} // Use from hook
+          handleDeleteLesson={lessonManagement.handleDeleteLesson} 
+          handleEditLesson={lessonManagement.handleEditLesson} 
           handleDragEndLessons={handleDragEndLessons}
-          handlePromoCodeChange={handlePromoCodeChange}
-          showError={showErrorToast}
+          handleVideoUploadSuccess={handleVideoUploadSuccess}
+          handleVideoUploadError={handleVideoUploadError}
+          handleVideoDelete={handleVideoDelete}
+          videoMarkedForDeletion={videoMarkedForDeletion}
           dndSensors={sensors}
+          videoUploadState={videoUploadState}
+          handleVideoUploadStateChange={handleVideoUploadStateChange}
+          cancelVideoUpload={cancelVideoUpload}
+          handlePromoCodeChange={handlePromoCodeChange}
         />
       ) : (
         <LessonFormView
           courseName={formData.name || ''}
           currentEditingLesson={lessonManagement.currentEditingLesson}
-          setCurrentEditingLessonName={lessonManagement.setCurrentEditingLessonName} // Use from hook
+          setCurrentEditingLessonName={lessonManagement.setCurrentEditingLessonName} 
           handleSaveNewLesson={lessonManagement.handleSaveNewLesson}
           handleCancelAddLesson={lessonManagement.handleCancelAddLesson}
           handleAddSubLesson={lessonManagement.handleAddSubLesson}
@@ -210,8 +288,29 @@ const EditCoursePage = () => {
           handleSubLessonNameChange={lessonManagement.handleSubLessonNameChange}
           handleDragEndSubLessons={lessonManagement.handleDragEndSubLessons}
           dndSensors={lessonManagement.sensors}
+          handleSubLessonVideoUpdate={lessonManagement.handleSubLessonVideoUpdate}
+          handleSubLessonVideoDelete={lessonManagement.handleSubLessonVideoDelete}
+          onCancelAllUploads={lessonManagement.cancelAllUploads}
         />
       )}
+      
+      <StudentSubscriptionWarningModal
+        isOpen={showWarningModal}
+        onClose={handleCloseAll}
+        onProceed={handleProceedWarning}
+        courseName={formData.name || ""}
+      />
+      <ConfirmationModal
+        isOpen={showDeleteConfirmModal}
+        onClose={handleCloseAll}
+        onConfirm={handleConfirmDelete}
+        title="Delete Course"
+        message={`Are you sure you want to delete this course: "${formData.name}"?`}
+        confirmText="Yes, I want to delete the course"
+        cancelText="No, keep it"
+        requireCourseName={false}
+        courseName={formData.name || ""}
+      />
     </div>
   );
 };

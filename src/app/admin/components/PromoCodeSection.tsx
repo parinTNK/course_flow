@@ -1,80 +1,95 @@
 import React, { useState, useEffect } from 'react';
 
-interface PromoCode {
+export interface PromoCode {
   id: string;
   code: string;
   min_purchase_amount?: number | null;
-  discount_type?: 'fixed' | 'percentage' | null;
+  discount_type?: string | null;
   discount_value?: number | null;
-  discount_percentage?: number | null;
 }
 
 interface PromoCodeSectionProps {
-  initialPromoCodeId?: string | null;
-  allPromoCodes: PromoCode[];
-  onChange: (selectedPromoCode: PromoCode | null) => void;
-  showError?: (title: string, description?: string) => void; // Optional error reporting
+  selectedPromoCodeId?: string | null;
+  courseId?: string | null;
+  mode?: 'create' | 'edit';
+  onChange?: (promoCodeId: string | null) => void;
+  coursePrice?: number;
 }
 
 export const PromoCodeSection: React.FC<PromoCodeSectionProps> = ({
-  initialPromoCodeId,
-  allPromoCodes,
+  selectedPromoCodeId = null,
+  courseId = null,
+  mode = 'create',
   onChange,
-  showError
+  coursePrice = 0
 }) => {
-  const [isActive, setIsActive] = useState(!!initialPromoCodeId);
-  const [selectedPromoId, setSelectedPromoId] = useState<string | null>(initialPromoCodeId || null);
-  const [selectedPromoDetails, setSelectedPromoDetails] = useState<PromoCode | null>(null);
+  const [isActive, setIsActive] = useState(!!selectedPromoCodeId);
+  const [promoCodes, setPromoCodes] = useState<PromoCode[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [selectedPromo, setSelectedPromo] = useState<PromoCode | null>(null);
 
   useEffect(() => {
-    setIsActive(!!initialPromoCodeId);
-    setSelectedPromoId(initialPromoCodeId || null);
-  }, [initialPromoCodeId]);
+    fetchPromoCodes();
+  }, [courseId, mode]);
 
   useEffect(() => {
-    if (selectedPromoId) {
-      const promo = allPromoCodes.find(p => p.id === selectedPromoId);
-      setSelectedPromoDetails(promo || null);
-      if (isActive && promo) {
-        onChange(promo);
-      } else if (isActive && !promo && showError) {
-        showError('Selected promo code not found in the list.');
-        onChange(null); // Clear if not found but was active
-      }
+    if (selectedPromoCodeId && promoCodes.length > 0) {
+      const promo = promoCodes.find(p => p.id === selectedPromoCodeId);
+      setSelectedPromo(promo || null);
+      setIsActive(true);
     } else {
-      setSelectedPromoDetails(null);
-      if (isActive) { // If active but no ID, means it was cleared
-        onChange(null);
-      }
+      setSelectedPromo(null);
+      setIsActive(false);
     }
-  }, [selectedPromoId, allPromoCodes, isActive, onChange, showError]);
+  }, [selectedPromoCodeId, promoCodes]);
+
+  const fetchPromoCodes = async () => {
+    setLoading(true);
+    try {
+      const params = new URLSearchParams({
+        mode: mode
+      });
+      
+      if (courseId && mode === 'edit') {
+        params.append('courseId', courseId);
+      }
+
+      const response = await fetch(`/api/admin/promo-codes-for-course?${params}`);
+      if (response.ok) {
+        const data = await response.json();
+        setPromoCodes(data.promoCodes || []);
+      } else {
+        console.error('Failed to fetch promo codes');
+        setPromoCodes([]);
+      }
+    } catch (error) {
+      console.error('Error fetching promo codes:', error);
+      setPromoCodes([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleCheckboxChange = () => {
     const newIsActive = !isActive;
     setIsActive(newIsActive);
+    
     if (!newIsActive) {
-      setSelectedPromoId(null); // Clear selection when deactivating
-      setSelectedPromoDetails(null);
-      onChange(null); // Notify parent that promo is deactivated
-    } else if (selectedPromoId) {
-      // If activating and a promo was already selected, re-notify parent
-      const promo = allPromoCodes.find(p => p.id === selectedPromoId);
-      onChange(promo || null);
-    } else {
-      // Activating but no promo selected yet
-      onChange(null);
+      setSelectedPromo(null);
+      onChange?.(null);
     }
   };
 
-  const handlePromoSelectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const newSelectedId = e.target.value;
-    if (newSelectedId === '') {
-      setSelectedPromoId(null);
-      setSelectedPromoDetails(null);
-      onChange(null);
+  const handlePromoCodeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const promoCodeId = e.target.value;
+    
+    if (promoCodeId) {
+      const promo = promoCodes.find(p => p.id === promoCodeId);
+      setSelectedPromo(promo || null);
+      onChange?.(promoCodeId);
     } else {
-      setSelectedPromoId(newSelectedId);
-      // Details and onChange will be updated by the useEffect hook
+      setSelectedPromo(null);
+      onChange?.(null);
     }
   };
 
@@ -84,7 +99,7 @@ export const PromoCodeSection: React.FC<PromoCodeSectionProps> = ({
         <div className="flex items-center">
           <input
             type="checkbox"
-            id="promo-code-active" // Changed id to be more specific
+            id="promo-code-active"
             className="w-5 h-5 text-blue-600 rounded"
             checked={isActive}
             onChange={handleCheckboxChange}
@@ -102,13 +117,17 @@ export const PromoCodeSection: React.FC<PromoCodeSectionProps> = ({
             <select
               id="set-promo"
               className={`w-full px-4 py-2 border rounded-md ${isActive ? 'bg-white' : 'bg-gray-200'}`}
-              disabled={!isActive}
-              value={selectedPromoId || ''}
-              onChange={handlePromoSelectChange}
+              disabled={!isActive || loading}
+              value={selectedPromo?.id || ''}
+              onChange={handlePromoCodeChange}
             >
-              <option value="">Select a promo code</option>
-              {allPromoCodes.map(promo => (
-                <option key={promo.id} value={promo.id}>{promo.code}</option>
+              <option value="">
+                {loading ? 'Loading...' : 'Select a promo code'}
+              </option>
+              {promoCodes.map((promo) => (
+                <option key={promo.id} value={promo.id}>
+                  {promo.code}
+                </option>
               ))}
             </select>
           </div>
@@ -123,7 +142,7 @@ export const PromoCodeSection: React.FC<PromoCodeSectionProps> = ({
               placeholder="-"
               className="w-full px-4 py-2 border rounded-md bg-gray-200"
               disabled
-              value={selectedPromoDetails?.min_purchase_amount?.toString() || ''}
+              value={selectedPromo?.min_purchase_amount?.toLocaleString() || ''}
             />
           </div>
         </div>
@@ -140,9 +159,9 @@ export const PromoCodeSection: React.FC<PromoCodeSectionProps> = ({
                   id="discount-thb"
                   name="discount-type"
                   className="w-4 h-4"
-                  disabled // Always disabled as it's informational
-                  checked={selectedPromoDetails?.discount_type === 'fixed'}
+                  disabled
                   readOnly
+                  checked={selectedPromo?.discount_type === 'Fixed amount'}
                 />
                 <label htmlFor="discount-thb" className="ml-2 text-sm">
                   Discount (THB)
@@ -153,7 +172,11 @@ export const PromoCodeSection: React.FC<PromoCodeSectionProps> = ({
                 placeholder="-"
                 className="w-24 px-2 py-1 border rounded-md bg-gray-200"
                 disabled
-                value={selectedPromoDetails?.discount_type === 'fixed' ? selectedPromoDetails.discount_value?.toString() || '' : ''}
+                value={
+                  selectedPromo?.discount_type === 'Fixed amount' 
+                    ? selectedPromo?.discount_value?.toLocaleString() || ''
+                    : ''
+                }
               />
             </div>
 
@@ -162,11 +185,11 @@ export const PromoCodeSection: React.FC<PromoCodeSectionProps> = ({
                 <input
                   type="radio"
                   id="discount-percent"
-                  name="discount-type" // Same name to ensure only one can be conceptually selected
+                  name="discount-type"
                   className="w-4 h-4"
-                  disabled // Always disabled
-                  checked={selectedPromoDetails?.discount_type === 'percentage'}
+                  disabled
                   readOnly
+                  checked={selectedPromo?.discount_type === 'Percent'}
                 />
                 <label htmlFor="discount-percent" className="ml-2 text-sm">
                   Discount (%)
@@ -177,9 +200,36 @@ export const PromoCodeSection: React.FC<PromoCodeSectionProps> = ({
                 placeholder="-"
                 className="w-24 px-2 py-1 border rounded-md bg-gray-200"
                 disabled
-                value={selectedPromoDetails?.discount_type === 'percentage' ? selectedPromoDetails.discount_percentage?.toString() || '' : ''}
+                value={
+                  selectedPromo?.discount_type === 'Percent' 
+                    ? `${selectedPromo?.discount_value || ''}%`
+                    : ''
+                }
               />
             </div>
+            {selectedPromo && selectedPromo.discount_value != null && selectedPromo.discount_type && coursePrice > 0 && (
+              <div className="flex items-center space-x-4">
+                <div className="flex items-center">
+                  <span className="text-sm text-gray-600">Price after discount:</span>
+                </div>
+                <input
+                  type="text"
+                  className="w-32 px-2 py-1 border rounded-md bg-gray-200"
+                  disabled
+                  value={(() => {
+                    let priceAfterDiscount = 0;
+                    if (selectedPromo.discount_type === 'Fixed amount') {
+                      priceAfterDiscount = coursePrice - selectedPromo.discount_value;
+                    } else if (selectedPromo.discount_type === 'Percent') {
+                      priceAfterDiscount = coursePrice * (1 - selectedPromo.discount_value / 100);
+                    }
+                    return priceAfterDiscount <= 0
+                      ? 'Free'
+                      : `${priceAfterDiscount.toLocaleString()} THB`;
+                  })()}
+                />
+              </div>
+            )}
           </div>
         </div>
       </div>

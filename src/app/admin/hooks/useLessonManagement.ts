@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useCustomToast } from '@/components/ui/CustomToast';
 import { Lesson, SubLesson } from '@/types/courseAdmin';
 import {
@@ -12,6 +12,7 @@ import {
   arrayMove,
   sortableKeyboardCoordinates,
 } from '@dnd-kit/sortable';
+import { SubLessonVideoUploadRef } from '@/app/admin/components/SubLessonVideoUpload';
 
 export const useLessonManagement = (courseName: string) => {
   const { success: toastSuccess, error: toastError } = useCustomToast();
@@ -20,20 +21,38 @@ export const useLessonManagement = (courseName: string) => {
   const [currentEditingLesson, setCurrentEditingLesson] = useState<{
     id: number | string | null;
     name: string;
-    title?: string; // Add database field name
+    title?: string;
     subLessons: SubLesson[];
   }>({
     id: null,
     name: '',
-    title: '', // Initialize database field
+    title: '',
     subLessons: [{ 
       id: Date.now(), 
       name: '', 
-      title: '', // Initialize database field
+      title: '',
       videoUrl: '',
-      video_url: '' // Initialize database field
+      video_url: '',
+      mux_asset_id: '',
+      videoUploadState: {
+        isUploading: false,
+        hasVideo: false,
+        error: undefined
+      }
     }]
   });
+  
+  const courseNameRef = useRef(courseName);
+
+  const [subLessonUploadStates, setSubLessonUploadStates] = useState<Record<string | number, {
+    isUploading: boolean;
+    progress: number;
+    error: string | null;
+    success: boolean;
+    currentAssetId?: string | null;
+  }>>({});
+
+  const subLessonVideoRefs = useRef<Record<string | number, SubLessonVideoUploadRef>>({});
 
   useEffect(() => {
     const savedLessons = localStorage.getItem('courseLessons');
@@ -57,21 +76,31 @@ export const useLessonManagement = (courseName: string) => {
     })
   );
 
+  const updateCourseName = useCallback((name: string) => {
+    courseNameRef.current = name;
+  }, []);
+
   const handleAddLesson = () => {
-    if (!courseName.trim()) {
+    if (!courseNameRef.current.trim()) {
       toastError('Please enter course name before adding lessons');
       return;
     }
     setCurrentEditingLesson({
       id: null,
       name: '',
-      title: '', // Add both fields for consistency
+      title: '',
       subLessons: [{ 
         id: Date.now(), 
         name: '', 
-        title: '', // Add database field name
+        title: '',
         videoUrl: '',
-        video_url: '' // Add database field name
+        video_url: '',
+        mux_asset_id: '',
+        videoUploadState: {
+          isUploading: false,
+          hasVideo: false,
+          error: undefined
+        }
       }]
     });
     setIsAddLessonView(true);
@@ -88,46 +117,38 @@ export const useLessonManagement = (courseName: string) => {
       return;
     }
     
-    if (currentEditingLesson.id === null) { // New lesson
-      // For new lessons, use a temporary ID format with timestamp
+    if (currentEditingLesson.id === null) {
       const newId = `temp-${Date.now()}`;
-      
-      // Prepare subLessons with all the necessary field mappings
       const normalizedSubLessons = currentEditingLesson.subLessons.map(sl => ({
         ...sl,
-        // Ensure both frontend and database field names exist
         name: sl.name || sl.title || '',
         title: sl.title || sl.name || '',
         videoUrl: sl.videoUrl || sl.video_url || '',
-        video_url: sl.video_url || sl.videoUrl || ''
+        video_url: sl.video_url || sl.videoUrl || '',
+        mux_asset_id: sl.mux_asset_id || ''
       }));
-      
       setLessons([...lessons, { 
         ...currentEditingLesson, 
         id: newId,
-        // Set both for compatibility with different components
         sub_lessons_attributes: normalizedSubLessons,
         subLessons: normalizedSubLessons,
         sub_lessons: normalizedSubLessons
       }]);
       toastSuccess('Lesson added successfully');
-    } else { // Editing existing lesson
-      // Prepare subLessons with all the necessary field mappings
+    } else {
       const normalizedSubLessons = currentEditingLesson.subLessons.map(sl => ({
         ...sl,
-        // Ensure both frontend and database field names exist
         name: sl.name || sl.title || '',
         title: sl.title || sl.name || '',
         videoUrl: sl.videoUrl || sl.video_url || '',
-        video_url: sl.video_url || sl.videoUrl || ''
+        video_url: sl.video_url || sl.videoUrl || '',
+        mux_asset_id: sl.mux_asset_id || ''
       }));
-      
       setLessons(lessons.map(lesson =>
         lesson.id === currentEditingLesson.id ? { 
           ...lesson,
           name: currentEditingLesson.name,
-          title: currentEditingLesson.name, // Add title for database consistency
-          // Keep the existing structure but update all versions of subLessons
+          title: currentEditingLesson.name,
           sub_lessons_attributes: normalizedSubLessons,
           subLessons: normalizedSubLessons,
           sub_lessons: normalizedSubLessons
@@ -141,17 +162,21 @@ export const useLessonManagement = (courseName: string) => {
   const handleCancelAddLesson = () => setIsAddLessonView(false);
 
   const handleAddSubLesson = () => {
-    // For new sub-lessons, use a timestamp-based ID to ensure uniqueness
     const newId = Date.now();
-    
     setCurrentEditingLesson(prev => ({
       ...prev,
       subLessons: [...prev.subLessons, { 
         id: newId, 
         name: '', 
-        title: '',  // Add database field
+        title: '',
         videoUrl: '', 
-        video_url: ''  // Add database field
+        video_url: '',
+        mux_asset_id: '',
+        videoUploadState: {
+          isUploading: false,
+          hasVideo: false,
+          error: undefined
+        }
       }]
     }));
   };
@@ -173,46 +198,199 @@ export const useLessonManagement = (courseName: string) => {
       subLessons: prev.subLessons.map(sl =>
         sl.id === id ? { 
           ...sl, 
-          name: newName,  // Frontend property
-          title: newName  // Database property
+          name: newName,
+          title: newName
         } : sl
       )
     }));
   };
 
-  // Add a method to set both name and title fields for consistency
+  const handleSubLessonVideoUpdate = (subLessonId: number | string, assetId: string, playbackId: string) => {
+    setCurrentEditingLesson(prev => ({
+      ...prev,
+      subLessons: prev.subLessons.map(sl =>
+        sl.id === subLessonId ? {
+          ...sl,
+          video_url: playbackId,
+          videoUrl: playbackId,
+          mux_asset_id: assetId,
+          videoUploadState: {
+            isUploading: false,
+            hasVideo: true,
+            error: undefined
+          }
+        } : sl
+      )
+    }));
+    toastSuccess('Video uploaded successfully');
+  };
+
+  const handleSubLessonVideoDelete = (subLessonId: number | string) => {
+    setCurrentEditingLesson(prev => ({
+      ...prev,
+      subLessons: prev.subLessons.map(sl =>
+        sl.id === subLessonId ? {
+          ...sl,
+          video_url: '',
+          videoUrl: '',
+          mux_asset_id: '',
+          videoUploadState: {
+            isUploading: false,
+            hasVideo: false,
+            error: undefined
+          }
+        } : sl
+      )
+    }));
+    toastSuccess('Video deleted successfully');
+  };
+
+  const handleSubLessonVideoUploadStart = (subLessonId: number | string) => {
+    setCurrentEditingLesson(prev => ({
+      ...prev,
+      subLessons: prev.subLessons.map(sl =>
+        sl.id === subLessonId ? {
+          ...sl,
+          videoUploadState: {
+            isUploading: true,
+            hasVideo: false,
+            error: undefined
+          }
+        } : sl
+      )
+    }));
+  };
+
+  const handleSubLessonVideoUploadError = (subLessonId: number | string, error: string) => {
+    setCurrentEditingLesson(prev => ({
+      ...prev,
+      subLessons: prev.subLessons.map(sl =>
+        sl.id === subLessonId ? {
+          ...sl,
+          videoUploadState: {
+            isUploading: false,
+            hasVideo: false,
+            error
+          }
+        } : sl
+      )
+    }));
+    toastError(`Video upload failed: ${error}`);
+  };
+
+  const handleSubLessonVideoUploadStateChange = (subLessonId: string | number, uploadState: {
+    isUploading: boolean;
+    progress: number;
+    error: string | null;
+    success: boolean;
+    currentAssetId?: string | null;
+  }) => {
+    setSubLessonUploadStates(prev => ({
+      ...prev,
+      [subLessonId]: uploadState
+    }));
+  };
+
+  const cancelAllSubLessonVideoUploads = async () => {
+    const cancelPromises = Object.entries(subLessonVideoRefs.current).map(async ([subLessonId, ref]) => {
+      const uploadState = subLessonUploadStates[subLessonId];
+      if (uploadState?.isUploading && ref?.cancelUpload) {
+        try {
+          await ref.cancelUpload();
+        } catch (error) {
+          console.error(`Failed to cancel upload for sub-lesson ${subLessonId}:`, error);
+        }
+      }
+    });
+
+    await Promise.all(cancelPromises);
+  };
+
+  const lastRegisteredRefs = useRef<string>('');
+  const lastRegistrationTime = useRef<number>(0);
+  
+  const registerSubLessonVideoRefs = useCallback((refs: Record<string | number, SubLessonVideoUploadRef>) => {
+    const refKeys = Object.keys(refs).sort().join(',');
+    const now = Date.now();
+    const shouldLog = lastRegisteredRefs.current !== refKeys && 
+                     refKeys && 
+                     (now - lastRegistrationTime.current > 10000);
+    if (shouldLog) {
+      console.log('📝 useLessonManagement: Video refs registered:', Object.keys(refs).length);
+      lastRegisteredRefs.current = refKeys;
+      lastRegistrationTime.current = now;
+    }
+    subLessonVideoRefs.current = { ...subLessonVideoRefs.current, ...refs };
+  }, []);
+
+  const cancelAllUploads = async () => {
+    const refKeys = Object.keys(subLessonVideoRefs.current);
+    if (refKeys.length > 0) {
+      console.log(`🚫 useLessonManagement: Cancelling ${refKeys.length} video uploads`);
+    }
+    const cancelPromises = Object.entries(subLessonVideoRefs.current).map(([id, ref]) => {
+      if (ref) {
+        try {
+          return ref.cancelUpload();
+        } catch (error) {
+          console.error(`❌ useLessonManagement: Failed to cancel upload for sub-lesson ${id}:`, error);
+          return Promise.resolve();
+        }
+      }
+      return Promise.resolve();
+    });
+    await Promise.all(cancelPromises);
+    if (refKeys.length > 0) {
+      console.log(`✅ useLessonManagement: All uploads cancelled successfully`);
+    }
+  };
+
+  const hasActiveSubLessonUploads = () => {
+    return Object.values(subLessonUploadStates).some(state => state.isUploading);
+  };
+
+  const setSubLessonVideoRef = (subLessonId: string | number, ref: SubLessonVideoUploadRef | null) => {
+    if (ref) {
+      subLessonVideoRefs.current[subLessonId] = ref;
+    } else {
+      delete subLessonVideoRefs.current[subLessonId];
+    }
+  };
+
   const setCurrentEditingLessonName = (newName: string) => {
     setCurrentEditingLesson(prev => ({
       ...prev,
-      name: newName,  // Frontend property
-      title: newName  // Database property
+      name: newName,
+      title: newName
     }));
   };
 
   const handleEditLesson = (id: number | string) => {
     const lessonToEdit = lessons.find((lesson) => lesson.id === id);
     if (lessonToEdit) {
-      // Get subLessons from any of the possible sources, prioritizing populated ones
       const subLessonsSource = 
         (Array.isArray(lessonToEdit.subLessons) && lessonToEdit.subLessons.length > 0) ? lessonToEdit.subLessons :
         (Array.isArray(lessonToEdit.sub_lessons) && lessonToEdit.sub_lessons.length > 0) ? lessonToEdit.sub_lessons : 
         (Array.isArray(lessonToEdit.sub_lessons_attributes) && lessonToEdit.sub_lessons_attributes.length > 0) ? lessonToEdit.sub_lessons_attributes : 
         [];
-      
-      // Normalize each subLesson with all field names for consistency
       const normalizedSubLessons = subLessonsSource.map(sl => ({
         ...sl,
         id: sl.id,
         name: sl.name || sl.title || '',
         title: sl.title || sl.name || '',
         videoUrl: sl.videoUrl || sl.video_url || '',
-        video_url: sl.video_url || sl.videoUrl || ''
+        video_url: sl.video_url || sl.videoUrl || '',
+        mux_asset_id: sl.mux_asset_id || '',
+        videoUploadState: sl.videoUploadState || {
+          isUploading: false,
+          hasVideo: !!(sl.video_url || sl.videoUrl),
+          error: undefined
+        }
       }));
-      
       setCurrentEditingLesson({
         id: lessonToEdit.id,
         name: lessonToEdit.name || lessonToEdit.title || '',
-        title: lessonToEdit.title || lessonToEdit.name || '', // Ensure title is also set
+        title: lessonToEdit.title || lessonToEdit.name || '',
         subLessons: normalizedSubLessons
       });
       setIsAddLessonView(true);
@@ -267,6 +445,13 @@ export const useLessonManagement = (courseName: string) => {
     handleDeleteLesson,
     handleDragEndLessons,
     handleDragEndSubLessons,
-    setCurrentEditingLessonName, // Expose the new method
+    setCurrentEditingLessonName,
+    handleSubLessonVideoUpdate,
+    handleSubLessonVideoDelete,
+    handleSubLessonVideoUploadStart,
+    handleSubLessonVideoUploadError,
+    cancelAllUploads,
+    registerSubLessonVideoRefs,
+    updateCourseName,
   };
 };

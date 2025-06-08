@@ -1,17 +1,35 @@
-import React from 'react';
+import React, { useRef, useState } from 'react';
 import { MdOutlineDragIndicator } from 'react-icons/md';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { SubLesson } from '@/types/courseAdmin';
+import SubLessonVideoUpload, { SubLessonVideoUploadRef } from '@/app/admin/components/SubLessonVideoUpload';
 
 interface SortableSubLessonItemProps {
   subLesson: SubLesson;
   onRemove: (id: number | string) => void;
   onNameChange: (id: number | string, name: string) => void;
-  // Add onVideoChange if implementing video upload per sub-lesson
+  onVideoUpdate?: (subLessonId: number | string, assetId: string, playbackId: string) => void;
+  onVideoDelete?: (subLessonId: number | string) => void;
+  onVideoUploadStateChange?: (subLessonId: number | string, uploadState: {
+    isUploading: boolean
+    progress: number
+    error: string | null
+    success: boolean
+    currentAssetId?: string | null
+  }) => void;
+  videoUploadRefs?: React.MutableRefObject<Record<string | number, SubLessonVideoUploadRef | null>>;
 }
 
-export function SortableSubLessonItem({ subLesson, onRemove, onNameChange }: SortableSubLessonItemProps) {
+export function SortableSubLessonItem({ 
+  subLesson, 
+  onRemove, 
+  onNameChange, 
+  onVideoUpdate, 
+  onVideoDelete,
+  onVideoUploadStateChange,
+  videoUploadRefs
+}: SortableSubLessonItemProps) {
   const {
     attributes,
     listeners,
@@ -24,6 +42,38 @@ export function SortableSubLessonItem({ subLesson, onRemove, onNameChange }: Sor
     transform: CSS.Transform.toString(transform),
     transition
   };
+  
+  const videoUploadRef = useRef<SubLessonVideoUploadRef>(null);
+  const [refReady, setRefReady] = useState(false);
+  const lastLogTime = useRef<number>(0);
+  
+  React.useEffect(() => {
+    if (videoUploadRefs && videoUploadRef.current && !refReady) {
+      const now = Date.now();
+      if (now - lastLogTime.current > 3000) {
+        console.log(`✅ SubLesson[${subLesson.id}]: Video ref registered`);
+        lastLogTime.current = now;
+      }
+      videoUploadRefs.current[subLesson.id] = videoUploadRef.current;
+      setRefReady(true);
+    }
+  });
+  
+  React.useEffect(() => {
+    return () => {
+      if (videoUploadRefs && subLesson.id) {
+        delete videoUploadRefs.current[subLesson.id];
+      }
+    };
+  }, [subLesson.id, videoUploadRefs]);
+
+  const setVideoUploadRef = React.useCallback((ref: SubLessonVideoUploadRef | null) => {
+    videoUploadRef.current = ref;
+    
+    if (ref && videoUploadRefs) {
+      videoUploadRefs.current[subLesson.id] = ref;
+    }
+  }, [subLesson.id, videoUploadRefs]);
 
   return (
     <div
@@ -62,31 +112,17 @@ export function SortableSubLessonItem({ subLesson, onRemove, onNameChange }: Sor
 
       <div className="ml-7">
         <label className="block text-sm font-medium mb-1">
-          Video <span className="text-red-500">*</span> {/* Assuming video is required */}
+          Video <span className="text-red-500">*</span>
         </label>
-        <div className="border border-gray-200 rounded-md p-4 bg-gray-50">
-          <div className="flex flex-col items-center justify-center h-28 relative">
-            {/* Placeholder for video upload UI. Implement as needed. */}
-            <div className="text-center">
-              <div className="w-8 h-8 mb-2 flex items-center justify-center text-blue-500">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M12 7V17M7 12H17" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-                </svg>
-              </div>
-              <p className="text-blue-500 text-sm">Upload Video</p>
-            </div>
-            <input
-              type="file"
-              accept="video/*"
-              // onChange={(e) => handleSubLessonVideoChange(subLesson.id, e.target.files?.[0])}
-              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-            />
-          </div>
-          {/* Display video preview or name if uploaded */}
-          {(subLesson.videoUrl || subLesson.video_url) && 
-            <p className="text-xs mt-1">{subLesson.videoUrl || subLesson.video_url}</p>
-          }
-        </div>
+        <SubLessonVideoUpload
+          ref={setVideoUploadRef}
+          subLessonId={subLesson.id}
+          existingAssetId={subLesson.mux_asset_id}
+          existingPlaybackId={subLesson.video_url || subLesson.videoUrl}
+          onVideoUpdate={onVideoUpdate}
+          onVideoDelete={onVideoDelete}
+          onUploadStateChange={onVideoUploadStateChange}
+        />
       </div>
     </div>
   );

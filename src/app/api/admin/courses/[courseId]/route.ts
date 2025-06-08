@@ -12,7 +12,6 @@ export async function GET(
   }
 
   try {
-    // Fetch all the data in one query with proper nesting to minimize API calls
     const { data: course, error } = await supabase
       .from('courses')
       .select(`
@@ -26,6 +25,7 @@ export async function GET(
             id, 
             title, 
             video_url, 
+            mux_asset_id,
             lesson_id, 
             order_no
           )
@@ -41,7 +41,6 @@ export async function GET(
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    // Transform the lessons data to match the expected format
     const lessonWithSubLessons = course?.lessons?.map(lesson => ({
       ...lesson,
       name: lesson.title,
@@ -49,7 +48,10 @@ export async function GET(
       sub_lessons: lesson.sub_lessons?.map(sl => ({
         ...sl,
         name: sl.title,
-        order: sl.order_no
+        order: sl.order_no,
+        videoUrl: sl.video_url,
+        video_url: sl.video_url,
+        mux_asset_id: sl.mux_asset_id
       })) || []
     })) || [];
 
@@ -57,7 +59,6 @@ export async function GET(
       return NextResponse.json({ error: 'Course not found' }, { status: 404 });
     }
 
-    // Format the lessons for the frontend
     const formattedCourse = {
       ...course,
       lessons: lessonWithSubLessons,

@@ -1,7 +1,8 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useCustomToast } from '@/components/ui/CustomToast';
 import { CourseFormData, Lesson } from '@/types/courseAdmin';
+import { deleteCourseVideo } from '@/app/actions/mux-actions';
 
 const INITIAL_FORM_DATA: CourseFormData = {
   name: '',
@@ -26,40 +27,197 @@ export const useCourseForm = (props?: UseCourseFormProps) => {
   const router = useRouter();
   const { success: toastSuccess, error: toastError } = useCustomToast();
 
-  const [formData, setFormData] = useState<CourseFormData>(initialData || INITIAL_FORM_DATA);
+  const [formData, _setFormData] = useState<CourseFormData>(initialData || INITIAL_FORM_DATA);
   const [isLoading, setIsLoading] = useState(false);
   const [coverImageFile, setCoverImageFile] = useState<File | null>(null);
   const [coverPreview, setCoverPreview] = useState<string>('');
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [videoData, setVideoData] = useState<{assetId: string, playbackId: string} | null>(null);
+  
+  const [originalVideoData, setOriginalVideoData] = useState<{
+    video_trailer_mux_asset_id: string | null;
+    video_trailer_url: string | null;
+  } | null>(null);
+  
+  const [newVideoData, setNewVideoData] = useState<{
+    assetId: string;
+    playbackId: string;
+  } | null>(null);
+  const [newVideosHistory, setNewVideosHistory] = useState<Array<{
+    assetId: string;
+    playbackId: string;
+  }>>([]);
+  const [videoMarkedForDeletion, setVideoMarkedForDeletion] = useState<string | null>(null);
+  
   const coverRef = useRef<HTMLInputElement>(null);
+  
+  const originalVideoRef = useRef<{
+    video_trailer_mux_asset_id: string | null;
+    video_trailer_url: string | null;
+  } | null>(null);
 
-  // Only load from localStorage in create mode (not edit mode)
+  const initialLoadDoneRef = useRef(false);
+
+  const setFormData = useCallback((data: CourseFormData | ((prev: CourseFormData) => CourseFormData)) => {
+    if (typeof data === 'function') {
+      _setFormData(data);
+    } else {
+      _setFormData(data);
+      if (isEditMode && !initialLoadDoneRef.current && (data.video_trailer_mux_asset_id || data.video_trailer_url)) {
+        const originalVideo = {
+          video_trailer_mux_asset_id: data.video_trailer_mux_asset_id || null,
+          video_trailer_url: data.video_trailer_url || null,
+        };
+        originalVideoRef.current = originalVideo;
+        initialLoadDoneRef.current = true;
+        setOriginalVideoData(originalVideo);
+      }
+    }
+  }, [isEditMode]);
+
+  const setOriginalVideoDataStable = useCallback((data: {
+    video_trailer_mux_asset_id: string | null;
+    video_trailer_url: string | null;
+  } | null) => {
+    originalVideoRef.current = data;
+    setOriginalVideoData(prev => {
+      if (!prev && !data) return prev;
+      if (!prev || !data) return data;
+      if (prev.video_trailer_mux_asset_id === data.video_trailer_mux_asset_id && 
+          prev.video_trailer_url === data.video_trailer_url) {
+        return prev;
+      }
+      return data;
+    });
+  }, []);
+
+  const deleteVideoFromMux = useCallback(async (assetId: string, context: string): Promise<boolean> => {
+    try {
+      const deleteResponse = await fetch(`/api/mux-delete-asset?assetId=${assetId}`, {
+        method: 'DELETE',
+      });
+      if (!deleteResponse.ok) {
+        return false;
+      } else {
+        return true;
+      }
+    } catch (error) {
+      return false;
+    }
+  }, []);
+
+  const cleanupVideos = useCallback(async (videos: Array<{assetId: string, playbackId: string}>, context: string) => {
+    if (videos.length === 0) return;
+    for (const video of videos) {
+      await deleteVideoFromMux(video.assetId, context);
+    }
+  }, [deleteVideoFromMux]);
+
+  const clearVideoFromForm = useCallback(() => {
+    _setFormData(prev => ({
+      ...prev,
+      video_trailer_mux_asset_id: null,
+      video_trailer_url: null,
+    }));
+  }, []);
+
+  const updateVideoInForm = useCallback((assetId: string, playbackId: string) => {
+    _setFormData(prev => ({
+      ...prev,
+      video_trailer_mux_asset_id: assetId,
+      video_trailer_url: playbackId,
+    }));
+  }, []);
+
+  const validateVideoStateConsistency = useCallback(() => {
+    if (isEditMode) {
+      if (newVideosHistory.length > 0) {
+        const latestVideo = newVideosHistory[newVideosHistory.length - 1];
+        if (!newVideoData || newVideoData.assetId !== latestVideo.assetId) {
+          setNewVideoData(latestVideo);
+        }
+      }
+    } else {
+      if (newVideosHistory.length > 0) {
+        const latestVideo = newVideosHistory[newVideosHistory.length - 1];
+        if (!videoData || videoData.assetId !== latestVideo.assetId) {
+          setVideoData(latestVideo);
+          updateVideoInForm(latestVideo.assetId, latestVideo.playbackId);
+        }
+      }
+    }
+  }, [isEditMode, newVideosHistory, newVideoData, videoData, updateVideoInForm]);
+
+  const handleEditModeVideoCleanupBeforeSave = useCallback(async () => {
+    if (videoMarkedForDeletion) {
+      await deleteVideoFromMux(videoMarkedForDeletion, 'marked for deletion before database update');
+    }
+    const originalVideoToCheck = originalVideoData || originalVideoRef.current;
+    const hasNewVideo = formData.video_trailer_mux_asset_id && 
+                       formData.video_trailer_mux_asset_id !== originalVideoToCheck?.video_trailer_mux_asset_id;
+    if (hasNewVideo && originalVideoToCheck?.video_trailer_mux_asset_id) {
+      await deleteVideoFromMux(originalVideoToCheck.video_trailer_mux_asset_id, 'original video being replaced');
+    }
+    if (newVideosHistory.length > 1) {
+      const latestVideo = newVideosHistory[newVideosHistory.length - 1];
+      const videosToDelete = newVideosHistory.slice(0, -1);
+      await cleanupVideos(videosToDelete, 'old new videos before database update');
+      setNewVideosHistory([latestVideo]);
+      if (!newVideoData || newVideoData.assetId !== latestVideo.assetId) {
+        setNewVideoData(latestVideo);
+      }
+    }
+  }, [newVideoData, originalVideoData, videoMarkedForDeletion, newVideosHistory, formData.video_trailer_mux_asset_id, deleteVideoFromMux, cleanupVideos]);
+
+  const handleCreateModeVideoCleanupBeforeSave = useCallback(async () => {
+    if (newVideosHistory.length > 1) {
+      const latestVideo = newVideosHistory[newVideosHistory.length - 1];
+      const videosToDelete = newVideosHistory.slice(0, -1);
+      await cleanupVideos(videosToDelete, 'old videos in create mode before database update');
+      setNewVideosHistory([latestVideo]);
+      if (!videoData || videoData.assetId !== latestVideo.assetId) {
+        setVideoData(latestVideo);
+        updateVideoInForm(latestVideo.assetId, latestVideo.playbackId);
+      }
+    } else if (newVideosHistory.length === 1) {
+      const singleVideo = newVideosHistory[0];
+      if (!videoData || videoData.assetId !== singleVideo.assetId) {
+        setVideoData(singleVideo);
+        updateVideoInForm(singleVideo.assetId, singleVideo.playbackId);
+      }
+    }
+  }, [videoData, newVideosHistory, deleteVideoFromMux, cleanupVideos, updateVideoInForm]);
+
   useEffect(() => {
     if (!isEditMode) {
       const savedFormData = localStorage.getItem('courseFormData');
       if (savedFormData) {
         try {
-          setFormData(JSON.parse(savedFormData));
+          _setFormData(JSON.parse(savedFormData));
         } catch (error) {
-          console.error('Error parsing saved form data:', error);
         }
       }
     }
   }, [isEditMode]);
 
-  // Only save to localStorage in create mode
   useEffect(() => {
     if (!isEditMode) {
       localStorage.setItem('courseFormData', JSON.stringify(formData));
     }
   }, [formData, isEditMode]);
 
-  // Set cover preview from initial data if available
   useEffect(() => {
     if (initialData?.cover_image_url) {
       setCoverPreview(initialData.cover_image_url);
     }
-  }, [initialData]);
+    if (isEditMode && initialData) {
+      const originalVideo = {
+        video_trailer_mux_asset_id: initialData.video_trailer_mux_asset_id || null,
+        video_trailer_url: initialData.video_trailer_url || null,
+      };
+      setOriginalVideoData(originalVideo);
+    }
+  }, [initialData, isEditMode]);
 
   const handleCoverClick = () => coverRef.current?.click();
 
@@ -71,6 +229,12 @@ export const useCourseForm = (props?: UseCourseFormProps) => {
     }
     setCoverImageFile(file);
     setCoverPreview(file ? URL.createObjectURL(file) : '');
+    if (errors.coverImage) setErrors((prev) => { const u = { ...prev }; delete u.coverImage; return u; });
+  };
+
+  const handleCoverRemove = () => {
+    setCoverImageFile(null);
+    setCoverPreview('');
     if (errors.coverImage) setErrors((prev) => { const u = { ...prev }; delete u.coverImage; return u; });
   };
 
@@ -87,22 +251,22 @@ export const useCourseForm = (props?: UseCourseFormProps) => {
       'course-detail': 'detail',
     };
     const formKey = keyMap[id] || id as keyof CourseFormData;
-    setFormData((prevData) => ({ ...prevData, [formKey]: value }));
+    _setFormData((prevData) => ({ ...prevData, [formKey]: value }));
+  };
+
+  const handlePromoCodeChange = (promoCodeId: string | null) => {
+    _setFormData((prevData) => ({ ...prevData, promo_code_id: promoCodeId }));
   };
   
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
     if (!formData.name.trim()) newErrors['course-name'] = 'Please fill out this field';
-    
-    // Handle price validation for both string and number types
     const priceValue = typeof formData.price === 'string' ? formData.price.trim() : formData.price;
     if (!priceValue && priceValue !== 0) newErrors['price'] = 'Please fill out this field';
     else {
       const priceNum = typeof priceValue === 'string' ? parseFloat(priceValue) : priceValue;
       if (isNaN(priceNum) || priceNum < 0) newErrors['price'] = 'Please enter a valid price';
     }
-    
-    // Handle learning time validation for both string and number types
     const timeValue = typeof formData.total_learning_time === 'string' ? 
       formData.total_learning_time.trim() : formData.total_learning_time;
     if (!timeValue && timeValue !== 0) newErrors['learning-time'] = 'Please fill out this field';
@@ -110,15 +274,11 @@ export const useCourseForm = (props?: UseCourseFormProps) => {
       const timeNum = typeof timeValue === 'string' ? parseInt(timeValue) : timeValue;
       if (isNaN(timeNum) || timeNum <= 0) newErrors['learning-time'] = 'Please enter a valid learning time';
     }
-    
     if (!formData.summary.trim()) newErrors['course-summary'] = 'Please fill out this field';
     if (!formData.detail.trim()) newErrors['course-detail'] = 'Please fill out this field';
-    
-    // Cover validation - only required on new courses or if not already present
     if (!coverImageFile && !formData.cover_image_url) {
       newErrors.coverImage = 'Cover image is required';
     }
-    
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -142,7 +302,6 @@ export const useCourseForm = (props?: UseCourseFormProps) => {
 
     setIsLoading(true);
     try {
-      // Upload cover image if a new one was selected
       let coverUrl = formData.cover_image_url || '';
       if (coverImageFile) {
         const fd = new FormData();
@@ -153,16 +312,17 @@ export const useCourseForm = (props?: UseCourseFormProps) => {
         coverUrl = data.url;
       }
 
-      // Prepare course data for API
       const courseData = {
         ...formData,
-        id: courseId, // Include ID for edit mode
+        id: courseId,
         price: typeof formData.price === 'string' && formData.price ? 
           parseFloat(formData.price) : formData.price || 0,
         total_learning_time: typeof formData.total_learning_time === 'string' && formData.total_learning_time ? 
           parseInt(formData.total_learning_time) : formData.total_learning_time || 0,
         status,
         cover_image_url: coverUrl,
+        video_trailer_mux_asset_id: formData.video_trailer_mux_asset_id || null,
+        video_trailer_url: formData.video_trailer_url || null,
         lessons_attributes: lessons.map((lesson, index) => ({
           id: lesson.id,
           name: lesson.name,
@@ -172,11 +332,19 @@ export const useCourseForm = (props?: UseCourseFormProps) => {
             name: subLesson.name,
             order: subIndex,
             video_url: subLesson.videoUrl || subLesson.video_url || '',
+            mux_asset_id: subLesson.mux_asset_id || null,
           })) || [],
         })),
       };
 
-      // Determine API endpoint and method based on mode
+      if (isEditMode) {
+        await handleEditModeVideoCleanupBeforeSave();
+      } else {
+        await handleCreateModeVideoCleanupBeforeSave();
+      }
+
+      validateVideoStateConsistency();
+
       const endpoint = isEditMode 
         ? `/api/admin/courses-update/${courseId}`
         : '/api/admin/courses-create';
@@ -191,34 +359,217 @@ export const useCourseForm = (props?: UseCourseFormProps) => {
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || `Failed to ${isEditMode ? 'update' : 'create'} course`);
 
+      if (isEditMode) {
+        if (newVideoData) {
+          setOriginalVideoData({
+            video_trailer_mux_asset_id: formData.video_trailer_mux_asset_id,
+            video_trailer_url: formData.video_trailer_url,
+          });
+          setNewVideoData(null);
+        }
+        setVideoMarkedForDeletion(null);
+        setNewVideosHistory([]);
+      } else {
+        setVideoData(null);
+        setNewVideosHistory([]);
+      }
+
       const successMessage = isEditMode
         ? `Course ${status === 'published' ? 'published' : 'updated'} successfully`
         : `Course ${status === 'published' ? 'published' : 'saved as draft'} successfully`;
       
       toastSuccess(successMessage);
       
-      // Clean up localStorage in create mode
       if (!isEditMode) {
         localStorage.removeItem('courseFormData');
         localStorage.removeItem('courseLessons');
       }
-      
-      router.push('/admin/dashboard');
+
+      router.push('/admin/dashboard?refresh=true');
     } catch (error: any) {
-      console.error(`Error ${isEditMode ? 'updating' : 'creating'} course:`, error);
       toastError(`Failed to ${isEditMode ? 'update' : 'create'} course`, error.message);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleCancel = () => {
+  const handleCancel = async () => {
+    if (isEditMode) {
+      await handleEditModeCancel(); 
+    } else {
+      await handleCreateModeCancel(); 
+    }
     if (!isEditMode) {
       localStorage.removeItem('courseFormData');
       localStorage.removeItem('courseLessons');
     }
-    router.back();
+    router.push('/admin/dashboard');
   };
+
+  const handleEditModeCancel = async () => {
+    if (newVideosHistory.length > 0) {
+      await cleanupVideos(newVideosHistory, 'cancel in edit mode');
+      setNewVideosHistory([]);
+      setNewVideoData(null);
+      if (originalVideoData?.video_trailer_mux_asset_id && originalVideoData?.video_trailer_url) {
+        updateVideoInForm(originalVideoData.video_trailer_mux_asset_id, originalVideoData.video_trailer_url);
+      } else {
+        clearVideoFromForm();
+      }
+    }
+    if (videoMarkedForDeletion) {
+      if (originalVideoData?.video_trailer_mux_asset_id && originalVideoData?.video_trailer_url) {
+        updateVideoInForm(originalVideoData.video_trailer_mux_asset_id, originalVideoData.video_trailer_url);
+      } else {
+        clearVideoFromForm();
+      }
+      setVideoMarkedForDeletion(null);
+    }
+  };
+
+  const handleCreateModeCancel = () => {
+    if (newVideosHistory.length > 0) {
+      cleanupVideos(newVideosHistory, 'cancel in create mode');
+      setNewVideosHistory([]);
+    }
+    if (videoData) {
+      setVideoData(null);
+    }
+  };
+
+  const handleVideoUploadSuccess = (assetId: string, playbackId: string) => {
+    if (isEditMode) {
+      handleEditModeVideoUpload(assetId, playbackId);
+    } else {
+      handleCreateModeVideoUpload(assetId, playbackId);
+    }
+  };
+
+  const handleEditModeVideoUpload = (assetId: string, playbackId: string) => {
+    const newVideo = { assetId, playbackId };
+    setNewVideoData(newVideo);
+    setNewVideosHistory(prev => [...prev, newVideo]);
+    updateVideoInForm(assetId, playbackId);
+    toastSuccess('Video uploaded successfully! Click "Update" to save changes.');
+  };
+
+  const handleCreateModeVideoUpload = (assetId: string, playbackId: string) => {
+    const newVideo = { assetId, playbackId };
+    setVideoData(newVideo);
+    setNewVideosHistory(prev => [...prev, newVideo]);
+    updateVideoInForm(assetId, playbackId);
+    toastSuccess('Video uploaded successfully!');
+  };
+
+  const handleVideoUploadError = (error: string) => {
+    toastError('Video upload failed', error);
+  };
+
+  const handleVideoDelete = async (assetId?: string | null) => {
+    if (isEditMode) {
+      await handleEditModeVideoDelete();
+    } else {
+      await handleCreateModeVideoDelete(assetId);
+    }
+  };
+
+  const handleEditModeVideoDelete = async () => {
+    if (newVideoData) {
+      await deleteVideoFromMux(newVideoData.assetId, 'unsaved new video in edit mode');
+      setNewVideosHistory(prev => prev.filter(video => video.assetId !== newVideoData.assetId));
+      if (originalVideoData?.video_trailer_mux_asset_id && originalVideoData?.video_trailer_url) {
+        updateVideoInForm(originalVideoData.video_trailer_mux_asset_id, originalVideoData.video_trailer_url);
+      } else {
+        clearVideoFromForm();
+      }
+      setNewVideoData(null);
+      toastSuccess('Reverted to original video');
+    } else if (videoMarkedForDeletion) {
+      if (originalVideoData?.video_trailer_mux_asset_id && originalVideoData?.video_trailer_url) {
+        updateVideoInForm(originalVideoData.video_trailer_mux_asset_id, originalVideoData.video_trailer_url);
+      }
+      setVideoMarkedForDeletion(null);
+      toastSuccess('Video restored');
+    } else if (originalVideoData?.video_trailer_mux_asset_id) {
+      setVideoMarkedForDeletion(originalVideoData.video_trailer_mux_asset_id);
+      clearVideoFromForm();
+      toastSuccess('Video will be removed when you save changes');
+    } else {
+      toastSuccess('No video to remove');
+    }
+  };
+
+  const handleCreateModeVideoDelete = async (assetId?: string | null) => {
+    const targetAssetId = assetId || videoData?.assetId;
+    if (targetAssetId) {
+      setNewVideosHistory(prev => {
+        const updatedHistory = prev.filter(video => video.assetId !== targetAssetId);
+        if (updatedHistory.length > 0) {
+          const latestVideo = updatedHistory[updatedHistory.length - 1];
+          setVideoData(latestVideo);
+          updateVideoInForm(latestVideo.assetId, latestVideo.playbackId);
+        } else {
+          setVideoData(null);
+          clearVideoFromForm();
+        }
+        return updatedHistory;
+      });
+      toastSuccess('Video removed from upload queue');
+    } else {
+      toastSuccess('No video to remove');
+    }
+  };
+
+  const [videoUploadState, setVideoUploadState] = useState<{
+    isUploading: boolean
+    progress: number
+    error: string | null
+    success: boolean
+    currentAssetId?: string | null
+  }>({
+    isUploading: false,
+    progress: 0,
+    error: null,
+    success: false,
+    currentAssetId: null
+  })
+
+  const handleVideoUploadStateChange = useCallback((uploadState: {
+    isUploading: boolean
+    progress: number
+    error: string | null
+    success: boolean
+    currentAssetId?: string | null
+  }) => {
+    setVideoUploadState(prev => {
+      if (prev.isUploading !== uploadState.isUploading ||
+          prev.progress !== uploadState.progress ||
+          prev.error !== uploadState.error ||
+          prev.success !== uploadState.success ||
+          prev.currentAssetId !== uploadState.currentAssetId) {
+        return uploadState;
+      }
+      return prev;
+    });
+  }, [])
+
+  const cancelVideoUpload = useCallback(async () => {
+    if (videoUploadState.currentAssetId) {
+      try {
+        await fetch(`/api/mux-delete-asset?assetId=${videoUploadState.currentAssetId}`, {
+          method: 'DELETE',
+        })
+      } catch (error) {
+      }
+    }
+    setVideoUploadState({
+      isUploading: false,
+      progress: 0,
+      error: null,
+      success: false,
+      currentAssetId: null
+    })
+  }, [videoUploadState.currentAssetId])
 
   return {
     formData,
@@ -231,14 +582,28 @@ export const useCourseForm = (props?: UseCourseFormProps) => {
     setCoverPreview,
     errors,
     setErrors,
+    videoData,
+    setVideoData,
+    originalVideoData,
+    setOriginalVideoData: setOriginalVideoDataStable,
+    newVideoData,
+    videoMarkedForDeletion,
     coverRef,
     handleCoverClick,
     handleCoverChange,
+    handleCoverRemove,
     handleInputChange,
+    handlePromoCodeChange,
     validateForm,
     validateNameOnly,
     handleSubmit,
     handleCancel,
     isEditMode,
+    handleVideoUploadSuccess,
+    handleVideoUploadError,
+    handleVideoDelete,
+    videoUploadState,
+    handleVideoUploadStateChange,
+    cancelVideoUpload,
   };
 };
