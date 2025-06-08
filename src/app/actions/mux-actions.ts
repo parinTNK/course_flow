@@ -7,10 +7,10 @@ import { revalidatePath } from 'next/cache'
 export async function createUploadUrl() {
   try {
     const upload = await mux.video.uploads.create({
-      cors_origin: process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
+      cors_origin: '*',
       new_asset_settings: {
-        playback_policy: ['public'],
-        encoding_tier: 'baseline',
+      playback_policy: ['public'],
+      encoding_tier: 'baseline',
       },
     })
 
