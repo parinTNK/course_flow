@@ -7,7 +7,8 @@ import axios from "axios";
 
 export function useCoursesSelect(
   selectedIds: string[],
-  setSelectedIds: (ids: string[]) => void
+  setSelectedIds: (ids: string[]) => void,
+  min_purchase: string,
 ) {
   const { success: toastSuccess, error: toastError } = useCustomToast();
   
@@ -63,12 +64,30 @@ export function useCoursesSelect(
     [selectedIds, setSelectedIds]
   );
 
+  const minPurchase = Number(min_purchase) || 0;
+
+const filteredCoursesList = useMemo(() => {
+  return coursesList
+    .filter((course) => (
+      course.id === ALL_COURSES_ID ||
+      (Number(course.price) >= minPurchase)
+    ))
+    .sort((a, b) => {
+      if (a.id === ALL_COURSES_ID) return -1;
+      if (b.id === ALL_COURSES_ID) return 1;
+      const priceA = Number(a.price ?? Infinity);
+      const priceB = Number(b.price ?? Infinity);
+      return priceA - priceB;
+    });
+}, [coursesList, minPurchase]);
+
   const getSelectedCoursesDisplay = useMemo(() => {
-    return coursesList.filter((c) => selectedIds?.includes(c.id));
-  }, [selectedIds, coursesList]);
+    return filteredCoursesList.filter((c) => selectedIds?.includes(c.id));
+  }, [selectedIds, filteredCoursesList]);
 
   return {
     coursesList,
+    filteredCoursesList,
     error,
     isLoadingCourses,
     handleToggleCourse,
