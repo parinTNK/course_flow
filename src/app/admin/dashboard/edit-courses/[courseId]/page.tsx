@@ -12,6 +12,7 @@ import { useCourseForm } from '@/app/admin/hooks/useCourseForm';
 import { useLessonManagement } from '@/app/admin/hooks/useLessonManagement';
 import StudentSubscriptionWarningModal from '@/app/admin/components/StudentSubscriptionWarningModal';
 import ConfirmationModal from '@/app/admin/components/ConfirmationModal';
+import LoadingSpinner from '../../../../admin/components/LoadingSpinner';
 
 const EditCoursePage = () => {
   const params = useParams();
@@ -164,7 +165,9 @@ const EditCoursePage = () => {
   };
 
   if (isLoading && !initialDataLoaded) {
-    return <div className="flex justify-center items-center h-screen"><p>Loading course data...</p></div>;
+    return <div className="flex justify-center items-center h-screen">
+        <LoadingSpinner text="Loading..." size="md" />
+      </div>
   }
 
   const handleCancelWithCleanup = async () => {
