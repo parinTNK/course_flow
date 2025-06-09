@@ -114,15 +114,15 @@ export default function PaymentPage() {
           (course?.price ?? 0) === 0
             ? "free"
             : promoCode
-            ? `free-by-promoCode:${promoCode}`
-            : "free-by-promoCode";
+            ? "free-by-promoCode"
+            : "free";
         await axios.post("/api/payment/free-purchase", {
           courseId: course?.id,
           userId: user?.user_id,
           courseName: course?.name,
           userName: user?.full_name,
           paymentMethod: paymentMethodLabel,
-          promoCode: promoCode || null,
+          promoCode: promoResult.promoCodeId || null,
         });
         router.push(`/payment/${courseId}/order-completed`);
         return;
@@ -188,7 +188,7 @@ export default function PaymentPage() {
   return (
     <div className="flex flex-col mt-14">
       <Script src="https://cdn.omise.co/omise.js" strategy="afterInteractive" />
-      <main className="pt-20">
+      <main className="md:pt-20">
         <div className="container mx-auto px-4 py-8">
           <div className="max-w-5xl mx-auto">
             <button
@@ -197,10 +197,10 @@ export default function PaymentPage() {
             >
               &larr; Back
             </button>
-            <div className="flex flex-col md:flex-row gap-8 items-start">
+            <div className="flex flex-col md:flex-row gap-8 items-center justify-center">
               {/* Payment Form */}
               <div>
-                <h1 className="text-4xl font-semibold mb-10">
+                <h1 className="md:text-4xl text-2xl font-semibold mb-10">
                   Enter payment info to start <br /> your subscription
                 </h1>
                 <p className="text-gray-500 mb-6 text-[16px]">
@@ -248,8 +248,9 @@ export default function PaymentPage() {
                                   required: "Card number is required",
                                   validate: {
                                     isNumber: (v) =>
-                                      /^\d{13,19}$/.test(v.replace(/\s/g, "")) ||
-                                      "Card number must be 13-19 digits",
+                                      /^\d{13,19}$/.test(
+                                        v.replace(/\s/g, "")
+                                      ) || "Card number must be 13-19 digits",
                                     luhn: (v) =>
                                       luhnCheck(v.replace(/\s/g, "")) ||
                                       "Invalid card number",
@@ -361,8 +362,39 @@ export default function PaymentPage() {
                     )}
                     {/* Free course */}
                     {total === 0 && (
-                      <div className="px-6 border rounded-xl bg-[#F1F2F6] py-6 text-center text-green-600 font-semibold">
-                        No payment information required. This course is free!
+                      <div className="bg-white rounded-2xl shadow px-8 py-10 w-full max-w-md flex flex-col items-center justify-center md:min-h-[420px]">
+                        <div className="relative mb-4">
+                          <div className="w-64 h-36 bg-gray-100 rounded-xl shadow-inner flex flex-col justify-between items-start px-6 py-5">
+                            <div className="w-10 h-6 bg-gray-300 rounded mb-3" />
+                            <div className="w-40 h-4 bg-gray-300 rounded mb-2" />
+                            <div className="flex w-full gap-2">
+                              <div className="w-24 h-3 bg-gray-300 rounded" />
+                              <div className="w-12 h-3 bg-gray-300 rounded" />
+                            </div>
+                            <div className="w-16 h-2 bg-gray-300 rounded mt-2" />
+                          </div>
+                          <div className="absolute -bottom-2 -right-2 bg-white rounded-full p-1 shadow">
+                            <svg
+                              width={28}
+                              height={28}
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              className="text-green-500"
+                            >
+                              <circle cx="12" cy="12" r="12" fill="#34D399" />
+                              <path
+                                d="M7 13l3 3 7-7"
+                                stroke="#fff"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              />
+                            </svg>
+                          </div>
+                        </div>
+                        <div className="text-lg font-semibold text-gray-700">
+                          No credit card needed
+                        </div>
                       </div>
                     )}
                   </div>

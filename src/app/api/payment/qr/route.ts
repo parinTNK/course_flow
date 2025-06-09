@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import Omise from "omise";
 import { validateAndCalculatePayment } from "@/lib/payment";
+import { supabase } from "@/lib/supabaseClient";
+import { getBangkokISOString } from "@/lib/bangkokTime";
 
 const omise = Omise({
   publicKey: process.env.NEXT_PUBLIC_OMISE_KEY,
@@ -33,6 +35,22 @@ export async function POST(req: NextRequest) {
       );
     }
 
+  const { data: existingPayment } = await supabase
+      .from("payments")
+      .select("*")
+      .eq("user_id", userId)
+      .eq("course_id", courseId)
+      .eq("status", "pending")
+      .single();
+
+    if (existingPayment) {
+      console.log(`Found existing pending payment for user ${userId} and course ${courseId}`);
+      return NextResponse.json({
+        success: true,
+        charge: { id: existingPayment.charge_id },
+        qr_image: existingPayment.qr_image,
+      });
+    }
 
     const source = await omise.sources.create({
       type: "promptpay",
@@ -68,10 +86,27 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    await supabase.from("payments").insert([
+      {
+        user_id: userId,
+        course_id: courseId,
+        amount: finalAmount,
+        payment_method: "QR PromptPay",
+        promo_code_id: promoMeta?.id || null,
+        created_at: getBangkokISOString(),
+        updated_at: getBangkokISOString(),
+        charge_id: charge.id,
+        qr_image: charge.source.scannable_code.image.download_uri,
+        status: "pending",
+      }
+    ]);
+
     return NextResponse.json({
       success: true,
       charge,
       qr_image: charge.source.scannable_code.image.download_uri,
+      amount: finalAmount,
+      status: "pending",
       qr_payload: (charge.source.scannable_code as any).data,
     });
   } catch (err: any) {

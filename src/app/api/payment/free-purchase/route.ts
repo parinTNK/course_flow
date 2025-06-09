@@ -14,6 +14,8 @@ export async function POST(req: NextRequest) {
       promoCode,
     } = body;
 
+    
+
     const { data: existingPayment, error: paymentCheckError } = await supabase
       .from("payments")
       .select("id")
@@ -37,6 +39,7 @@ export async function POST(req: NextRequest) {
           updated_at: getBangkokISOString(),
           status: "successful",
           charge_id: null,
+          promo_code_id: promoCode || null,
           failure_message: null,
         },
       ])
