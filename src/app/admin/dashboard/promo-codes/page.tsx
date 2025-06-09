@@ -12,7 +12,7 @@ import ConfirmationModal from "../../components/ConfirmationModal";
 import { usePromoCodes } from "../../hooks/usePromoCodes";
 
 export default function PromoCodesPage() {
-  const codesPerPage = 12;
+  const codesPerPage = 10;
 
   const {
     searchTerm,

@@ -21,6 +21,7 @@ import {
   Course,
 } from "@/types/promoCode";
 import LoadingSpinner from "../components/LoadingSpinner";
+import { IoIosArrowBack } from "react-icons/io";
 
 interface PromoCodeFormViewProps {
   formData: PromoCodeFormData;
@@ -76,9 +77,29 @@ const PromoCodeFormView: React.FC<PromoCodeFormViewProps> = ({
   return (
     <>
       <div className="flex justify-between items-center mb-8 bg-white px-8 py-6 border-b-3 border-gray-200">
-        <h1 className="text-3xl font-semibold text-gray-800">
-          {mode === "edit" ? "Edit Promo code" : "Add Promo code"}
-        </h1>
+        <div className="flex items-center space-x-4">
+          <button
+            type="button"
+            className="cursor-pointer"
+            onClick={handleCancel}
+          >
+            <IoIosArrowBack className="h-7 w-7 text-gray-600" />
+          </button>
+          <h1 className="text-3xl font-semibold flex items-center">
+            {mode === "edit" ? (
+              <>
+                <span className="text-gray-400 font-normal mr-2">
+                  Promo code
+                </span>
+                <span className="text-gray-800 font-semibold">
+                  {formData.code || ""}
+                </span>
+              </>
+            ) : (
+              "Add Promo code"
+            )}
+          </h1>
+        </div>
         <div className="flex items-center space-x-4">
           <ButtonT
             variant="Secondary"
@@ -339,14 +360,17 @@ const PromoCodeFormView: React.FC<PromoCodeFormViewProps> = ({
                               formData.discount_type === DISCOUNT_TYPE_FIXED &&
                               isChecked &&
                               course.id !== ALL_COURSES_ID &&
-                              Number(course.price) < Number(formData.discount_value);
+                              Number(course.price) <
+                                Number(formData.discount_value);
 
                             return (
                               <CommandItem
                                 key={course.id}
                                 value={course.id}
                                 className={`flex items-center px-3 py-2 cursor-pointer hover:bg-gray-50 ${
-                                  isInvalid ? "border border-red-500 bg-red-50" : ""
+                                  isInvalid
+                                    ? "border border-red-500 bg-red-50"
+                                    : ""
                                 }`}
                                 onSelect={() => false}
                               >
