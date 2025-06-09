@@ -3,6 +3,7 @@
 import React from "react";
 import Image from "next/image";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
+import TooltipCell from "./TooltipCell";
 import { FullAssignment } from "@/types/Assignments";
 
 interface AssignmentRowProps {
@@ -20,46 +21,25 @@ const AssignmentRow: React.FC<AssignmentRowProps> = ({
   onDelete,
   formatDate,
 }) => {
-  const renderTooltipCell = (
-    content: string | null | undefined,
-    maxWidth: string = "max-w-[240px]",
-    defaultText = "-"
-  ) => (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <td
-          className={`px-6 py-4 whitespace-nowrap text-sm text-gray-700 truncate ${maxWidth} cursor-default`}
-        >
-          {content || defaultText}
-        </td>
-      </TooltipTrigger>
-      <TooltipContent>{content || defaultText}</TooltipContent>
-    </Tooltip>
-  );
 
   return (
     <tr key={assignment.id} className="hover:bg-gray-50 transition">
 
       {/* Description */}
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 max-w-[240px] truncate cursor-default">
-            {assignment.description || "Untitled"}
-          </td>
-        </TooltipTrigger>
-        <TooltipContent className="break-words max-w-[320px] whitespace-pre-wrap">
-          {assignment.description || "Untitled"}
-        </TooltipContent>
-      </Tooltip>
+      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 max-w-[240px] truncate cursor-default">
+        {assignment.description || "Untitled"}
+      </td>
 
       {/* Course Name */}
-      {renderTooltipCell(assignment.course_name, "max-w-[180px]")}
+      <TooltipCell text={assignment.course_name} maxWidth="max-w-[180px]" />
 
       {/* Lesson Name */}
-      {renderTooltipCell(assignment.lesson_name, "max-w-[160px]")}
+      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 truncate max-w-[160px]">
+        {assignment.lesson_name || "-"}
+      </td>
 
       {/* Sub-lesson Name */}
-      {renderTooltipCell(assignment.sub_lesson_name, "max-w-[200px]")}
+      <TooltipCell text={assignment.sub_lesson_name} maxWidth="max-w-[200px]" />
 
       {/* Created At */}
       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
