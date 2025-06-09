@@ -36,11 +36,8 @@ export async function GET(req: NextRequest) {
         )
       `, { count: 'exact' })
       .ilike('description', `%${search}%`)
+      .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1);
-
-    console.log('Supabase data:', data);
-    console.log('Supabase error:', error);
-    console.log('Supabase count:', count);
 
     if (error) {
       console.error('Error fetching assignments:', error);
