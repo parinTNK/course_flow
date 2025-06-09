@@ -65,7 +65,7 @@ export default function PaymentCompletedPage() {
           <ButtonT
             variant="primary"
             className="w-full cursor-pointer"
-            onClick={() => router.push(`/course-learning/${courseId}/learning`)}
+            onClick={() => router.push(`/course-learning/${courseId}`)}
           >
             Start Learning
           </ButtonT>

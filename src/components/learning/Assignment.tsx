@@ -218,7 +218,7 @@ export default function Assignment() {
         setAutoSaveStatus("error");
         error("Auto-save failed", "Could not auto-save your answer.");
       }
-    }, 30000);
+    }, 5000);
 
     return () => {
       if (autoSaveTimeout.current) clearTimeout(autoSaveTimeout.current);

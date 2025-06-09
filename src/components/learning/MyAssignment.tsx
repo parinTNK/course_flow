@@ -112,7 +112,7 @@ export default function MyAssignment({
 
 const handleOpenInCourse = (e: React.MouseEvent) => {
   e.preventDefault();
-  router.push(`/course-learning/${courseId}/learning/${subLessonId}`);
+  router.push(`/course-learning/${courseId}?subLessonId=${subLessonId}`);
 };
 
   const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -153,7 +153,7 @@ const handleOpenInCourse = (e: React.MouseEvent) => {
         setAutoSaveStatus("error");
         toastError("Auto-save failed", "Could not auto-save your answer.");
       }
-    }, 30000);
+    }, 5000);
 
     return () => {
       if (autoSaveTimeout.current) clearTimeout(autoSaveTimeout.current);
@@ -272,7 +272,7 @@ const handleOpenInCourse = (e: React.MouseEvent) => {
               </ButtonT>
             )}
             <a
-              href={`/course-learning/${courseId}/learning/${subLessonId}`}
+              href={`/course-learning/${courseId}?subLessonId=${subLessonId}`}
               className="text-[#2957c2] text-base mt-3 sm:mt-2 w-fit font-semibold cursor-pointer"
               onClick={handleOpenInCourse}
             >

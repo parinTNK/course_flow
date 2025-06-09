@@ -41,7 +41,7 @@ export default function CourseSidebar({
 
       {isAuthenticated ? (
         isSubscribed ? (
-          <Link href={`/course-learning/${courseId}/learning`} className="block w-full">
+          <Link href={`/course-learning/${courseId}`} className="block w-full">
             <ButtonT variant="primary" className="w-full py-1">
               Start Learning
             </ButtonT>

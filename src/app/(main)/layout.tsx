@@ -15,14 +15,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   const profilePage = pathname === '/profile'
   const paymentPage = pathname.startsWith('/payment')
   const myassignmentPage = pathname.startsWith('/my-assignments')
-  const coursedetailpage = pathname.startsWith('/course-learning')  
+  // Removed coursedetailpage condition to show NavBar and Footer on course-learning pages
 
   return (
       <div className={`${geistSans.variable} ${geistMono.variable} antialiased flex flex-col min-h-screen`}>
-        { !profilePage && !paymentPage && !myassignmentPage && !coursedetailpage && <NavBar /> }
+        { !profilePage && !paymentPage && !myassignmentPage && <NavBar /> }
           <div className="flex-grow">{children}</div>
         <Toaster position="bottom-right" richColors />
-        { !profilePage && !paymentPage && !myassignmentPage && !coursedetailpage && <Footer /> }
+        { !profilePage && !paymentPage && !myassignmentPage && <Footer /> }
       </div>
   )
 }

@@ -7,7 +7,8 @@ import { supabase } from "@/lib/supabaseClient";
 import { useParams, useRouter } from "next/navigation";
 import { useProgress } from "./context/ProgressContext";
 import { ChevronDownIcon } from "lucide-react";
-
+import ProgressIcon from "./ProgressIcon";
+import LoadingSpinner from "@/app/admin/components/LoadingSpinner";
 
 type WatchStatus = "not_started" | "in_progress" | "completed";
 
@@ -17,6 +18,9 @@ interface SubLesson {
   video_url: string;
   order_no: number;
   watch_status?: WatchStatus;
+  mux_asset_id?: string;
+  is_ready?: boolean;
+  duration?: number;
 }
 
 interface Lesson {
@@ -30,9 +34,10 @@ interface Lesson {
 interface SidebarProps {
   setLessons: (lessons: Lesson[]) => void;
   scrollToVideo: () => void;
+  isAutoResumeComplete?: boolean;
 }
 
-export default function Sidebar({ setLessons: setParentLessons, scrollToVideo }: SidebarProps) {
+export default function Sidebar({ setLessons: setParentLessons, scrollToVideo, isAutoResumeComplete = false }: SidebarProps) {
   const { courseId } = useParams();
   const { currentLesson, setCurrentLesson } = useLearning();
   const [loading, setLoading] = useState(true);
@@ -40,17 +45,14 @@ export default function Sidebar({ setLessons: setParentLessons, scrollToVideo }:
   const [courseProgress, setCourseProgress] = useState(0);
   const [courseTitle, setCourseTitle] = useState("");
   const [courseDescription, setCourseDescription] = useState("");
-  const { progressUpdated } = useProgress();
+  const [expandedSections, setExpandedSections] = useState<string[]>([]);
+  const { progressUpdated, lessonStatusUpdates } = useProgress();
 
-  const getStatusIcon = (status?: WatchStatus) => {
-    switch (status) {
-      case "completed":
-        return <img src="/Vector-2.svg" alt="completed" className="w-5 h-5" />;
-      case "in_progress":
-        return <img src="/Ellipse 9.svg" alt="in progress" className="w-4 h-4" />;
-      default:
-        return <img src="/Frame-7.svg" alt="not started" className="w-5 h-5" />;
-    }
+  const getStatusIcon = (subLesson: SubLesson) => {
+    // Check for immediate status update first
+    const immediateStatus = lessonStatusUpdates[subLesson.id];
+    const status = immediateStatus || subLesson.watch_status || "not_started";
+    return <ProgressIcon status={status as WatchStatus} size={20} />;
   };
 
   useEffect(() => {
@@ -79,7 +81,10 @@ export default function Sidebar({ setLessons: setParentLessons, scrollToVideo }:
               id,
               title,
               video_url,
-              order_no
+              order_no,
+              mux_asset_id,
+              is_ready,
+              duration
             )
           `)
           .eq('course_id', courseId)
@@ -91,8 +96,8 @@ export default function Sidebar({ setLessons: setParentLessons, scrollToVideo }:
         }));
 
         const { data: progressData } = await supabase
-          .from("lesson_progress")
-          .select("sub_lesson_id, status")
+          .from("sub_lesson_progress")
+          .select("sub_lesson_id, status, watch_time")
           .eq("user_id", user.id);
 
         const lessonsWithStatus = sortedLessons.map(lesson => ({
@@ -108,6 +113,7 @@ export default function Sidebar({ setLessons: setParentLessons, scrollToVideo }:
 
         setLocalLessons(lessonsWithStatus);
         setParentLessons(lessonsWithStatus);
+        console.log("📚 Sidebar: Lessons loaded and passed to parent:", lessonsWithStatus.length, "lessons");
 
         const allSubLessons = lessonsWithStatus.flatMap(l => l.sub_lessons);
         const completedCount = allSubLessons.filter(s => s.watch_status === "completed").length;
@@ -120,20 +126,112 @@ export default function Sidebar({ setLessons: setParentLessons, scrollToVideo }:
     };
 
     fetchCourseAndLessons();
-  }, [courseId, setParentLessons, progressUpdated]);
+  }, [courseId, setParentLessons]);
 
-const router = useRouter();
+  useEffect(() => {
+    if (progressUpdated && localLessons.length > 0) {
+      const updateProgressOnly = async () => {
+        try {
+          const { data: { user } } = await supabase.auth.getUser();
+          if (!user) return;
 
-const handleSubLessonClick = (subLesson: SubLesson) => {
-  setCurrentLesson(subLesson);
-  router.push(`/course-learning/${courseId}/learning/${subLesson.id}`);
-  setTimeout(() => {
-    scrollToVideo();
-  }, 150);
-};
+          const { data: progressData } = await supabase
+            .from("sub_lesson_progress")
+            .select("sub_lesson_id, status, watch_time")
+            .eq("user_id", user.id);
+
+          const updatedLessons = localLessons.map(lesson => ({
+            ...lesson,
+            sub_lessons: lesson.sub_lessons.map(sub => {
+              const match = progressData?.find(p => p.sub_lesson_id === sub.id);
+              return {
+                ...sub,
+                watch_status: match?.status || "not_started",
+              };
+            }),
+          }));
+
+          setLocalLessons(updatedLessons);
+          setParentLessons(updatedLessons);
+
+          const allSubLessons = updatedLessons.flatMap(l => l.sub_lessons);
+          const completedCount = allSubLessons.filter(sub => {
+            const immediateStatus = lessonStatusUpdates[sub.id];
+            const status = immediateStatus || sub.watch_status;
+            return status === "completed";
+          }).length;
+          setCourseProgress(Math.round((completedCount / allSubLessons.length) * 100));
+
+        } catch (error) {
+          console.error("Error updating progress:", error);
+        }
+      };
+
+      updateProgressOnly();
+    }
+  }, [progressUpdated, localLessons.length, setParentLessons]);
+
+  useEffect(() => {
+    if (localLessons.length > 0) {
+      const allSubLessons = localLessons.flatMap(l => l.sub_lessons);
+      const completedCount = allSubLessons.filter(sub => {
+        const immediateStatus = lessonStatusUpdates[sub.id];
+        const status = immediateStatus || sub.watch_status;
+        return status === "completed";
+      }).length;
+      setCourseProgress(Math.round((completedCount / allSubLessons.length) * 100));
+    }
+  }, [lessonStatusUpdates, localLessons]);
 
 
-  if (loading) return <div className="p-4">Loading...</div>;
+  useEffect(() => {
+    if (currentLesson && localLessons.length > 0 && isAutoResumeComplete) {
+      console.log("🎯 Auto-expanding accordion for lesson:", currentLesson.title);
+      const parentLesson = localLessons.find(lesson => 
+        lesson.sub_lessons.some(sub => sub.id === currentLesson.id)
+      );
+      
+      if (parentLesson && !expandedSections.includes(parentLesson.id)) {
+        console.log("📂 Expanding section:", parentLesson.title);
+        setExpandedSections(prev => [...prev, parentLesson.id]);
+      }
+    }
+  }, [currentLesson, localLessons, expandedSections, isAutoResumeComplete]);
+
+  const router = useRouter();
+
+  const handleSubLessonClick = (subLesson: SubLesson) => {
+    if (currentLesson?.id === subLesson.id) {
+      scrollToVideo();
+      return;
+    }
+
+    setCurrentLesson(subLesson);
+
+    const newUrl = `/course-learning/${courseId}?subLessonId=${subLesson.id}`;
+    window.history.replaceState(
+      { ...window.history.state, as: newUrl, url: newUrl },
+      '',
+      newUrl
+    );
+
+    setTimeout(() => {
+      scrollToVideo();
+    }, 50);
+  };
+
+  if (loading) {
+    return (
+      <div className="w-full md:w-64 bg-white border-r p-4 md:min-h-screen">
+        <div className="flex items-center justify-center py-8">
+          <div className="text-center">
+            <LoadingSpinner size="md" />
+            <p className="text-sm text-gray-500 mt-2">Loading course content...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full md:w-64 bg-white border-r p-4 md:min-h-screen">
@@ -150,7 +248,12 @@ const handleSubLessonClick = (subLesson: SubLesson) => {
         <span className="text-xs text-gray-500">{courseProgress}% Complete</span>
       </div>
 
-      <Accordion.Root type="multiple" className="space-y-2">
+      <Accordion.Root 
+        type="multiple" 
+        className="space-y-2"
+        value={expandedSections}
+        onValueChange={setExpandedSections}
+      >
         {localLessons.map((lesson, index) => (
           <Accordion.Item key={lesson.id} value={lesson.id} className="border-b pb-2">
             <Accordion.Header>
@@ -175,7 +278,7 @@ const handleSubLessonClick = (subLesson: SubLesson) => {
                       : "text-gray-700"
                   }`}
                 >
-                  <span className="mr-2">{getStatusIcon(subLesson.watch_status)}</span>
+                  <span className="mr-2">{getStatusIcon(subLesson)}</span>
                   {subLesson.title}
                 </button>
               ))}

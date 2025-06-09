@@ -62,6 +62,7 @@ async function handleAssetReady(event: any) {
   try {
     const assetId = event.data.id
     const playbackIds = event.data.playback_ids
+    const duration = event.data.duration // Duration in seconds
     
     if (!playbackIds || playbackIds.length === 0) {
       console.error('No playback IDs found for asset:', assetId)
@@ -77,19 +78,41 @@ async function handleAssetReady(event: any) {
 
     const supabase_client = supabase
     
-    // Update course with playback ID
-    const { error } = await supabase_client
+    // Check if this is a course trailer or sub-lesson video
+    // First try to update course trailer
+    const { data: courseData, error: courseError } = await supabase_client
       .from('courses')
       .update({
         video_trailer_url: publicPlaybackId,
         updated_at: new Date().toISOString(),
       })
       .eq('video_trailer_mux_asset_id', assetId)
+      .select()
 
-    if (error) {
-      console.error('Failed to update course with playback ID:', error)
-    } else {
+    if (courseError) {
+      console.error('Failed to update course with playback ID:', courseError)
+    } else if (courseData && courseData.length > 0) {
       console.log('Successfully updated course with playback ID:', publicPlaybackId)
+      return
+    }
+
+    // If no course updated, try to update sub-lesson
+    const { data: subLessonData, error: subLessonError } = await supabase_client
+      .from('sub_lessons')
+      .update({
+        is_ready: true,
+        duration: duration,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('mux_asset_id', assetId)
+      .select()
+
+    if (subLessonError) {
+      console.error('Failed to update sub-lesson with duration:', subLessonError)
+    } else if (subLessonData && subLessonData.length > 0) {
+      console.log('Successfully updated sub-lesson with duration:', duration, 'seconds')
+    } else {
+      console.log('No matching course or sub-lesson found for asset:', assetId)
     }
   } catch (error) {
     console.error('Error handling asset ready:', error)

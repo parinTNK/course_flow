@@ -32,6 +32,9 @@ interface SubLesson {
   is_completed?: boolean;
   assignment?: Assignment;
   submission?: Submission;
+  mux_asset_id?: string;
+  is_ready?: boolean;
+  duration?: number;
 }
 
 interface LearningContextType {

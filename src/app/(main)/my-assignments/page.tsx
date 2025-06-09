@@ -235,7 +235,7 @@ export default function MyAssignmentsPage() {
       if (dirtyAssignments.size > 0 && hasChanged) {
         saveAllDrafts();
       }
-    }, 30000);
+    }, 5000);
 
     return () => clearInterval(interval);
   }, [dirtyAssignments, answers, lastSavedAnswers, saveAllDrafts]);
