@@ -8,9 +8,8 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-console.log('[upload-cover] route handler start');
 export async function POST(req: NextRequest) {
-  console.log('[upload-cover] request method:', req.method);
+  console.log('[upload-cover] POST request started');
   try {
     const formData = await req.formData();
     console.log('[upload-cover] formData entries:', Array.from(formData.entries()));
