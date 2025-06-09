@@ -7,7 +7,7 @@ export async function POST(req: NextRequest) {
 
   if (
     (event.key === "charge.complete" || event.key === "charge.create") &&
-    event.data.status === "successful"
+    (event.data.status === "successful" || event.data.status === "failed")
   ) {
     const charge = event.data;
     const paymentDate = getBangkokISOString(charge.paid_at);
@@ -33,6 +33,7 @@ export async function POST(req: NextRequest) {
           status: charge.status,
           charge_id: charge.id,
           failure_message: charge.failure_message || null,
+          promo_code_id: charge.metadata.promoId || null,
         },
       ])
       .select()
@@ -46,28 +47,31 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { error: subscriptionError } = await supabase
-      .from("subscriptions")
-      .upsert(
-        [
-          {
-            user_id: charge.metadata.userId,
-            course_id: charge.metadata.courseId,
-            subscription_date: paymentDate,
-            progress: 0,
-            rating: null,
-            review: null,
-          },
-        ],
-        { onConflict: "user_id,course_id" }
-      );
+    if (event.data.status === "successful") {
+      const { error: subscriptionError } = await supabase
+        .from("subscriptions")
+        .upsert(
+          [
+            {
+              user_id: charge.metadata.userId,
+              course_id: charge.metadata.courseId,
+              subscription_date: paymentDate,
+              progress: 0,
+              rating: null,
+              review: null,
+              payment_id: paymentData.id
+            },
+          ],
+          { onConflict: "user_id,course_id" }
+        );
 
-    if (subscriptionError) {
-      console.error("DB insert error (subscriptions):", subscriptionError);
-      return NextResponse.json(
-        { success: false, error: subscriptionError.message },
-        { status: 502 }
-      );
+      if (subscriptionError) {
+        console.error("DB insert error (subscriptions):", subscriptionError);
+        return NextResponse.json(
+          { success: false, error: subscriptionError.message },
+          { status: 502 }
+        );
+      }
     }
 
     return NextResponse.json({ success: true });
