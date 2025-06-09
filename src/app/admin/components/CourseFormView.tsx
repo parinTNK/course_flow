@@ -51,6 +51,7 @@ interface CourseFormViewProps {
   cancelVideoUpload: () => Promise<void>;
   onDeleteCourse?: (id: string) => void;
   handlePromoCodeChange?: (promoCodeId: string | null) => void;
+  updatePromoMinPurchase?: (minPurchase: number | null) => void;
 }
 
 export const CourseFormView: React.FC<CourseFormViewProps> = ({
@@ -59,7 +60,7 @@ export const CourseFormView: React.FC<CourseFormViewProps> = ({
   handleAddLesson, handleDeleteLesson, handleEditLesson, handleDragEndLessons,
   handleVideoUploadSuccess, handleVideoUploadError, handleVideoDelete, videoMarkedForDeletion, dndSensors,
   videoUploadState, handleVideoUploadStateChange, cancelVideoUpload, onDeleteCourse,
-  handlePromoCodeChange,
+  handlePromoCodeChange, updatePromoMinPurchase,
 }) => {
   const router = useRouter();
   
@@ -196,6 +197,7 @@ export const CourseFormView: React.FC<CourseFormViewProps> = ({
                 courseId={formData.id}
                 mode={formData.id ? 'edit' : 'create'}
                 onChange={handlePromoCodeChange}
+                onMinPurchaseChange={updatePromoMinPurchase}
                 coursePrice={parseFloat(String(formData.price)) || 0}
               />
             </div>

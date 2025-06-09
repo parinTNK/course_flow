@@ -49,6 +49,7 @@ const EditCoursePage = () => {
     setOriginalVideoData,
     videoMarkedForDeletion,
     handlePromoCodeChange,
+    updatePromoMinPurchase,
     videoUploadState,
     handleVideoUploadStateChange,
     cancelVideoUpload,
@@ -275,6 +276,7 @@ const EditCoursePage = () => {
           handleVideoUploadStateChange={handleVideoUploadStateChange}
           cancelVideoUpload={cancelVideoUpload}
           handlePromoCodeChange={handlePromoCodeChange}
+          updatePromoMinPurchase={updatePromoMinPurchase}
         />
       ) : (
         <LessonFormView

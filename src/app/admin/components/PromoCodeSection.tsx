@@ -13,6 +13,7 @@ interface PromoCodeSectionProps {
   courseId?: string | null;
   mode?: 'create' | 'edit';
   onChange?: (promoCodeId: string | null) => void;
+  onMinPurchaseChange?: (minPurchase: number | null) => void;
   coursePrice?: number;
 }
 
@@ -21,6 +22,7 @@ export const PromoCodeSection: React.FC<PromoCodeSectionProps> = ({
   courseId = null,
   mode = 'create',
   onChange,
+  onMinPurchaseChange,
   coursePrice = 0
 }) => {
   const [isActive, setIsActive] = useState(!!selectedPromoCodeId);
@@ -37,11 +39,19 @@ export const PromoCodeSection: React.FC<PromoCodeSectionProps> = ({
       const promo = promoCodes.find(p => p.id === selectedPromoCodeId);
       setSelectedPromo(promo || null);
       setIsActive(true);
+      
+      const selectedPromoCodes = promoCodes.filter(p => p.id === selectedPromoCodeId);
+      const maxMinPurchase = selectedPromoCodes.length > 0 
+        ? Math.max(...selectedPromoCodes.map(p => p.min_purchase_amount || 0))
+        : null;
+      
+      onMinPurchaseChange?.(maxMinPurchase);
     } else {
       setSelectedPromo(null);
       setIsActive(false);
+      onMinPurchaseChange?.(null);
     }
-  }, [selectedPromoCodeId, promoCodes]);
+  }, [selectedPromoCodeId, promoCodes, onMinPurchaseChange]);
 
   const fetchPromoCodes = async () => {
     setLoading(true);
@@ -77,6 +87,7 @@ export const PromoCodeSection: React.FC<PromoCodeSectionProps> = ({
     if (!newIsActive) {
       setSelectedPromo(null);
       onChange?.(null);
+      onMinPurchaseChange?.(null);
     }
   };
 
@@ -87,9 +98,12 @@ export const PromoCodeSection: React.FC<PromoCodeSectionProps> = ({
       const promo = promoCodes.find(p => p.id === promoCodeId);
       setSelectedPromo(promo || null);
       onChange?.(promoCodeId);
+      
+      onMinPurchaseChange?.(promo?.min_purchase_amount || null);
     } else {
       setSelectedPromo(null);
       onChange?.(null);
+      onMinPurchaseChange?.(null);
     }
   };
 
@@ -108,6 +122,14 @@ export const PromoCodeSection: React.FC<PromoCodeSectionProps> = ({
             Apply Promo code
           </label>
         </div>
+
+        {/* Warning message for existing courses with promocode minimum higher than current price */}
+        {isActive && selectedPromo && selectedPromo.min_purchase_amount && 
+         coursePrice > 0 && coursePrice < selectedPromo.min_purchase_amount && mode === 'edit' && (
+          <div className="bg-yellow-50 border border-yellow-400 text-yellow-700 px-4 py-3 rounded text-sm">
+            <strong>Warning:</strong> Current course price ({coursePrice.toLocaleString()} THB) is below the minimum purchase amount required for this promocode ({selectedPromo.min_purchase_amount.toLocaleString()} THB). Please adjust the course price to at least {selectedPromo.min_purchase_amount.toLocaleString()} THB.
+          </div>
+        )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
           <div className="space-y-2">
