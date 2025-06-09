@@ -240,9 +240,7 @@ export const useCourseForm = (props?: UseCourseFormProps) => {
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { id, value } = e.target;
-    if (errors[id]) {
-      setErrors((prevErrors) => ({ ...prevErrors, [id]: '' }));
-    }
+    
     const keyMap: Record<string, keyof CourseFormData> = {
       'course-name': 'name',
       'price': 'price',
@@ -251,11 +249,93 @@ export const useCourseForm = (props?: UseCourseFormProps) => {
       'course-detail': 'detail',
     };
     const formKey = keyMap[id] || id as keyof CourseFormData;
+    
     _setFormData((prevData) => ({ ...prevData, [formKey]: value }));
+    
+    if (id === 'price') {
+      if (selectedPromoMinPurchase !== null) {
+        const priceNum = parseFloat(value) || 0;
+        if (priceNum > 0 && priceNum < selectedPromoMinPurchase) {
+          setErrors((prevErrors) => {
+            const newError = `Course price must be at least ${selectedPromoMinPurchase.toLocaleString()} THB (minimum for selected promocode)`;
+            if (prevErrors[id] !== newError) {
+              return { ...prevErrors, [id]: newError };
+            }
+            return prevErrors;
+          });
+        } else if (priceNum >= selectedPromoMinPurchase) {
+          setErrors((prevErrors) => {
+            if (prevErrors[id] && prevErrors[id].includes('minimum for selected promocode')) {
+              return { ...prevErrors, [id]: '' };
+            }
+            return prevErrors;
+          });
+        }
+      } else {
+        setErrors((prevErrors) => {
+          if (prevErrors[id]) {
+            return { ...prevErrors, [id]: '' };
+          }
+          return prevErrors;
+        });
+      }
+    } else {
+      setErrors((prevErrors) => {
+        if (prevErrors[id]) {
+          return { ...prevErrors, [id]: '' };
+        }
+        return prevErrors;
+      });
+    }
   };
 
   const handlePromoCodeChange = (promoCodeId: string | null) => {
     _setFormData((prevData) => ({ ...prevData, promo_code_id: promoCodeId }));
+    
+    if (!promoCodeId) {
+      setErrors((prevErrors) => {
+        const currentError = prevErrors['price'];
+        if (currentError && currentError.includes('minimum for selected promocode')) {
+          return { ...prevErrors, ['price']: '' };
+        }
+        return prevErrors;
+      });
+    }
+  };
+
+  const [selectedPromoMinPurchase, setSelectedPromoMinPurchase] = useState<number | null>(null);
+
+  const updatePromoMinPurchase = (minPurchase: number | null) => {
+    if (selectedPromoMinPurchase !== minPurchase) {
+      setSelectedPromoMinPurchase(minPurchase);
+      
+      if (minPurchase !== null) {
+        const currentPrice = typeof formData.price === 'string' ? parseFloat(formData.price) : formData.price;
+        if (currentPrice && currentPrice > 0 && currentPrice < minPurchase) {
+          setErrors((prevErrors) => {
+            const newError = `Course price must be at least ${minPurchase.toLocaleString()} THB (minimum for selected promocode)`;
+            if (prevErrors['price'] !== newError) {
+              return { ...prevErrors, ['price']: newError };
+            }
+            return prevErrors;
+          });
+        } else if (currentPrice && currentPrice >= minPurchase) {
+          setErrors((prevErrors) => {
+            if (prevErrors['price'] && prevErrors['price'].includes('minimum for selected promocode')) {
+              return { ...prevErrors, ['price']: '' };
+            }
+            return prevErrors;
+          });
+        }
+      } else {
+        setErrors((prevErrors) => {
+          if (prevErrors['price'] && prevErrors['price'].includes('minimum for selected promocode')) {
+            return { ...prevErrors, ['price']: '' };
+          }
+          return prevErrors;
+        });
+      }
+    }
   };
   
   const validateForm = () => {
@@ -266,6 +346,12 @@ export const useCourseForm = (props?: UseCourseFormProps) => {
     else {
       const priceNum = typeof priceValue === 'string' ? parseFloat(priceValue) : priceValue;
       if (isNaN(priceNum) || priceNum < 0) newErrors['price'] = 'Please enter a valid price';
+      
+      if (selectedPromoMinPurchase !== null && formData.promo_code_id) {
+        if (priceNum > 0 && priceNum < selectedPromoMinPurchase) {
+          newErrors['price'] = `Course price must be at least ${selectedPromoMinPurchase.toLocaleString()} THB (minimum for selected promocode)`;
+        }
+      }
     }
     const timeValue = typeof formData.total_learning_time === 'string' ? 
       formData.total_learning_time.trim() : formData.total_learning_time;
@@ -298,7 +384,17 @@ export const useCourseForm = (props?: UseCourseFormProps) => {
   ) => {
     e.preventDefault();
     const isValid = validateNameOnlyFlag ? validateNameOnly() : validateForm();
-    if (!isValid) return;
+    if (!isValid) {
+      // Check if the validation failed due to promocode minimum purchase requirement
+      if (selectedPromoMinPurchase !== null && formData.promo_code_id) {
+        const priceValue = typeof formData.price === 'string' ? formData.price.trim() : formData.price;
+        const priceNum = typeof priceValue === 'string' ? parseFloat(priceValue) : priceValue;
+        if (priceNum > 0 && priceNum < selectedPromoMinPurchase) {
+          toastError('Cannot save course', `Course price must be at least ${selectedPromoMinPurchase.toLocaleString()} THB for the selected promocode`);
+        }
+      }
+      return;
+    }
 
     setIsLoading(true);
     try {
@@ -594,6 +690,7 @@ export const useCourseForm = (props?: UseCourseFormProps) => {
     handleCoverRemove,
     handleInputChange,
     handlePromoCodeChange,
+    updatePromoMinPurchase,
     validateForm,
     validateNameOnly,
     handleSubmit,

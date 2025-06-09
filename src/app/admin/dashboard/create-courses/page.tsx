@@ -28,6 +28,7 @@ function CreateCourse() {
     handleVideoDelete,
     videoMarkedForDeletion,
     handlePromoCodeChange,
+    updatePromoMinPurchase,
     videoUploadState,
     handleVideoUploadStateChange,
     cancelVideoUpload,
@@ -92,6 +93,7 @@ function CreateCourse() {
           handleVideoUploadStateChange={handleVideoUploadStateChange}
           cancelVideoUpload={cancelVideoUpload}
           handlePromoCodeChange={handlePromoCodeChange}
+          updatePromoMinPurchase={updatePromoMinPurchase}
         />
       ) : (
         <LessonFormView
