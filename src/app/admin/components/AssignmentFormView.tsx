@@ -1,7 +1,7 @@
 import React from "react";
-import { Input } from "@/components/ui/input";
 import { ButtonT } from "@/components/ui/ButtonT";
 import { Label } from "@/components/ui/label";
+import { IoIosArrowBack } from "react-icons/io";
 import { 
   Tooltip, 
   TooltipContent, 
@@ -58,15 +58,16 @@ export default function AssignmentFormView({
           {showBackButton && (
             <button
               onClick={onBack}
-              className="text-2xl text-[#9AA1B9] font-semibold hover:text-gray-900"
+              className="flex items-center gap-2 text-3xl text-[#9AA1B9] font-semibold hover:text-gray-900 cursor-pointer"
             >
-              ← Assignment
+              <IoIosArrowBack className="h-7 w-7 text-gray-600" />
+              <span>Assignment</span>
             </button>
           )}
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
-                <h1 className="text-2xl font-semibold text-black max-w-[500px] truncate cursor-help">
+                <h1 className="text-3xl font-semibold text-black max-w-[500px] truncate">
                   {heading ?? 
                     (mode === "edit" 
                       ? formData.description || "Edit Assignment" 

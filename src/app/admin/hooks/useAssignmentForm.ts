@@ -3,6 +3,7 @@ import { useRouter } from "next/navigation";
 import { useCustomToast } from "@/components/ui/CustomToast";
 import { supabase } from "@/lib/supabaseClient";
 import { getBangkokISOString } from "@/lib/bangkokTime";
+import { escape } from "querystring";
 
 interface AssignmentFormData {
   description: string;
@@ -237,23 +238,33 @@ export function useAssignmentForm(mode: "create" | "edit" = "create", assignment
     setIsLoading(false);
   };
 
-  const handleDeleteAssignment = async () => {
+  const handleDeleteAssignment = async (force = false) => {
     if (!assignmentId) return;
     
-    const { error } = await supabase
-      .from("assignments")
-      .delete()
-      .eq("id", assignmentId);
+    try {
+      const url = force
+        ? `/api/admin/assignments-delete/${assignmentId}/force`
+        : `/api/admin/assignments-delete/${assignmentId}`;
 
-    if (error) {
-      toastError("Failed to delete assignment.");
-      return;
+      const res = await fetch(url, { method: "DELETE" });
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Delete failed");
+      }
+
+      
+
+      if (force) {
+        toastSuccess("Assignment deleted successfully", "The assignment and its submissions were removed.");
+      } else {
+        toastSuccess("Assignment deleted successfully", "The assignment has been removed.");
+      }
+      router.push("/admin/dashboard/assignments");
+    } catch (err) {
+      toastError("Failed to delete assignment.", (err as Error).message);
     }
-
-    toastSuccess("Assignment deleted successfully!");
-    router.push("/admin/dashboard/assignments");
   };
-
 
   return {
     formData,

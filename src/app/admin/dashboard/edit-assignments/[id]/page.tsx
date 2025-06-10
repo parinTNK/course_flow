@@ -52,6 +52,26 @@ export default function EditAssignmentPage() {
     if (assignmentId) fetchAssignment();
   }, [assignmentId, setFormData]);
 
+  const [showConfirmForceDeleteModal, setShowConfirmForceDeleteModal] = useState(false);
+
+  const checkSubmissionAndHandleDelete = async () => {
+    try {
+      const res = await fetch(`/api/admin/assignment-has-submission?id=${assignmentId}`);
+      const result = await res.json();
+
+      // checking submission assignment
+      if (result.hasSubmission) {
+        setShowDeleteModal(false);
+        setShowConfirmForceDeleteModal(true);
+      } else {
+        await handleDeleteAssignment();
+        router.push("/admin/dashboard/assignments");
+      }
+    } catch (error) {
+      console.error("Failed to check submission:", error);
+    }
+  };
+
   return (
     <>
       <AssignmentFormView
@@ -76,10 +96,36 @@ export default function EditAssignmentPage() {
           isOpen={showDeleteModal}
           title="Confirmation"
           message="Are you sure you want to delete this assignment?"
-          confirmText="Yes, delete"
-          cancelText="Cancel"
-          onConfirm={handleDeleteAssignment}
+          confirmText={
+            <span className="whitespace-nowrap">
+              Yes, want to delete the assignment
+            </span>
+          }
+          cancelText={
+          <span className="whitespace-nowrap">
+            No, keep it
+            </span>
+          }
+          onConfirm={checkSubmissionAndHandleDelete}
           onClose={() => setShowDeleteModal(false)}
+          customModalSize="w-fit wax-w-full"
+        />
+      )}
+
+      {showConfirmForceDeleteModal && (
+        <ConfirmationModal
+          isOpen={showConfirmForceDeleteModal}
+          title="This assignment has submissions"
+          message={
+            <span className="text-red-600">
+              Are you sure you want to permanently delete this assignment and all related submissions?
+            </span>}
+          confirmText="Yes, delete anyway"
+          cancelText="Cancel"
+          onConfirm={async () => {
+            await handleDeleteAssignment(true);
+          }}
+          onClose={() => setShowConfirmForceDeleteModal(false)}
         />
       )}
     </>

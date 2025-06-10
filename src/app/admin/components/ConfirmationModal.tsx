@@ -8,12 +8,13 @@ interface ConfirmationModalProps {
   onConfirm: () => void;
   title?: string;
   message: ReactNode;
-  confirmText?: string;
-  cancelText?: string;
+  confirmText?: ReactNode;
+  cancelText?: ReactNode;
   confirmButtonClass?: string;
   cancelButtonClass?: string;
   requireCourseName?: boolean;
   courseName?: string;
+  customModalSize?: string;
 }
 
 export default function ConfirmationModal({
@@ -28,6 +29,7 @@ export default function ConfirmationModal({
   cancelButtonClass = "bg-blue-600 text-white hover:bg-blue-700",
   requireCourseName = false,
   courseName = "",
+  customModalSize,
 }: ConfirmationModalProps) {
   const modalRef = useRef<HTMLDivElement>(null);
 
@@ -67,7 +69,9 @@ export default function ConfirmationModal({
     <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-4">
       <div 
         ref={modalRef}
-        className="bg-white rounded-lg shadow-xl max-w-md w-full overflow-hidden"
+        className={`bg-white rounded-lg shadow-xl overflow-hidden ${ 
+         customModalSize ?? "max-w-md w-full"
+        }`}
       >
         <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
           <h3 className="text-xl font-medium text-gray-900">{title}</h3>
