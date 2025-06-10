@@ -1,5 +1,5 @@
-
 import { supabase } from "@/lib/supabaseClient";
+import { DISCOUNT_TYPE_FIXED,DISCOUNT_TYPE_PERCENT } from "@/types/promoCode";
 
 export async function validateAndCalculatePayment({
   courseId,
@@ -8,7 +8,6 @@ export async function validateAndCalculatePayment({
   courseId: string;
   promoCode?: string;
 }) {
-
   const { data: course, error: courseError } = await supabase
     .from("courses")
     .select("id, name, price")
@@ -32,21 +31,20 @@ export async function validateAndCalculatePayment({
 
     if (!promoError && promo) {
       const { data: mapping } = await supabase
-        .from("promo_code_courses")
-        .select("*")
+        .from("courses")
+        .select("id, promo_code_id")
+        .eq("id", courseId)
         .eq("promo_code_id", promo.id)
-        .eq("course_id", courseId)
         .single();
 
       if (
         mapping &&
-        (!promo.min_purchase_amount ||
-          finalAmount >= promo.min_purchase_amount)
+        (!promo.min_purchase_amount || finalAmount >= promo.min_purchase_amount)
       ) {
-        if (promo.discount_type === "THB") {
+        if (promo.discount_type === DISCOUNT_TYPE_FIXED) {
           discount = promo.discount_value;
-        } else if (promo.discount_type === "percentage") {
-          discount = (finalAmount * promo.discount_percentage) / 100;
+        } else if (promo.discount_type === DISCOUNT_TYPE_PERCENT) {
+          discount = (finalAmount * promo.discount_value) / 100;
         }
         promoMeta = promo;
       }
