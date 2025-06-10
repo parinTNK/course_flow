@@ -54,15 +54,27 @@ export async function POST(req: NextRequest) {
 
     const { data: existingPayment } = await query.single();
 
-    if (existingPayment) {
-      return NextResponse.json({
-        success: true,
-        charge: { id: existingPayment.charge_id },
-        qr_image: existingPayment.qr_image,
-        amount: existingPayment.amount,
-        status: existingPayment.status,
-      });
-    }
+if (existingPayment) {
+  const omiseCharge = await omise.charges.retrieve(existingPayment.charge_id);
+
+  if (omiseCharge.status === "expired" || omiseCharge.status === "failed") {
+    await supabase
+      .from("payments")
+      .update({
+        status: omiseCharge.status,
+        updated_at: getBangkokISOString(),
+      })
+      .eq("id", existingPayment.id);
+  } else {
+    return NextResponse.json({
+      success: true,
+      charge: { id: existingPayment.charge_id },
+      qr_image: existingPayment.qr_image,
+      amount: existingPayment.amount,
+      status: existingPayment.status,
+    });
+  }
+}
 
     const source = await omise.sources.create({
       type: "promptpay",
