@@ -2,7 +2,6 @@
 
 import React from "react";
 import Image from "next/image";
-import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import TooltipCell from "./TooltipCell";
 import { FullAssignment } from "@/types/Assignments";
 

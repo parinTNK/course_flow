@@ -88,32 +88,68 @@ export const AssignmentsProvider = ({ children }: { children: ReactNode }) => {
     setCurrentPage(1);
   }, [searchTerm]);
 
+  const [isSecondConfirmOpen, setIsSecondConfirmOpen] = useState(false);
+
+  const { success, error: toastError } = useCustomToast();
+
   const handleDeleteAssignment = useCallback((id: string) => {
     setAssignmentToDelete(id);
     setIsConfirmOpen(true);
   }, []);
 
-  const { success, error: toastError } = useCustomToast();
-
-  const confirmDeleteAssignment = useCallback(async () => {
+  // Force Delete Assignment with Submission
+  const deleteAssignmentById = useCallback(async () => {
     if (!assignmentToDelete) return;
+
     try {
-      const response = await fetch(`/api/admin/assignments-delete/${assignmentToDelete}`, {
+      const res = await fetch(`/api/admin/assignments-delete/${assignmentToDelete}/force`, {
         method: "DELETE",
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to delete assignment");
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.error || "Failed to delete assignment");
       }
 
-      success("Assignment deleted successfully", "The assignment has been removed.");
+      success("Assignment deleted successfully", "The assignment and its submissions were removed.");
       fetchAssignments();
     } catch (err) {
       toastError("Failed to delete assignment", (err as Error).message);
     } finally {
-      setIsConfirmOpen(false);
+      setIsSecondConfirmOpen(false);
       setAssignmentToDelete(null);
+    }
+  }, [assignmentToDelete, fetchAssignments]);
+
+  // Delete Assignment with No submission
+  const confirmDeleteAssignment = useCallback(async () => {
+    if (!assignmentToDelete) return;
+
+    try {
+      const res = await fetch(`/api/admin/assignment-has-submission?id=${assignmentToDelete}`);
+      const result = await res.json();
+
+      //modal check submission assignment
+      if (result.hasSubmission) {
+        setIsSecondConfirmOpen(true);
+      } else {
+        const response = await fetch(`/api/admin/assignments-delete/${assignmentToDelete}`, {
+          method: "DELETE",
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || "Failed to delete assignment");
+        }
+
+        success("Assignment deleted successfully", "The assignment has been removed.");
+        fetchAssignments();
+        setAssignmentToDelete(null);
+      }
+    } catch (err) {
+      toastError("Failed to delete assignment", (err as Error).message);
+    } finally {
+      setIsConfirmOpen(false);
     }
   }, [assignmentToDelete, fetchAssignments]);
 
@@ -146,7 +182,33 @@ export const AssignmentsProvider = ({ children }: { children: ReactNode }) => {
         onConfirm={confirmDeleteAssignment}
         title="Confirmation"
         message={<span className="">Are you sure you want to delete this assignment?</span>}
-        confirmText="Yes, delete"
+        confirmText={
+          <span className="whitespace-nowrap">
+            Yes, want to delete the assignment
+          </span>
+        }
+        cancelText={
+          <span className="whitespace-nowrap">
+            No, keep it
+          </span>
+        }
+        customModalSize="w-fit wax-w-full"
+      />
+
+      <ConfirmationModal
+        isOpen={isSecondConfirmOpen}
+        onClose={() => {
+          setIsSecondConfirmOpen(false);
+          setAssignmentToDelete(null);
+        }}
+        onConfirm={deleteAssignmentById}
+        title="This assignment has submissions"
+        message={
+          <span className="text-red-600">
+            Are you sure you want to permanently delete this assignment and all related submissions?
+          </span>
+        }
+        confirmText="Yes, delete anyway"
         cancelText="Cancel"
       />
     </AssignmentsContext.Provider>
