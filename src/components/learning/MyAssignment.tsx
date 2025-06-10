@@ -119,11 +119,6 @@ const handleOpenInCourse = (e: React.MouseEvent) => {
     setLocalError(null);
     const val = e.target.value;
     onChangeAnswer(val);
-    if (val.trim().length === 0) {
-      setLocalStatus("pending");
-    } else {
-      setLocalStatus("inprogress");
-    }
   };
 
   React.useEffect(() => {
@@ -189,7 +184,8 @@ const handleOpenInCourse = (e: React.MouseEvent) => {
         className={`bg-white rounded-lg flex flex-col px-[16px] sm:px-[24px] py-1 gap-1 mx-[16px] lg:mx-[96px] w-[311px] sm:w-[auto] lg:w-[928px] h-auto justify-center border-1 border-[#D6D9E4] `}
       >
         <div className="text-[16px] mt-4 sm:mt-6 font-base">{question}</div>
-        {localStatus === "inprogress" && propLastSaved && (
+        {/* Always show last saved if available */}
+        {propLastSaved && (
           <div className="flex items-center gap-3 mb-1 min-h-[24px]">
             <span className="text-[#646D89] text-xs">
               Last saved: {new Date(propLastSaved).toLocaleDateString()}{" "}
@@ -224,7 +220,6 @@ const handleOpenInCourse = (e: React.MouseEvent) => {
               </div>
             </div>
           ) : null}
-          {/* Show textarea on desktop always, and on mobile if not submitted */}
           {(normalizedStatus !== "submitted" || window.innerWidth >= 640) && (
             <>
               <textarea

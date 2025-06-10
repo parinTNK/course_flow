@@ -9,7 +9,6 @@ import Pagination from "../../admin/components/Pagination";
 import { useRouter } from "next/navigation";
 import { useDraft } from "@/app/context/draftContext";
 import NavBar from "@/components/nav";
-import DraftDialog from "@/components/common/DraftDialog";
 import { useCustomToast } from "@/components/ui/CustomToast";
 import SwipeableAssignmentTabs from "@/components/assignment/SwipeableAssignmentTabs";
 import { getBangkokISOString } from "@/lib/bangkokTime";
@@ -20,7 +19,11 @@ type Assignment = {
   sub_lesson_id?: string;
   title: string;
   description: string;
-  solution?: string; 
+  solution?: string;
+  
+  course_name?: string;
+  lesson_title?: string;
+  sub_lesson_title?: string;
 };
 
 type Submission = {
@@ -113,6 +116,40 @@ export default function MyAssignmentsPage() {
   const router = useRouter();
   const { success, error: toastError } = useCustomToast();
 
+  // Helper to update lastSaved and lastSavedAnswers for a single assignment
+  const updateSavedState = (assignmentId: string, answer: string) => {
+    setLastSaved((prev) => ({ ...prev, [assignmentId]: new Date() }));
+    setLastSavedAnswers((prev) => ({ ...prev, [assignmentId]: answer }));
+  };
+
+  const saveDraft = useCallback(async (assignmentId: string, answer: string) => {
+    if (!user?.user_id) return;
+    // Do not save if answer is empty
+    if (answer.trim() === "") return;
+    const bangkok = getBangkokISOString();
+    const status = "inprogress";
+    try {
+      const putRes = await axios.put(
+        `/api/submission?assignmentId=${assignmentId}&userId=${user.user_id}`,
+        {
+          answer,
+          status,
+          updated_at: bangkok,
+        }
+      );
+      if (!putRes.data?.data?.length) {
+        await axios.post(`/api/submission`, {
+          assignment_id: assignmentId,
+          user_id: user.user_id,
+          answer,
+          status,
+          submission_date: bangkok,
+        });
+      }
+      updateSavedState(assignmentId, answer);
+    } catch (err) {}
+  }, [user?.user_id]);
+
   const saveAllDrafts = useCallback(async () => {
     if (!user?.user_id || dirtyAssignments.size === 0) return;
 
@@ -120,7 +157,9 @@ export default function MyAssignmentsPage() {
 
     const promises = Array.from(dirtyAssignments).map(async (assignmentId) => {
       const answer = answers[assignmentId];
-      const status = answer.trim() === "" ? "pending" : "inprogress";
+      // Do not save if answer is empty
+      if (answer.trim() === "") return;
+      const status = "inprogress";
       try {
         const putRes = await axios.put(
           `/api/submission?assignmentId=${assignmentId}&userId=${user.user_id}`,
@@ -140,8 +179,7 @@ export default function MyAssignmentsPage() {
             submission_date: bangkok,
           });
         }
-        setLastSaved((prev) => ({ ...prev, [assignmentId]: new Date() }));
-        setLastSavedAnswers((prev) => ({ ...prev, [assignmentId as string]: answer }));
+        updateSavedState(assignmentId, answer);
       } catch (err) {
         console.error(`[Draft] Failed to save draft for ${assignmentId}`, err);
       }
@@ -150,80 +188,6 @@ export default function MyAssignmentsPage() {
     await Promise.all(promises);
     clearDrafts();
   }, [dirtyAssignments, answers, user?.user_id, clearDrafts]);
-
-  const [pendingNav, setPendingNav] = useState<string | null>(null);
-  const [showDraftModal, setShowDraftModal] = useState(false);
-
-  const clearEmptyAnswersAndSetPending = async () => {
-    if (!user?.user_id) return;
-    const bangkok = getBangkokISOString();
-    const promises = Object.entries(answers)
-      .filter(([assignmentId, val]) => val.trim() === "")
-      .map(async ([assignmentId]) => {
-        try {
-          await axios.put(
-            `/api/submission?assignmentId=${assignmentId}&userId=${user.user_id}`,
-            {
-              answer: "",
-              status: "pending",
-              updated_at: bangkok,
-            }
-          );
-          setAssignments((prev) =>
-            prev.map((a) =>
-              a.id === assignmentId
-                ? {
-                    ...a,
-                    submission: {
-                      ...(a.submission || {
-                        id: "",
-                        assignment_id: assignmentId,
-                        user_id: user?.user_id || "",
-                        answer: "",
-                        status: "pending",
-                      }),
-                      answer: "",
-                      status: "pending",
-                    },
-                  }
-                : a
-            )
-          );
-        } catch (err) {
-        }
-      });
-    await Promise.all(promises);
-  };
-
-  const navigateWithDraftCheck = useCallback(
-    async (to: string) => {
-      await clearEmptyAnswersAndSetPending();
-      if (dirtyAssignments.size > 0) {
-        setPendingNav(to);
-        setShowDraftModal(true);
-      } else {
-        router.push(to);
-      }
-    },
-    [dirtyAssignments, router, clearEmptyAnswersAndSetPending]
-  );
-
-  const handleConfirmDraftSave = async () => {
-    if (pendingNav) {
-      await saveAllDrafts();
-      setShowDraftModal(false);
-      router.push(pendingNav);
-      setPendingNav(null);
-    }
-  };
-
-  const handleDiscardDraft = () => {
-    if (pendingNav) {
-      setShowDraftModal(false);
-      router.push(pendingNav);
-      setPendingNav(null);
-    }
-  };
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -273,41 +237,40 @@ export default function MyAssignmentsPage() {
     if (currentPage > totalPages) setCurrentPage(1);
   }, [filteredAssignments.length, totalPages]);
 
+  // Remove immediate save from handleChangeAnswer
   const handleChangeAnswer = (assignmentId: string, val: string) => {
     setAnswers((prev) => {
       if (prev[assignmentId] === val) return prev;
-
       setDirty(assignmentId, val);
-
       if (typeof window !== "undefined") {
         window.__draftAnswers ??= {};
         window.__draftAnswers[assignmentId] = val;
       }
-
-      setAssignments((prevAssignments) =>
-        prevAssignments.map((a) =>
-          a.id === assignmentId &&
-          (!a.submission || a.submission.status !== "submitted")
-            ? {
-                ...a,
-                submission: {
-                  ...(a.submission || {
-                    id: "",
-                    assignment_id: assignmentId,
-                    user_id: user?.user_id || "",
-                    answer: "",
-                    status: "inprogress",
-                  }),
-                  status: "inprogress",
-                },
-              }
-            : a
-        )
-      );
-
       return { ...prev, [assignmentId]: val };
     });
   };
+
+  React.useEffect(() => {
+    const timers: Record<string, NodeJS.Timeout> = {};
+
+    Object.keys(answers).forEach((assignmentId) => {
+      // Only auto-save if answer is not empty and has changed
+      if (
+        answers[assignmentId] !== lastSavedAnswers[assignmentId] &&
+        answers[assignmentId] !== undefined &&
+        answers[assignmentId].trim() !== ""
+      ) {
+        if (timers[assignmentId]) clearTimeout(timers[assignmentId]);
+        timers[assignmentId] = setTimeout(() => {
+          saveDraft(assignmentId, answers[assignmentId]);
+        }, 5000);
+      }
+    });
+
+    return () => {
+      Object.values(timers).forEach(clearTimeout);
+    };
+  }, [answers, lastSavedAnswers, saveDraft]);
 
   const handleSubmit = async (assignment: AssignmentWithSubmission) => {
     console.log("[Submit] assignment.id:", assignment.id);
@@ -424,16 +387,6 @@ export default function MyAssignmentsPage() {
     }
   };
 
-  useEffect(() => {
-    const handler = (e: any) => {
-      if (e.detail && typeof e.detail === "string") {
-        navigateWithDraftCheck(e.detail);
-      }
-    };
-    window.addEventListener("navigateWithDraftCheck", handler);
-    return () => window.removeEventListener("navigateWithDraftCheck", handler);
-  }, [navigateWithDraftCheck]);
-
   if (authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -444,13 +397,7 @@ export default function MyAssignmentsPage() {
 
   return (
     <div className="flex flex-col min-h-screen overflow-x-hidden">
-      <NavBar navigate={navigateWithDraftCheck} />
-      <DraftDialog
-        open={showDraftModal}
-        onOpenChange={setShowDraftModal}
-        onConfirm={handleConfirmDraftSave}
-        onDiscard={handleDiscardDraft}
-      />
+      <NavBar navigate={router.push} />
       <main className="flex-1 pt-26 sm:pt-40">
         <div className="flex flex-col gap-6 sm:gap-8 w-full">
           <div className="w-full">
@@ -490,8 +437,8 @@ export default function MyAssignmentsPage() {
                     className="flex justify-center mx-4 lg:mx-40 mb-6"
                   >
                     <MyAssignment
-                      title={assignment.title}
-                      subtitle={assignment.description}
+                      title={`Course: ${assignment.course_name}`}
+                      subtitle={`${assignment.lesson_title}: ${assignment.sub_lesson_title}`}
                       question={assignment.description}
                       status={
                         assignment.submission?.status === "inprogress"

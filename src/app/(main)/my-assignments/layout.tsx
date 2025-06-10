@@ -8,7 +8,6 @@ import { Toaster } from 'sonner';
 import { Geist, Geist_Mono } from 'next/font/google';
 import '../../globals.css';
 import { DraftProvider, useDraft } from '@/app/context/draftContext';
-import DraftDialog from "@/components/common/DraftDialog";
 
 const geistSans = Geist({ variable: '--font-geist-sans', subsets: ['latin'] });
 const geistMono = Geist_Mono({ variable: '--font-geist-mono', subsets: ['latin'] });
@@ -23,13 +22,11 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
   // --- Draft navigation logic ---
   const { dirtyAssignments, saveAllDrafts, clearDrafts } = useDraft?.() || {};
   const [pendingNav, setPendingNav] = useState<string | null>(null);
-  const [showDraftModal, setShowDraftModal] = useState(false);
 
   const navigateWithDraftCheck = useCallback(
     (to: string) => {
       if (dirtyAssignments && dirtyAssignments.size > 0) {
         setPendingNav(to);
-        setShowDraftModal(true);
       } else {
         router.push(to);
       }
@@ -40,7 +37,6 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
   const handleConfirmDraftSave = async () => {
     if (pendingNav && saveAllDrafts) {
       await saveAllDrafts();
-      setShowDraftModal(false);
       router.push(pendingNav);
       setPendingNav(null);
     }
@@ -48,7 +44,6 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
 
   const handleDiscardDraft = () => {
     if (pendingNav) {
-      setShowDraftModal(false);
       router.push(pendingNav);
       setPendingNav(null);
       if (clearDrafts) clearDrafts();
@@ -58,13 +53,6 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
 
   return (
     <div className={`${geistSans.variable} ${geistMono.variable} antialiased flex flex-col min-h-screen overflow-x-hidden`}>
-      {/* Draft confirmation modal */}
-      <DraftDialog
-        open={showDraftModal}
-        onOpenChange={setShowDraftModal}
-        onConfirm={handleConfirmDraftSave}
-        onDiscard={handleDiscardDraft}
-      />
       {!profilePage && !paymentPage && <NavBar navigate={navigateWithDraftCheck} />}
       <div className="flex-grow">{children}</div>
       <Toaster position="bottom-right" richColors />
