@@ -135,12 +135,6 @@ export default function Assignment() {
   const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setAssignmentAnswer(e.target.value);
     if (assignment?.id) setDirty?.(assignment.id, e.target.value);
-    if (assignmentStatus === "submitted") return;
-    if (e.target.value.trim() === "") {
-      setAssignmentStatus("pending");
-    } else {
-      setAssignmentStatus("inprogress");
-    }
   };
 
   useEffect(() => {
@@ -148,6 +142,12 @@ export default function Assignment() {
     if (autoSaveTimeout.current) clearTimeout(autoSaveTimeout.current);
 
     if (assignmentAnswer === lastSavedAnswer) {
+      setAutoSaveStatus("idle");
+      return;
+    }
+
+    // Do not auto-save if the field is empty
+    if (!assignmentAnswer.trim()) {
       setAutoSaveStatus("idle");
       return;
     }
@@ -379,7 +379,10 @@ export default function Assignment() {
           />
           {/* Last saved + character count */}
           <div className="flex justify-between items-center mb-1 min-h-[24px]">
-            {lastSaved ? (
+            {/* Show Saving... or Last saved */}
+            {autoSaveStatus === "saving" ? (
+              <span className="text-[#3557CF] text-xs">Saving...</span>
+            ) : lastSaved ? (
               <span className="text-[#646D89] text-xs">
                 Last saved: {lastSaved.toLocaleDateString()}{" "}
                 {lastSaved.toLocaleTimeString([], {
@@ -406,15 +409,10 @@ export default function Assignment() {
             </p>
           )}
 
-          {/* Auto-save status (optional) */}
-          {(autoSaveStatus === "saving" || autoSaveStatus === "error") && (
+          {/* Auto-save error status (optional) */}
+          {autoSaveStatus === "error" && (
             <div className="text-xs mb-1">
-              {autoSaveStatus === "saving" && (
-                <span className="text-[#3557CF]">Saving...</span>
-              )}
-              {autoSaveStatus === "error" && (
-                <span className="text-red-500">Auto-save failed</span>
-              )}
+              <span className="text-red-500">Auto-save failed</span>
             </div>
           )}
 

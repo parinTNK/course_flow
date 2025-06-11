@@ -389,13 +389,6 @@ export default function MyAssignmentsPage() {
     }
   };
 
-  if (authLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <LoadingSpinner text="Loading..." size="md" />
-      </div>
-    );
-  }
 
   return (
     <div className="flex flex-col min-h-screen overflow-x-hidden">
