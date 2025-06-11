@@ -19,7 +19,6 @@ import Assignment from "@/components/learning/Assignment";
 import LoadingSpinner from "@/app/admin/components/LoadingSpinner";
 import LessonVideoPlayer from "@/components/learning/SubLessonVideoPlayer";
 import { ButtonT } from "@/components/ui/ButtonT";
-import DraftDialog from "@/components/common/DraftDialog";
 
 interface SubLesson {
   id: string;
@@ -51,7 +50,6 @@ export default function CourseContent() {
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [loading, setLoading] = useState(true);
   const [pendingNavDirection, setPendingNavDirection] = useState<"prev" | "next" | null>(null);
-  const [showDraftModal, setShowDraftModal] = useState(false);
 
   const scrollToLessonSection = () => {
     const el = document.getElementById("lesson-section");
@@ -244,14 +242,12 @@ export default function CourseContent() {
       await Promise.all(savePromises);
     }
     clearDrafts();
-    setShowDraftModal(false);
     if (pendingNavDirection === "prev") goToPrevLesson();
     else if (pendingNavDirection === "next") goToNextLesson();
     setPendingNavDirection(null);
   }, [user?.id, pendingNavDirection, goToPrevLesson, goToNextLesson]);
 
   const handleDraftDiscard = useCallback(() => {
-    setShowDraftModal(false);
     setPendingNavDirection(null);
   }, []);
 
@@ -259,7 +255,6 @@ export default function CourseContent() {
     if (isFirstSubLesson()) return;
     if (dirtyAssignments.size > 0) {
       setPendingNavDirection("prev");
-      setShowDraftModal(true);
     } else {
       goToPrevLesson();
     }
@@ -269,7 +264,6 @@ export default function CourseContent() {
     if (isLastSubLesson()) return;
     if (dirtyAssignments.size > 0) {
       setPendingNavDirection("next");
-      setShowDraftModal(true);
     } else {
       goToNextLesson();
     }
@@ -296,13 +290,6 @@ export default function CourseContent() {
           isAutoResumeComplete={isAutoResumeComplete}
         />
       </div>
-
-      <DraftDialog
-        open={showDraftModal}
-        onOpenChange={setShowDraftModal}
-        onConfirm={handleDraftConfirm}
-        onDiscard={handleDraftDiscard}
-      />
 
       <main className="flex-1 w-full md:p-6 md:max-w-[calc(100%-280px)]">
         <div id="lesson-section">

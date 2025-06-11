@@ -27,17 +27,34 @@ export async function GET(
       return Response.json({ data: [] });
     }
 
-    // 2. Get all assignments for those courses
+    // 2. Get enriched assignments with joins
     const { data: assignments, error: assignError } = await supabase
       .from("assignments")
-      .select("id, course_id, title, description, solution, sub_lesson_id")
+      .select(`
+        id,
+        course_id,
+        title,
+        description,
+        solution,
+        lesson_id,
+        sub_lesson_id,
+        courses (
+          name
+        ),
+        lessons (
+          title
+        ),
+        sub_lessons (
+          title
+        )
+      `)
       .in("course_id", courseIds);
 
     if (assignError) {
       return Response.json({ error: assignError.message }, { status: 500 });
     }
 
-    // 3. Get all submissions by the user for these assignments
+    // 3. Get submissions
     const assignmentIds = assignments.map((a) => a.id);
     let submissions: any[] = [];
     if (assignmentIds.length > 0) {
@@ -53,14 +70,25 @@ export async function GET(
       submissions = submissionsData || [];
     }
 
-    // 4. Merge assignments with their submission (if any)
-    const assignmentsWithSubmission = assignments.map((assignment) => {
+    // 4. Merge + enrich
+    const assignmentsWithSubmission = assignments.map((assignment: any) => {
       const submission = submissions.find(
         (s) => s.assignment_id === assignment.id
       );
+
       return {
-        ...assignment,
+        id: assignment.id,
+        course_id: assignment.course_id,
+        lesson_id: assignment.lesson_id,
+        sub_lesson_id: assignment.sub_lesson_id,
+        title: assignment.title,
+        description: assignment.description,
+        solution: assignment.solution,
         submission: submission || null,
+
+        course_name: assignment.courses?.name ?? null,
+        lesson_title: assignment.lessons?.title ?? null,
+        sub_lesson_title: assignment.sub_lessons?.title ?? null,
       };
     });
 
