@@ -248,6 +248,11 @@ export default function Assignment() {
         return;
       }
 
+      if (assignmentAnswer.length > 500) {
+        error("Too long", "Your answer must be 500 characters or less.");
+        return;
+      }
+
       const { data: existingSubmission, error: checkError } = await supabase
         .from("submissions")
         .select("id")
@@ -370,50 +375,49 @@ export default function Assignment() {
             value={assignmentAnswer}
             onChange={handleChange}
             placeholder="Answer..."
+            maxLength={500}
           />
-          {/* Auto-save status */}
-          {(autoSaveStatus === "saving" ||
-            (autoSaveStatus === "saved" && lastSaved) ||
-            autoSaveStatus === "error" ||
-            (assignmentStatus === "inprogress" && lastSaved)) && (
-            <div className="flex items-center gap-3 mb-1 min-h-[24px]">
+          {/* Last saved + character count */}
+          <div className="flex justify-between items-center mb-1 min-h-[24px]">
+            {lastSaved ? (
+              <span className="text-[#646D89] text-xs">
+                Last saved: {lastSaved.toLocaleDateString()}{" "}
+                {lastSaved.toLocaleTimeString([], {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                  second: "2-digit",
+                })}
+              </span>
+            ) : (
+              <div />
+            )}
+            <span
+              className={`text-xs ${
+                assignmentAnswer.length >= 500 ? "text-red-500" : "text-gray-500"
+              }`}
+            >
+              {assignmentAnswer.length}/500 characters
+            </span>
+          </div>
+
+          {assignmentAnswer.length >= 500 && (
+            <p className="text-red-500 text-xs mb-2 text-right">
+              Maximum character limit reached.
+            </p>
+          )}
+
+          {/* Auto-save status (optional) */}
+          {(autoSaveStatus === "saving" || autoSaveStatus === "error") && (
+            <div className="text-xs mb-1">
               {autoSaveStatus === "saving" && (
-                <span className="text-[#3557CF] text-xs">Saving...</span>
+                <span className="text-[#3557CF]">Saving...</span>
               )}
-              {autoSaveStatus === "saved" && lastSaved && (
-                <span className="text-[#646D89] text-xs">
-                  Last saved: {lastSaved.toLocaleDateString()}{" "}
-                  {lastSaved.toLocaleTimeString([], {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                    second: "2-digit",
-                  })}
-                </span>
-              )}
-              {/* Always show lastSaved for inprogress */}
-              {assignmentStatus === "inprogress" &&
-                lastSaved &&
-                autoSaveStatus !== "saved" && (
-                  <span className="text-[#646D89] text-xs">
-                    Last saved: {lastSaved.toLocaleDateString()}{" "}
-                    {lastSaved.toLocaleTimeString([], {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                      second: "2-digit",
-                    })}
-                  </span>
-                )}
               {autoSaveStatus === "error" && (
-                <span className="text-red-500 text-xs">Auto-save failed</span>
+                <span className="text-red-500">Auto-save failed</span>
               )}
             </div>
           )}
-          {autoSaveStatus !== "saving" &&
-            !(autoSaveStatus === "saved" && lastSaved) &&
-            !(assignmentStatus === "inprogress" && lastSaved) &&
-            autoSaveStatus !== "error" && (
-              <div style={{ marginBottom: 0, minHeight: 0 }} />
-            )}
+
           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
             <ButtonT
               variant="primary"
@@ -423,16 +427,13 @@ export default function Assignment() {
             >
               Send Assignment
             </ButtonT>
-            <span className="text-xs text-gray-500 text-center sm:text-left">
-              Assign within 2 days
-            </span>
           </div>
         </>
       ) : (
         <div className="space-y-4">
           <div className="bg-gray-50 p-4 rounded-lg">
             <p className="font-medium mb-2 text-sm">Your Answer:</p>
-            <p className="text-gray-700 whitespace-pre-line text-sm">
+            <p className="text-gray-700 whitespace-pre-line break-words text-sm">
               {assignmentAnswer}
             </p>
             {submittedAt && (
