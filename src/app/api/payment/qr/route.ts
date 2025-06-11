@@ -12,13 +12,16 @@ const omise = Omise({
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { courseId, userId,userName, promoCode, expectedAmount } = body;
+    const { courseId, userId, userName, promoCode, expectedAmount } = body;
 
     const { course, finalAmount, discount, promoMeta, error } =
-    await validateAndCalculatePayment({ courseId, promoCode });
+      await validateAndCalculatePayment({ courseId, promoCode });
 
     if (error) {
-      return NextResponse.json({ success: false, message: error }, { status: 404 });
+      return NextResponse.json(
+        { success: false, message: error },
+        { status: 404 }
+      );
     }
 
     if (
@@ -35,22 +38,43 @@ export async function POST(req: NextRequest) {
       );
     }
 
-  const { data: existingPayment } = await supabase
+    let query = supabase
       .from("payments")
       .select("*")
       .eq("user_id", userId)
       .eq("course_id", courseId)
       .eq("status", "pending")
-      .single();
+      .eq("amount", finalAmount);
 
-    if (existingPayment) {
-      console.log(`Found existing pending payment for user ${userId} and course ${courseId}`);
-      return NextResponse.json({
-        success: true,
-        charge: { id: existingPayment.charge_id },
-        qr_image: existingPayment.qr_image,
-      });
+    if (promoMeta?.id) {
+      query = query.eq("promo_code_id", promoMeta.id);
+    } else {
+      query = query.is("promo_code_id", null);
     }
+
+    const { data: existingPayment } = await query.single();
+
+if (existingPayment) {
+  const omiseCharge = await omise.charges.retrieve(existingPayment.charge_id);
+
+  if (omiseCharge.status === "expired" || omiseCharge.status === "failed") {
+    await supabase
+      .from("payments")
+      .update({
+        status: omiseCharge.status,
+        updated_at: getBangkokISOString(),
+      })
+      .eq("id", existingPayment.id);
+  } else {
+    return NextResponse.json({
+      success: true,
+      charge: { id: existingPayment.charge_id },
+      qr_image: existingPayment.qr_image,
+      amount: existingPayment.amount,
+      status: existingPayment.status,
+    });
+  }
+}
 
     const source = await omise.sources.create({
       type: "promptpay",
@@ -62,7 +86,8 @@ export async function POST(req: NextRequest) {
       amount: finalAmount * 100,
       currency: "thb",
       source: source.id,
-      description: `Purchase: "${course.name}" by ${userName}` +
+      description:
+        `Purchase: "${course.name}" by ${userName}` +
         (promoCode ? ` | Promo: ${promoCode}` : ""),
       metadata: {
         courseId,
@@ -98,7 +123,7 @@ export async function POST(req: NextRequest) {
         charge_id: charge.id,
         qr_image: charge.source.scannable_code.image.download_uri,
         status: "pending",
-      }
+      },
     ]);
 
     return NextResponse.json({
