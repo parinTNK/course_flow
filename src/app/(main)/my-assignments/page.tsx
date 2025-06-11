@@ -349,7 +349,7 @@ export default function MyAssignmentsPage() {
         {
           answer: "",
           status: "pending",
-          updated_at: bangkok,
+          updated_at: null, // set updated_at to null
         }
       );
 
@@ -363,6 +363,7 @@ export default function MyAssignmentsPage() {
           answer: "",
           status: "pending",
           submission_date: bangkok,
+          updated_at: null, // set updated_at to null
         });
       }
 
@@ -380,6 +381,7 @@ export default function MyAssignmentsPage() {
       setAnswers(updatedAnswers);
       setLastSaved(updatedLastSaved);
       setLastSavedAnswers(updatedAnswers);
+      setLastSaved((prev) => ({ ...prev, [assignment.id]: null }));
 
       success("Answer Cleared", "You can now submit a new answer.");
     } catch (err: any) {
