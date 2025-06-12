@@ -47,3 +47,25 @@ export interface BundleWithDetails extends Bundle {
   total_lessons: number;
   courses: Course[];
 }
+export interface Bundle {
+  id: string;
+  name: string;
+  description: string;
+  price: number;
+  image_url?: string;
+  status: 'active' | 'inactive';
+  courses_count?: number;
+  total_learning_time?: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface BundleSummary {
+  id: string;
+  name: string;
+  description: string;
+  price: number;
+  image_url?: string;
+  courses_count: number;
+  total_learning_time: number;
+}
