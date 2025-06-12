@@ -47,7 +47,7 @@ export async function GET(request: NextRequest) {
             .ilike('name', `%${searchTerm}%`)
             .eq('status', status)
             .range(from, to)
-            .order('created_at', { ascending: false });
+            .order('updated_at', { ascending: false });
 
         if (error) {
             console.error('Supabase error fetching courses with lessons:', error.message);
