@@ -122,7 +122,7 @@ export default function PaymentPage() {
           courseName: course?.name,
           userName: user?.full_name,
           paymentMethod: paymentMethodLabel,
-          promoCode: promoResult.promoCodeId || null,
+          promoCode: promoResult?.promoCodeId || null,
         });
         router.push(`/payment/${courseId}/order-completed`);
         return;
