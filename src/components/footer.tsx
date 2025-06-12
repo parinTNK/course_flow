@@ -2,34 +2,49 @@
 
 import React from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
-const Footer: React.FC = () => {
+type NavBarProps = {
+  navigate?: (to: string) => void;
+};
+
+const Footer: React.FC<NavBarProps> = ({ navigate }) => {
+  const router = useRouter();
+
+  const handleFoot = (to: string) => {
+    if (navigate) {
+      navigate(to);
+    } else {
+      router.push(to); // fallback
+    }
+  };
+
   return (
-    <footer className="bg-[#112B55] text-white px-6 sm:px-20 lg:px-40 py-10 mt-16">
-      <div className="max-w-screen-xl mx-auto flex flex-col sm:flex-row justify-between items-center sm:items-start text-center sm:text-left gap-8">
+    <footer className="bg-[#112B55] text-white px-[16px] sm:px-[80px] lg:px-[160px] h-[17rem] sm:h-[10rem] py-8">
+      <div className="max-w-screen-xl mx-auto h-full flex flex-col sm:flex-row justify-between items-start sm:items-center text-center sm:text-left gap-8">
         {/* Left: Logo */}
-        <Link
-          href="/"
-          className="text-2xl font-extrabold bg-gradient-to-r from-[#95BEFF] to-[#0040E5] bg-clip-text text-transparent"
+        <span
+          className="text-2xl font-extrabold bg-gradient-to-r from-[#95BEFF] to-[#0040E5] bg-clip-text text-transparent cursor-pointer"
           style={{ backgroundClip: "text", WebkitBackgroundClip: "text" }}
+          onClick={() => handleFoot("/")}
         >
           CourseFlow
-        </Link>
+        </span>
 
         {/* Center: Navigation Links */}
-        <div className="flex flex-col sm:flex-row gap-4 sm:gap-8">
-          <Link
-            href="/courses"
-            className="text-[#C0C9E3] text-base hover:text-white transition"
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-8">
+          <span
+            className="text-[#C0C9E3] text-base hover:text-white transition cursor-pointer"
+            onClick={() => handleFoot("/our-courses")}
           >
             All Courses
-          </Link>
-          <Link
-            href="/bundles"
-            className="text-[#C0C9E3] text-base hover:text-white transition"
+          </span>
+          <span
+            className="text-[#C0C9E3] text-base hover:text-white transition cursor-pointer"
+            onClick={() => handleFoot("/our-courses")}
           >
             Bundle Package
-          </Link>
+          </span>
         </div>
 
         {/* Right: Social Icons */}
@@ -38,7 +53,6 @@ const Footer: React.FC = () => {
             href="https://facebook.com"
             target="_blank"
             rel="noopener noreferrer"
-            
           >
             <img src="/fb.svg" alt="Facebook" className="w-12 h-12" />
           </a>

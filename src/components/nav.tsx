@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
+import { signOut } from "@/lib/auth";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -19,14 +20,35 @@ import {
 } from "lucide-react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { ButtonT } from "@/components/ui/ButtonT";
+import { useAuth } from "@/app/context/authContext";
+import { useRouter } from "next/navigation";
 
-type UserType = {
-  name: string;
-  avatarUrl: string;
+type NavBarProps = {
+  navigate?: (to: string) => void;
 };
 
-const NavBar = ({ user }: { user?: UserType | null }) => {
+const NavBar: React.FC<NavBarProps> = ({ navigate }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const { user } = useAuth();
+  const router = useRouter();
+
+  const handleNav = (to: string) => {
+    if (navigate) {
+      navigate(to);
+    } else {
+      router.push(to); // fallback
+    }
+  };
+
+  useEffect(() => {
+    if (user?.role === "admin") {
+      (async () => {
+        await signOut();
+        document.cookie = "redirecting=; max-age=0; path=/;";
+        window.location.href = "/login";
+      })();
+    }
+  }, [user]);
 
   const menuItems = [
     { icon: User, label: "Profile", href: "/profile" },
@@ -35,25 +57,39 @@ const NavBar = ({ user }: { user?: UserType | null }) => {
     { icon: Star, label: "My Wishlist", href: "/wishlist" },
   ];
 
+  const handleLogout = async () => {
+    try {
+      await signOut();
+      document.cookie = "redirecting=; max-age=0; path=/;";
+      window.location.href = "/login";
+    } catch (error) {
+      console.error("Logout error:", error);
+    }
+  };
+
+  const displayName = user?.full_name || "User";
+  const avatarUrl = user?.profile_picture || "/img/defaultProfileImage.png";
+
   return (
-    <nav className="bg-white fixed w-full h-[88px] z-20 top-0 start-0 border-b border-gray-200 shadow-sm">
+    <nav className="bg-white fixed w-full h-[56px] sm:h-[88px] z-20 top-0 start-0 border-b border-gray-200 shadow-sm">
       {/* Desktop */}
-      <div className="max-w-screen-xl h-full hidden sm:flex items-center justify-between lg:mx-[120px] mx-6 px-6">
-        <Link
-          href="/"
-          className="text-2xl font-extrabold text-transparent bg-linear1"
+      <div className="hidden sm:flex items-center justify-between mx-[80px] lg:mx-[160px] h-full">
+        {/* Logo */}
+        <a
+          className="text-2xl font-extrabold text-transparent bg-linear1 cursor-pointer"
           style={{ backgroundClip: "text", WebkitBackgroundClip: "text" }}
+          onClick={() => handleNav("/")}
         >
           CourseFlow
-        </Link>
+        </a>
 
         <div className="flex items-center space-x-6">
-          <Link
-            href="/courses"
-            className="font-semibold text-[#1A1A66] hover:text-[#0033CC] transition"
+          <a
+            className="font-semibold text-[#1A1A66] hover:text-[#0033CC] transition cursor-pointer"
+            onClick={() => handleNav("/our-courses")}
           >
             Our Courses
-          </Link>
+          </a>
 
           {!user ? (
             <Link href="/login">
@@ -64,12 +100,12 @@ const NavBar = ({ user }: { user?: UserType | null }) => {
               <DropdownMenuTrigger asChild>
                 <button className="flex items-center space-x-3 cursor-pointer px-2 py-1 rounded-md transition focus:outline-none">
                   <Avatar className="h-10 w-10">
-                    <AvatarImage src={user.avatarUrl} alt={user.name} />
+                    <AvatarImage src={avatarUrl} alt={displayName} className="object-cover" />
                     <AvatarFallback>U</AvatarFallback>
                   </Avatar>
                   <div className="flex items-center space-x-1">
                     <span className="text-base font-medium text-[#3B3F66]">
-                      {user.name}
+                      {displayName}
                     </span>
                     <ChevronDown
                       className={`w-4 h-4 text-[#3B3F66] transition-transform duration-200 ${
@@ -90,17 +126,18 @@ const NavBar = ({ user }: { user?: UserType | null }) => {
                 {menuItems.map(({ icon: Icon, label, href }) => (
                   <DropdownMenuItem
                     key={label}
-                    onClick={() => (window.location.href = href)}
+                    onClick={() => handleNav(href)}
                     className="px-4 py-2 hover:bg-gray-100 flex items-center space-x-3 text-[#646D89] cursor-pointer"
                   >
                     <Icon className="w-5 h-5 text-[#8DADE0]" />
                     <span>{label}</span>
                   </DropdownMenuItem>
                 ))}
-
                 <DropdownMenuSeparator className="my-2 border-t text-[#E4E6ED]" />
-
-                <DropdownMenuItem className="px-4 py-2 hover:bg-gray-100 flex items-center space-x-3 text-[#646D89]">
+                <DropdownMenuItem
+                  className="px-4 py-2 hover:bg-gray-100 flex items-center space-x-3 text-[#646D89] cursor-pointer"
+                  onClick={handleLogout}
+                >
                   <LogOut className="w-5 h-5 text-[#8DADE0]" />
                   <span>Log out</span>
                 </DropdownMenuItem>
@@ -111,35 +148,38 @@ const NavBar = ({ user }: { user?: UserType | null }) => {
       </div>
 
       {/* Mobile */}
-      <div className="sm:hidden flex justify-between items-center h-full px-6">
-        <Link
-          href="/"
-          className="text-xl font-extrabold text-transparent bg-linear1"
+      <div className="sm:hidden flex justify-between items-center h-full mx-[16px]">
+        {/* Logo */}
+        <a
+          className="text-xl font-extrabold text-transparent bg-linear1 cursor-pointer"
           style={{ backgroundClip: "text", WebkitBackgroundClip: "text" }}
+          onClick={() => handleNav("/")}
         >
           CourseFlow
-        </Link>
+        </a>
 
         <div className="flex items-center space-x-4">
-          <Link
-            href="/courses"
-            className="text-sm font-semibold text-[#1A1A66] hover:text-[#0033CC] transition"
+          <a
+            className="text-sm font-bold text-[#1A1A66] hover:text-[#0033CC] transition !important cursor-pointer"
+            onClick={() => handleNav("/our-courses")}
           >
             Our Courses
-          </Link>
+          </a>
 
           {!user ? (
             <Link href="/login">
-              <ButtonT variant="primary" className="w-[90px] h-[40px] text-sm">
+              <button
+                className="font-sans whitespace-nowrap w-[74px] h-[37px] bg-[var(--blue-500)] hover:bg-blue-700 rounded-[12px] font-bold px-[32px] py-[18px] cursor-pointer flex items-center justify-center text-white text-sm"
+              >
                 Log in
-              </ButtonT>
+              </button>
             </Link>
           ) : (
             <DropdownMenu onOpenChange={setIsOpen}>
               <DropdownMenuTrigger asChild>
                 <button className="flex items-center space-x-2">
                   <Avatar className="h-8 w-8">
-                    <AvatarImage src={user.avatarUrl} alt={user.name} />
+                    <AvatarImage src={avatarUrl} alt={displayName} className="object-cover"/>
                     <AvatarFallback>U</AvatarFallback>
                   </Avatar>
                   <ChevronDown
@@ -154,17 +194,18 @@ const NavBar = ({ user }: { user?: UserType | null }) => {
                 {menuItems.map(({ icon: Icon, label, href }) => (
                   <DropdownMenuItem
                     key={label}
-                    onClick={() => (window.location.href = href)}
+                    onClick={() => handleNav(href)}
                     className="px-4 py-2 hover:bg-gray-100 flex items-center space-x-3 text-[#646D89] cursor-pointer"
                   >
                     <Icon className="w-5 h-5 text-[#8DADE0]" />
                     <span>{label}</span>
                   </DropdownMenuItem>
                 ))}
-
                 <DropdownMenuSeparator className="my-2 border-t text-[#E4E6ED]" />
-
-                <DropdownMenuItem className="px-4 py-2 hover:bg-gray-100 flex items-center space-x-3 text-[#646D89]">
+                <DropdownMenuItem
+                  className="px-4 py-2 hover:bg-gray-100 flex items-center space-x-3 text-[#646D89]"
+                  onClick={handleLogout}
+                >
                   <LogOut className="w-5 h-5 text-[#8DADE0]" />
                   <span>Log out</span>
                 </DropdownMenuItem>
