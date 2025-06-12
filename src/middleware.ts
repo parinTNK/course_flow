@@ -12,14 +12,17 @@ const PUBLIC_PATHS = new Set([
   '/', 
   '/login', 
   '/register', 
-  '/our-courses'
+  '/our-courses',
+  '/course-bundle',
 ]);
 
 const PROTECTED_PATHS = new Set([
   '/my-courses', 
   '/profile', 
   '/my-wishlist', 
-  '/my-assignments'
+  '/my-assignments',
+  '/my-bundles',
+
 ]);
 
 const ADMIN_PATHS = ['/admin'];
