@@ -25,6 +25,11 @@ export default function LessonVideoPlayer() {
   const [hasVisibilityChanged, setHasVisibilityChanged] = useState(false);
   const [showCompletionModal, setShowCompletionModal] = useState(false);
   const [initialWatchTime, setInitialWatchTime] = useState<number>(0);
+  const [currentSessionWatchTime, setCurrentSessionWatchTime] = useState<number>(0);
+  const [sessionStartTime, setSessionStartTime] = useState<number>(0);
+  const [totalWatchedTime, setTotalWatchedTime] = useState<number>(0);
+  const [isWatching, setIsWatching] = useState<boolean>(false);
+  const watchStartTime = useRef<number>(0);
   const lastUpdateTime = useRef(0);
   const isFirstLoad = useRef(true);
   const currentLessonId = useRef<string | null>(null);
@@ -47,6 +52,9 @@ export default function LessonVideoPlayer() {
         setProgressData(progressInfo);
         // บันทึกเวลาเริ่มต้นสำหรับตรวจสอบการ skip
         setInitialWatchTime(data.watch_time || 0);
+        setSessionStartTime(0); // Reset session start time
+        setTotalWatchedTime(0); // Reset total watched time
+        setIsWatching(false); // Reset watching state
 
         console.log("📊 PROGRESS DATA LOADED:");
         console.log("- lesson_id:", currentLesson.id);
@@ -108,6 +116,9 @@ export default function LessonVideoPlayer() {
   const handleTimeUpdate = useCallback((event: any) => {
     const currentTime = event.target.currentTime;
     if (currentTime && currentTime > 0) {
+      // อัพเดทเวลาปัจจุบันของเซสชัน
+      setCurrentSessionWatchTime(currentTime);
+      
       // เปลี่ยนเป็น in_progress ทันทีเมื่อเริ่มดู (ถ้ายังไม่ได้เป็น completed)
       if (progressData?.status === 'not_started') {
         setProgressData(prev => prev ? { ...prev, status: 'in_progress' } : null);
@@ -127,6 +138,13 @@ export default function LessonVideoPlayer() {
 
   const handlePlay = useCallback(() => {
     const currentTime = playerRef.current?.currentTime || 0;
+    
+    // เริ่มจับเวลา stopwatch
+    if (!isWatching) {
+      setIsWatching(true);
+      watchStartTime.current = Date.now();
+    }
+    
     if (progressData?.status !== 'completed') {
       setProgressData(prev => prev ? { ...prev, status: 'in_progress' } : null);
 
@@ -136,14 +154,23 @@ export default function LessonVideoPlayer() {
 
       updateProgress(currentTime, "in_progress");
     }
-  }, [updateProgress, progressData?.status, updateLessonStatus, currentLesson?.id]);
+  }, [updateProgress, progressData?.status, updateLessonStatus, currentLesson?.id, isWatching]);
 
   const handlePause = useCallback(() => {
     const currentTime = playerRef.current?.currentTime || 0;
+    
+    if (isWatching) {
+      const sessionDuration = (Date.now() - watchStartTime.current) / 1000;
+      setTotalWatchedTime(prev => prev + sessionDuration);
+      setIsWatching(false);
+      console.log("⏸️ PAUSE - Session duration:", sessionDuration.toFixed(2), "seconds");
+      console.log("⏸️ PAUSE - Total watched time:", (totalWatchedTime + sessionDuration).toFixed(2), "seconds");
+    }
+    
     if (progressData?.status !== 'completed') {
       updateProgress(currentTime);
     }
-  }, [updateProgress, progressData?.status]);
+  }, [updateProgress, progressData?.status, isWatching, totalWatchedTime]);
 
   const handleSeeked = useCallback(() => {
     const currentTime = playerRef.current?.currentTime || 0;
@@ -153,44 +180,66 @@ export default function LessonVideoPlayer() {
   }, [updateProgress, progressData?.status]);
 
   // ฟังก์ชันตรวจสอบว่าควรแสดง modal หรือไม่
-  const shouldShowCompletionModal = useCallback((watchTime: number, duration: number): boolean => {
+  const shouldShowCompletionModal = useCallback((currentTime: number, duration: number): boolean => {
     console.log("🔍 CHECKING MODAL CONDITIONS:");
     console.log("- initialWatchTime:", initialWatchTime);
-    console.log("- watchTime:", watchTime);
+    console.log("- currentTime (actual watch time):", currentTime);
     console.log("- duration:", duration);
+    console.log("- totalWatchedTime (stopwatch):", totalWatchedTime);
 
-    // **สำหรับทดสอบ: บังคับแสดง modal ถ้า initialWatchTime = 0 (วิดีโอใหม่)**
+    // ถ้าไม่มี duration หรือ duration ไม่ถูกต้อง ไม่แสดง modal
+    if (!duration || duration <= 0) {
+      console.log("⚠️ Invalid duration - No modal needed");
+      return false;
+    }
+
+    // หยุดจับเวลาก่อนคำนวณ (ถ้ายังเล่นอยู่)
+    let finalWatchedTime = totalWatchedTime;
+    if (isWatching) {
+      const sessionDuration = (Date.now() - watchStartTime.current) / 1000;
+      finalWatchedTime += sessionDuration;
+      console.log("- Final session duration:", sessionDuration.toFixed(2), "seconds");
+    }
+
+    console.log("- Final watched time:", finalWatchedTime.toFixed(2), "seconds");
+
+    // คำนวณเปอร์เซ็นต์การดูวิดีโอจริง
+    let watchPercentage: number;
+
     if (initialWatchTime === 0) {
-      console.log("🧪 TEST MODE: New video - Force showing modal for testing");
-      return true;
+      // วิดีโอใหม่ - คำนวณจากทั้งหมด
+      watchPercentage = (finalWatchedTime / duration) * 100;
+      console.log("- New video - watchPercentage of total:", watchPercentage.toFixed(2) + "%");
+    } else {
+      // การดูต่อ - คำนวณจากเวลาที่เหลือ
+      const remainingDuration = duration - initialWatchTime;
+
+      console.log("- Continue watching - initialWatchTime:", initialWatchTime);
+      console.log("- Continue watching - remainingDuration:", remainingDuration);
+
+      if (remainingDuration <= 0) {
+        console.log("⚠️ No remaining time - Previously completed video");
+        return false;
+      }
+
+      watchPercentage = (finalWatchedTime / remainingDuration) * 100;
+      console.log("- Continue watching - watchPercentage of remaining:", watchPercentage.toFixed(2) + "%");
     }
 
-    // ถ้าเคยดูจบแล้ว (initialWatchTime >= duration * 0.95) ไม่ต้องแสดง modal
-    if (initialWatchTime >= duration * 0.95) {
-      console.log("✅ Previously completed video - No modal needed");
+    // ถ้าดูปกติจนจบ (finalWatchedTime >= threshold) ไม่ต้องแสดง modal
+    const threshold = initialWatchTime === 0 ? duration * 0.95 : (duration - initialWatchTime) * 0.95;
+    if (finalWatchedTime >= threshold) {
+      console.log("✅ Video watched to completion normally - No modal needed");
+      console.log("- finalWatchedTime:", finalWatchedTime, "threshold:", threshold);
       return false;
     }
 
-    // ถ้าเป็นการดูต่อ ตรวจสอบว่าดูเกิน 60% ของเวลาที่เหลือหรือไม่
-    const remainingTime = duration - initialWatchTime;
-    const watchedTime = watchTime - initialWatchTime;
-
-    console.log("- remainingTime:", remainingTime);
-    console.log("- watchedTime:", watchedTime);
-
-    if (remainingTime <= 0) {
-      console.log("⚠️ No remaining time - No modal needed");
-      return false;
-    }
-
-    const watchPercentage = (watchedTime / remainingTime) * 100;
-    console.log("- watchPercentage:", watchPercentage.toFixed(2) + "%");
-
+    // ถ้าดูน้อยกว่า 60% ให้แสดง modal (skip)
     const shouldShow = watchPercentage < 60;
-    console.log("- Result: Should show modal?", shouldShow);
+    console.log("- Result: Should show modal (skip detected)?", shouldShow);
 
     return shouldShow;
-  }, [initialWatchTime]);
+  }, [initialWatchTime, totalWatchedTime, isWatching]);
 
   // ฟังก์ชันสำหรับ mark lesson เป็น completed
   const completeLesson = useCallback(async (duration: number) => {
@@ -205,11 +254,11 @@ export default function LessonVideoPlayer() {
 
   const handleEnded = useCallback(async () => {
     const duration = playerRef.current?.duration || 0;
-    const currentWatchTime = playerRef.current?.currentTime || duration;
+    const currentWatchTime = currentSessionWatchTime || duration;
 
     console.log("🎬 VIDEO ENDED DEBUG:");
     console.log("- duration:", duration);
-    console.log("- currentWatchTime:", currentWatchTime);
+    console.log("- currentWatchTime (session):", currentWatchTime);
     console.log("- initialWatchTime:", initialWatchTime);
 
     // ตรวจสอบว่าควรแสดง modal หรือไม่
@@ -225,7 +274,7 @@ export default function LessonVideoPlayer() {
       // ถ้าไม่ต้องแสดง modal ให้ mark เป็น completed ทันที
       await completeLesson(duration);
     }
-  }, [shouldShowCompletionModal, completeLesson, initialWatchTime]);
+  }, [shouldShowCompletionModal, completeLesson, initialWatchTime, currentSessionWatchTime]);
 
   // ฟังก์ชันจัดการเมื่อผู้ใช้เลือก "เข้าใจแล้ว"
   const handleUnderstood = useCallback(async () => {
