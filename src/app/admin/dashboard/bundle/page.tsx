@@ -59,7 +59,7 @@ function BundlePackagesPage() {
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: "#f8f9fa" }}>
-      <div className="container mx-auto px-4 py-6">
+      <div className="pt-0 pb-6">
         {/* Header with Search */}
         <BundlePageHeader
           searchTerm={searchTerm}

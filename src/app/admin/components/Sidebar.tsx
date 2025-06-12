@@ -9,6 +9,7 @@ import { RiCoupon3Line } from "react-icons/ri";
 import { TbLogout } from "react-icons/tb";
 import { signOut } from "@/lib/auth";
 import { useCustomToast } from "@/components/ui/CustomToast";
+import { TbPackage } from "react-icons/tb";
 
 type SidebarItemDef = {
   id: string;
@@ -43,9 +44,9 @@ export default function Sidebar() {
     },
     {
       id: "bundle",
-      name: "bundle",
+      name: "Bundle",
       path: "/admin/dashboard/bundle",
-      icon: RiCoupon3Line,
+      icon: TbPackage,
     },
   ];
 
