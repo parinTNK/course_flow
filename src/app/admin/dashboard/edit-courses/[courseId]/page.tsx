@@ -48,12 +48,13 @@ const EditCoursePage = () => {
     handleVideoDelete,
     originalVideoData,
     setOriginalVideoData,
-    videoMarkedForDeletion,
+        videoMarkedForDeletion,
     handlePromoCodeChange,
     updatePromoMinPurchase,
     videoUploadState,
     handleVideoUploadStateChange,
     cancelVideoUpload,
+    handleFileUpdate,
   } = useCourseForm({ courseId: courseId as string });
 
 
@@ -97,6 +98,7 @@ const EditCoursePage = () => {
           promo_code_id: data.promo_code_id || null,
           video_trailer_mux_asset_id: data.video_trailer_mux_asset_id || null,
           video_trailer_url: data.video_trailer_url || null,
+          attachment_url: data.attachment_url || null,
         };
 
         if (!initialDataLoaded) {
@@ -273,6 +275,7 @@ const EditCoursePage = () => {
           handleVideoUploadSuccess={handleVideoUploadSuccess}
           handleVideoUploadError={handleVideoUploadError}
           handleVideoDelete={handleVideoDelete}
+          handleFileUpdate={handleFileUpdate}
           videoMarkedForDeletion={videoMarkedForDeletion}
           dndSensors={sensors}
           videoUploadState={videoUploadState}

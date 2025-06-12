@@ -4,12 +4,12 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
-  api: {
-    bodyParser: {
-      sizeLimit: '100mb', 
-    },
-    responseLimit: false,
-  },
+  // api: {
+  //   bodyParser: {
+  //     sizeLimit: '100mb', 
+  //   },
+  //   responseLimit: false,
+  // },
   images: {
     remotePatterns: [
       {

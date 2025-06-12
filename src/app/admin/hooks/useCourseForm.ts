@@ -13,6 +13,7 @@ const INITIAL_FORM_DATA: CourseFormData = {
   promo_code_id: null,
   status: 'draft',
   cover_image_url: null,
+  attachment_url: null,
 };
 
 interface UseCourseFormProps {
@@ -667,6 +668,13 @@ export const useCourseForm = (props?: UseCourseFormProps) => {
     })
   }, [videoUploadState.currentAssetId])
 
+  const handleFileUpdate = useCallback((url: string | null) => {
+    _setFormData(prev => ({
+      ...prev,
+      attachment_url: url,
+    }));
+  }, []);
+
   return {
     formData,
     setFormData,
@@ -702,5 +710,6 @@ export const useCourseForm = (props?: UseCourseFormProps) => {
     videoUploadState,
     handleVideoUploadStateChange,
     cancelVideoUpload,
+    handleFileUpdate,
   };
 };

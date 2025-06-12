@@ -32,6 +32,7 @@ function CreateCourse() {
     videoUploadState,
     handleVideoUploadStateChange,
     cancelVideoUpload,
+    handleFileUpdate,
   } = useCourseForm();
 
   const lessonManagement = useLessonManagement('');
@@ -87,6 +88,7 @@ function CreateCourse() {
           handleVideoUploadSuccess={handleVideoUploadSuccess}
           handleVideoUploadError={handleVideoUploadError}
           handleVideoDelete={handleVideoDelete}
+          handleFileUpdate={handleFileUpdate}
           videoMarkedForDeletion={videoMarkedForDeletion}
           dndSensors={lessonManagement.sensors}
           videoUploadState={videoUploadState}

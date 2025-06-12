@@ -11,6 +11,19 @@ import ConfirmationModal from '@/app/admin/components/ConfirmationModal';
 import { useNavigationBlocker } from '@/app/admin/hooks/useNavigationBlocker';
 import { X } from 'lucide-react';
 import { IoIosArrowBack } from "react-icons/io";
+import FileUpload from './FileUpload';
+
+// Utility function to extract filename from URL
+const getFileNameFromUrl = (url: string): string => {
+  try {
+    const urlParts = url.split('/');
+    const fileName = urlParts[urlParts.length - 1];
+    // Remove any query parameters and decode URI
+    return decodeURIComponent(fileName.split('?')[0] || 'attachment.pdf');
+  } catch {
+    return 'attachment.pdf';
+  }
+};
 
 interface CourseFormViewProps {
   formData: CourseFormData;
@@ -32,6 +45,7 @@ interface CourseFormViewProps {
   handleVideoUploadSuccess: (assetId: string, playbackId: string) => void;
   handleVideoUploadError: (error: string) => void;
   handleVideoDelete: (assetId?: string | null) => void;
+  handleFileUpdate: (fileUrl: string | null, fileName: string | null) => void;
   videoMarkedForDeletion?: string | null;
   dndSensors: any;
   videoUploadState: {
@@ -58,7 +72,7 @@ export const CourseFormView: React.FC<CourseFormViewProps> = ({
   formData, errors, isLoading, coverPreview, coverRef, lessons,
   handleInputChange, handleCoverClick, handleCoverChange, handleCoverRemove, handleSubmit, handleCancel,
   handleAddLesson, handleDeleteLesson, handleEditLesson, handleDragEndLessons,
-  handleVideoUploadSuccess, handleVideoUploadError, handleVideoDelete, videoMarkedForDeletion, dndSensors,
+  handleVideoUploadSuccess, handleVideoUploadError, handleVideoDelete, handleFileUpdate, videoMarkedForDeletion, dndSensors,
   videoUploadState, handleVideoUploadStateChange, cancelVideoUpload, onDeleteCourse,
   handlePromoCodeChange, updatePromoMinPurchase,
 }) => {
@@ -295,15 +309,17 @@ export const CourseFormView: React.FC<CourseFormViewProps> = ({
               )}
             </div>
 
-            {/* Attach File (Placeholder UI) */}
+            {/* Attach File */}
             <div className="space-y-2 mt-4">
               <label className="block text-sm font-medium">Attach File (Optional)</label>
-              <div className="w-[180px] h-[180px] flex items-center justify-center cursor-pointer rounded-lg p-6 text-center bg-[#F6F7FC]">
-                <div className="flex flex-col items-center justify-center">
-                  <svg className="w-8 h-8 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
-                  <p className="mt-2 text-sm text-blue-500">Upload file</p>
-                </div>
-              </div>
+              <p className="text-xs text-gray-500">Supported file types: .pdf. Max file size: 10 MB</p>
+              <FileUpload
+                onFileUpdate={handleFileUpdate}
+                existingFileUrl={formData.attachment_url}
+                existingFileName={formData.attachment_url ? getFileNameFromUrl(formData.attachment_url) : null}
+                disabled={isLoading}
+              />
+              {errors.attachFile && <p className="text-red-500 text-xs">{errors.attachFile}</p>}
             </div>
           </div>
 
