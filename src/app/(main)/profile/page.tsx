@@ -46,21 +46,19 @@ export default function ProfilePage() {
     []
   );
   const [loading, setLoading] = useState(false);
-  const [emailLoading, setEmailLoading] = useState(false); // add state
+  const [emailLoading, setEmailLoading] = useState(false);
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [newEmail, setNewEmail] = useState("");
   const toast = useCustomToast();
-  const { user, fetchUser, loading: authLoading } = useAuth(); // add loading from context if available
+  const { user, fetchUser, loading: authLoading } = useAuth();
   const router = useRouter();
 
-  // Redirect to "landing page" if user is not logged in but not when auth is loading from profile update
   useEffect(() => {
     if (user === null && !authLoading) {
       router.replace("/");
     }
   }, [user, router, authLoading]);
 
-  // Fetch user data from Supabase
   useEffect(() => {
     if (user) {
       setUserId(user.user_id);
@@ -76,7 +74,7 @@ export default function ProfilePage() {
   }, [user]);
 
   const handleEmailChange = async () => {
-    setEmailLoading(true); // start spinner
+    setEmailLoading(true);
     const {
       data: { session },
     } = await supabase.auth.getSession();
@@ -133,7 +131,6 @@ export default function ProfilePage() {
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
-    // Ensure the clicked button is the "Update Profile" button
     const target = (e.nativeEvent as SubmitEvent).submitter as HTMLButtonElement;
     if (target?.textContent !== "Update Profile") return;
 
@@ -141,11 +138,10 @@ export default function ProfilePage() {
     setValidationErrors(errors);
     if (errors.length > 0 || !userId) return;
 
-    // Check if any field or image has changed
     const isNameChanged = formData.name !== (user?.full_name || "");
     const isDobChanged = formData.dob !== (user?.date_of_birth || "");
     const isSchoolChanged = formData.school !== (user?.educational_background || "");
-    const isImageChanged = !!file;
+    const isImageChanged = photo !== previousPhotoPath;
 
     if (!isNameChanged && !isDobChanged && !isSchoolChanged && !isImageChanged) {
       toast.info("No changes", "No changes detected to update.");
@@ -167,7 +163,7 @@ export default function ProfilePage() {
         } else {
           updateProfileState(uploadedImageUrl);
           toast.success("Success", "Profile updated successfully!");
-          window.dispatchEvent(new Event("profileUpdated")); // Notify NavBar
+          window.dispatchEvent(new Event("profileUpdated"));
         }
       }
     } catch (err: any) {
@@ -177,16 +173,20 @@ export default function ProfilePage() {
     }
   };
 
-  const buildPayload = (
-    uploadedImageUrl: string | null
-  ): Record<string, any> => {
+  const buildPayload = (uploadedImageUrl: string | null): Record<string, any> => {
     const payload: Record<string, any> = {};
-    // Only add fields that have changed
-    if (formData.name) payload.full_name = formData.name;
-    if (formData.dob) payload.date_of_birth = formData.dob;
-    if (formData.school) payload.educational_background = formData.school;
-
-    // Only add profile_picture if it's null or different from the previous one
+    if (formData.name !== (user?.full_name || "") && formData.name.trim() !== "") {
+      payload.full_name = formData.name;
+    }
+    if (formData.dob !== (user?.date_of_birth || "") && formData.dob.trim() !== "") {
+      payload.date_of_birth = formData.dob;
+    }
+    if (
+      formData.school !== (user?.educational_background || "") &&
+      formData.school.trim() !== ""
+    ) {
+      payload.educational_background = formData.school;
+    }
     payload.profile_picture = uploadedImageUrl;
     return payload;
   };
@@ -198,7 +198,6 @@ export default function ProfilePage() {
     fetchUser();
   };
 
-  // Handle profile update event --> re-fetch user data
   useEffect(() => {
     const handleProfileUpdate = () => {
       fetchUser();
@@ -213,7 +212,6 @@ export default function ProfilePage() {
   return (
     <div className="flex flex-col relative py-10 sm:mb-26 sm:py-28 mt-13 sm:mt-16 overflow-y-hidden">
       <BackgroundSVGs />
-      {/* Loading overlay when updating profile or changing email */}
       {(loading || emailLoading) && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/70">
           <LoadingSpinner
@@ -260,7 +258,7 @@ export default function ProfilePage() {
         newEmail={newEmail}
         setNewEmail={setNewEmail}
         handleEmailChange={handleEmailChange}
-        emailLoading={emailLoading} // pass prop
+        emailLoading={emailLoading}
       />
     </div>
   );
@@ -380,7 +378,11 @@ const ProfileFormSection = ({
         </ButtonT>
       </div>
     </div>
-    <ButtonT variant="primary" className="w-full h-[48px]">
+    <ButtonT
+      variant="primary"
+      className="w-full h-[48px]"
+      type="submit"
+    >
       {loading ? "Updating..." : "Update Profile"}
     </ButtonT>
   </div>
@@ -428,7 +430,7 @@ const EmailModal = ({
     setShowErrors(true);
     const emailErr = validateNewEmail(newEmail);
     setNewEmailError(emailErr);
-    let confirmErr = null;
+    let confirmErr: string | null = null;
     if (!confirmEmail) {
       confirmErr = "Please confirm your new email.";
     } else if (newEmail !== confirmEmail) {
