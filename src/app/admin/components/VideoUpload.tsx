@@ -183,11 +183,11 @@ const VideoUpload = forwardRef<VideoUploadRef, VideoUploadProps>(({
       return
     }
 
-    const maxSize = 10 * 1024 * 1024
+    const maxSize = 100 * 1024 * 1024 // 100MB
     if (file.size > maxSize) {
       setUploadState(prev => ({
         ...prev,
-        error: 'File size exceeds 10MB limit',
+        error: 'File size exceeds 100MB limit',
       }))
       return
     }

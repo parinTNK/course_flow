@@ -133,6 +133,16 @@ const SubLessonVideoUpload = forwardRef<SubLessonVideoUploadRef, SubLessonVideoU
       }))
       return
     }
+
+    const maxSize = 100 * 1024 * 1024 // 100MB
+    if (file.size > maxSize) {
+      setUploadState(prev => ({
+        ...prev,
+        error: 'File size exceeds 100MB limit',
+      }))
+      return
+    }
+
     setUploadState({
       isUploading: true,
       progress: 0,
