@@ -8,11 +8,13 @@ import CallToAction from "@/components/landing/CallToAction";
 import Pagination from "@/app/admin/components/Pagination";
 import BackgroundSVGs from "@/components/BackgroundSVGs";
 import LoadingSpinner from "@/app/admin/components/LoadingSpinner";
+import { useAuth } from "@/app/context/authContext";
 
 const limit = 12;
 
 const fetchWishlistData = async (
   page: number,
+  userId: string | undefined,
   setCourses: (courses: Course[]) => void,
   setTotalPages: (pages: number) => void,
   setError: (err: string | null) => void,
@@ -22,7 +24,7 @@ const fetchWishlistData = async (
   setError(null);
   try {
     const res = await axios.get("/api/wishlist", {
-      params: { page, limit },
+      params: { page, limit, user_id: userId },
     });
     const data = res.data;
     setCourses(data.courses || []);
@@ -42,16 +44,24 @@ const WishlistPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const { user, loading: authLoading } = useAuth();
 
   useEffect(() => {
+    if (!user || authLoading) {
+      setCourses([]);
+      setTotalPages(1);
+      setLoading(false);
+      return;
+    }
     fetchWishlistData(
       page,
+      user.user_id,
       setCourses,
       setTotalPages,
       setError,
       setLoading
     );
-  }, [page]);
+  }, [page, user, authLoading]);
 
   return (
     <div className="min-h-screen flex flex-col bg-transparent overflow-x-hidden">
@@ -96,8 +106,6 @@ const WishlistPage: React.FC = () => {
           onPageChange={setPage}
         />
       </main>
-
-
     </div>
   );
 };

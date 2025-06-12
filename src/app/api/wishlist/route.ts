@@ -1,11 +1,9 @@
 import { supabase } from "@/lib/supabaseClient";
 import { NextRequest } from "next/server";
 
-// Define types for course and wishlist item
 type Lesson = {
   id: string;
   title: string;
-  // Add other lesson fields as needed
 };
 
 type Course = {
@@ -39,20 +37,24 @@ export async function GET(request: NextRequest) {
     const url = new URL(request.url);
     const page = parseInt(url.searchParams.get("page") || "1", 10);
     const limit = parseInt(url.searchParams.get("limit") || "12", 10);
+    const userId = url.searchParams.get("user_id");
+
+    if (!userId) {
+      return Response.json({ error: "Missing user_id parameter" }, { status: 400 });
+    }
 
     const from = (page - 1) * limit;
     const to = from + limit - 1;
 
-    // Get total count for pagination
     const { count, error: countError } = await supabase
       .from("wishlist")
-      .select("id", { count: "exact", head: true });
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", userId);
 
     if (countError) {
       return Response.json({ error: countError.message }, { status: 400 });
     }
 
-    // Fetch wishlist with course details and lessons
     const { data, error } = await supabase
       .from("wishlist")
       .select(
@@ -80,6 +82,7 @@ export async function GET(request: NextRequest) {
         )
       `
       )
+      .eq("user_id", userId)
       .range(from, to)
       .order("created_at", { ascending: false });
 
@@ -87,7 +90,6 @@ export async function GET(request: NextRequest) {
       return Response.json({ error: error.message }, { status: 400 });
     }
 
-    // Format data for frontend
     const formattedData = (data as any[])
       .map((item) => {
         const rawCourse = item.courses;
