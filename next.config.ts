@@ -4,12 +4,7 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
-  // api: {
-  //   bodyParser: {
-  //     sizeLimit: '100mb', 
-  //   },
-  //   responseLimit: false,
-  // },
+  serverExternalPackages: [],
   images: {
     remotePatterns: [
       {
@@ -26,6 +21,18 @@ const nextConfig = {
       },
     ],
   },
+  // Add webpack configuration to help with build issues
+  webpack: (config, { isServer }) => {
+    if (!isServer) {
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        fs: false,
+        net: false,
+        tls: false,
+      };
+    }
+    return config;
+  },
 };
 
-module.exports = nextConfig;
+export default nextConfig;
