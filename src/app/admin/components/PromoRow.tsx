@@ -16,7 +16,7 @@ const PromoRow: React.FC<PromoRowProps> = ({
 }) => {
   return (
     <tr className="hover:bg-gray-50 transition">
-      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
         {promo.code}
       </td>
       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
@@ -30,7 +30,7 @@ const PromoRow: React.FC<PromoRowProps> = ({
         {formatCourseNames(promo.is_all_courses, promo.course_names, 20)}
       </td>
       {/* --- End --- */}
-      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
         {promo.created_at
           ? new Date(promo.created_at).toLocaleString("en-GB", {
               day: "2-digit",

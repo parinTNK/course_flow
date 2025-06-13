@@ -26,12 +26,12 @@ const PromoCodesTable: React.FC<PromoCodesTableProps> = ({
   }
 
   const tableHeaders = [
-    "Promo code",
-    "Minimum purchase (THB)",
-    "Discount type",
-    "Courses Included",
-    "Created date",
-    "Action",
+    "PROMO CODE",
+    "MINIMUM PURCHASE (THB)",
+    "DISCOUNT TYPE",
+    "COURSE INCLUDED",
+    "UPDATED AT",
+    "ACTION",
   ];
 
   return (
