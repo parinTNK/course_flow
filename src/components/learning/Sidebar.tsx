@@ -49,7 +49,6 @@ export default function Sidebar({ setLessons: setParentLessons, scrollToVideo, i
   const { progressUpdated, lessonStatusUpdates } = useProgress();
 
   const getStatusIcon = (subLesson: SubLesson) => {
-    // Check for immediate status update first
     const immediateStatus = lessonStatusUpdates[subLesson.id];
     const status = immediateStatus || subLesson.watch_status || "not_started";
     return <ProgressIcon status={status as WatchStatus} size={20} />;
@@ -257,9 +256,9 @@ export default function Sidebar({ setLessons: setParentLessons, scrollToVideo, i
         {localLessons.map((lesson, index) => (
           <Accordion.Item key={lesson.id} value={lesson.id} className="border-b pb-2">
             <Accordion.Header>
-              <Accordion.Trigger className="flex justify-between items-center w-full py-2 px-2 hover:bg-gray-100 rounded text-left font-medium">
+              <Accordion.Trigger className="flex justify-between items-center w-full py-2 px-2 hover:bg-gray-100 rounded text-left font-medium cursor-pointer">
                 <div className="flex items-center space-x-2">
-                  <span className="text-sm text-gray-500">
+                  <span className="text-sm text-gray-500 ">
                     {String(index + 1).padStart(2, "0")}
                   </span>
                   <span>{lesson.title}</span>
@@ -272,7 +271,7 @@ export default function Sidebar({ setLessons: setParentLessons, scrollToVideo, i
                 <button
                   key={subLesson.id}
                   onClick={() => handleSubLessonClick(subLesson)}
-                  className={`flex items-center w-full text-left text-sm p-2 rounded hover:bg-gray-100 ${
+                  className={`flex items-center w-full text-left text-sm p-2 rounded hover:bg-gray-100 cursor-pointer ${
                     currentLesson?.id === subLesson.id
                       ? "text-blue-600 font-semibold bg-blue-50"
                       : "text-gray-700"

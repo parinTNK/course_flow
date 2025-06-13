@@ -76,7 +76,7 @@ const NavBar: React.FC<NavBarProps> = ({ navigate }) => {
       <div className="hidden sm:flex items-center justify-between mx-[80px] lg:mx-[160px] h-full">
         {/* Logo */}
         <a
-          className="text-2xl font-extrabold text-transparent bg-linear1 cursor-pointer"
+          className="text-3xl font-extrabold text-transparent bg-linear1 cursor-pointer"
           style={{ backgroundClip: "text", WebkitBackgroundClip: "text" }}
           onClick={() => handleNav("/")}
         >
@@ -85,7 +85,7 @@ const NavBar: React.FC<NavBarProps> = ({ navigate }) => {
 
         <div className="flex items-center space-x-6">
           <a
-            className="font-semibold text-[#1A1A66] hover:text-[#0033CC] transition cursor-pointer"
+            className="font-semibold text-[#1A1A66] hover:text-[#0033CC] transition cursor-pointer text-lg"
             onClick={() => handleNav("/our-courses")}
           >
             Our Courses
