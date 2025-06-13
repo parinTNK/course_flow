@@ -36,7 +36,7 @@ export async function GET(req: NextRequest) {
         )
       `, { count: 'exact' })
       .ilike('description', `%${search}%`)
-      .order('created_at', { ascending: false })
+      .order('updated_at', { ascending: false })
       .range(offset, offset + limit - 1);
 
     if (error) {

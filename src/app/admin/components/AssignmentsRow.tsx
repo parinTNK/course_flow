@@ -15,7 +15,6 @@ interface AssignmentRowProps {
 
 const AssignmentRow: React.FC<AssignmentRowProps> = ({
   assignment,
-  index,
   onEdit,
   onDelete,
   formatDate,
@@ -42,7 +41,7 @@ const AssignmentRow: React.FC<AssignmentRowProps> = ({
 
       {/* Created At */}
       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-        {formatDate(assignment.created_at)}
+        {formatDate(assignment.updated_at)}
       </td>
 
       {/* Action */}
