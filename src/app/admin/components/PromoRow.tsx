@@ -9,11 +9,7 @@ interface PromoRowProps {
   onDelete: () => void;
 }
 
-const PromoRow: React.FC<PromoRowProps> = ({
-  promo,
-  onEdit,
-  onDelete,
-}) => {
+const PromoRow: React.FC<PromoRowProps> = ({ promo, onEdit, onDelete }) => {
   return (
     <tr className="hover:bg-gray-50 transition">
       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
@@ -31,15 +27,19 @@ const PromoRow: React.FC<PromoRowProps> = ({
       </td>
       {/* --- End --- */}
       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-        {promo.created_at
-          ? new Date(promo.created_at).toLocaleString("en-GB", {
-              day: "2-digit",
-              month: "2-digit",
-              year: "numeric",
-              hour: "2-digit",
-              minute: "2-digit",
-              hour12: true,
-            })
+        {promo.updated_at
+          ? new Date(promo.updated_at)
+              .toLocaleString("en-GB", {
+                day: "2-digit",
+                month: "2-digit",
+                year: "numeric",
+                hour: "2-digit",
+                minute: "2-digit",
+                hour12: true,
+              })
+              .replace(",", "") 
+              .replace("am", "AM")
+              .replace("pm", "PM")
           : "-"}
       </td>
       <td className="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">

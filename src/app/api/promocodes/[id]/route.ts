@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabaseClient';
 import { NextRequest } from 'next/server';
+import { getBangkokISOString } from "@/lib/bangkokTime";
 
 export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
   const { id } = params;
@@ -45,9 +46,14 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
 
   const { course_ids, ...promoData } = body;
 
+  const updatedPromoData = {
+    ...promoData,
+    updated_at: getBangkokISOString(),
+  };
+
   const { error: updateError } = await supabase
     .from('promo_codes')
-    .update(promoData)
+    .update(updatedPromoData)
     .eq('id', id);
 
   if (updateError) {
