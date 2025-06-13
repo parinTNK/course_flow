@@ -17,6 +17,7 @@ import {
   BookText,
   ClipboardCheck,
   Star,
+  Package,
 } from "lucide-react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { ButtonT } from "@/components/ui/ButtonT";
@@ -55,6 +56,7 @@ const NavBar: React.FC<NavBarProps> = ({ navigate }) => {
     { icon: BookText, label: "My Courses", href: "/my-courses" },
     { icon: ClipboardCheck, label: "My Assignments", href: "/my-assignments" },
     { icon: Star, label: "My Wishlist", href: "/wishlist" },
+    { icon: Package, label: "My Bundle", href: "/my-bundles" },
   ];
 
   const handleLogout = async () => {
@@ -90,6 +92,12 @@ const NavBar: React.FC<NavBarProps> = ({ navigate }) => {
           >
             Our Courses
           </a>
+          <a
+            className="font-semibold text-[#1A1A66] hover:text-[#0033CC] transition cursor-pointer"
+            onClick={() => handleNav("/course-bundle")}
+          >
+            Bundle
+          </a>
 
           {!user ? (
             <Link href="/login">
@@ -100,7 +108,11 @@ const NavBar: React.FC<NavBarProps> = ({ navigate }) => {
               <DropdownMenuTrigger asChild>
                 <button className="flex items-center space-x-3 cursor-pointer px-2 py-1 rounded-md transition focus:outline-none">
                   <Avatar className="h-10 w-10">
-                    <AvatarImage src={avatarUrl} alt={displayName} className="object-cover" />
+                    <AvatarImage
+                      src={avatarUrl}
+                      alt={displayName}
+                      className="object-cover"
+                    />
                     <AvatarFallback>U</AvatarFallback>
                   </Avatar>
                   <div className="flex items-center space-x-1">
@@ -168,9 +180,7 @@ const NavBar: React.FC<NavBarProps> = ({ navigate }) => {
 
           {!user ? (
             <Link href="/login">
-              <button
-                className="font-sans whitespace-nowrap w-[74px] h-[37px] bg-[var(--blue-500)] hover:bg-blue-700 rounded-[12px] font-bold px-[32px] py-[18px] cursor-pointer flex items-center justify-center text-white text-sm"
-              >
+              <button className="font-sans whitespace-nowrap w-[74px] h-[37px] bg-[var(--blue-500)] hover:bg-blue-700 rounded-[12px] font-bold px-[32px] py-[18px] cursor-pointer flex items-center justify-center text-white text-sm">
                 Log in
               </button>
             </Link>
@@ -179,7 +189,11 @@ const NavBar: React.FC<NavBarProps> = ({ navigate }) => {
               <DropdownMenuTrigger asChild>
                 <button className="flex items-center space-x-2">
                   <Avatar className="h-8 w-8">
-                    <AvatarImage src={avatarUrl} alt={displayName} className="object-cover"/>
+                    <AvatarImage
+                      src={avatarUrl}
+                      alt={displayName}
+                      className="object-cover"
+                    />
                     <AvatarFallback>U</AvatarFallback>
                   </Avatar>
                   <ChevronDown
