@@ -1,4 +1,5 @@
 import React from "react";
+import { ButtonT } from "@/components/ui/ButtonT";
 
 interface Course {
   id: string;
@@ -90,14 +91,18 @@ export const BundleCourseSelection: React.FC<BundleCourseSelectionProps> = ({
             </div>
           ))}
 
-          <button
-            type="button"
+          <ButtonT
+            variant="Secondary"
             onClick={onAddCourse}
             disabled={!canAddMoreCourses()}
-            className="text-orange-600 hover:text-orange-800 font-medium transition disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+            className="text-center"
           >
-            + Add Course
-          </button>
+            <div className="flex items-center justify-center space-x-1">
+              <span>+</span>
+              <span>Add</span>
+              <span>Course</span>
+            </div>
+          </ButtonT>
 
           {!canAddMoreCourses() && (
             <p className="text-gray-500 text-sm mt-2">

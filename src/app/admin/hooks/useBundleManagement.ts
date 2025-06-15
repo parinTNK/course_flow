@@ -1,16 +1,30 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { BundleWithDetails } from '@/types/bundle';
 import { useCustomToast } from '@/components/ui/CustomToast';
 import { supabase } from '@/lib/supabaseClient';
 
-export const useBundleManagement = () => {
+export const useBundleManagement = (itemsPerPage = 10) => {
   const [bundles, setBundles] = useState<BundleWithDetails[]>([]);
   const [filteredBundles, setFilteredBundles] = useState<BundleWithDetails[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string>('');
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   
   const { success, error: toastError } = useCustomToast();
+
+  // คำนวณ pagination
+  const { paginatedBundles, totalPages } = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    const paginated = filteredBundles.slice(startIndex, endIndex);
+    const total = Math.ceil(filteredBundles.length / itemsPerPage);
+    
+    return {
+      paginatedBundles: paginated,
+      totalPages: total || 1
+    };
+  }, [filteredBundles, currentPage, itemsPerPage]);
 
   useEffect(() => {
     fetchBundles();
@@ -33,6 +47,7 @@ export const useBundleManagement = () => {
   const fetchBundles = async () => {
     try {
       setLoading(true);
+      setError('');
       console.log("📦 Fetching bundles from Supabase...");
 
       // ดึง bundles พื้นฐานก่อน
@@ -104,6 +119,7 @@ export const useBundleManagement = () => {
     } catch (error) {
       console.error('💥 Error fetching bundles:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      setError(errorMessage);
       toastError('Failed to fetch bundles', errorMessage);
       setBundles([]);
     } finally {
@@ -176,10 +192,13 @@ export const useBundleManagement = () => {
 
   return {
     bundles,
-    filteredBundles,
+    filteredBundles: paginatedBundles, // ส่งข้อมูลที่ paginate แล้ว
+    allFilteredBundles: filteredBundles, // ข้อมูลทั้งหมดที่ filter แล้ว (สำหรับนับ)
     loading,
+    error,
     searchTerm,
     currentPage,
+    totalPages,
     setSearchTerm,
     setCurrentPage,
     handleDelete,

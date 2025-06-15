@@ -43,7 +43,7 @@ export const BundleRow: React.FC<BundleRowProps> = ({
         {formatDate(bundle.created_at)}
       </td>
       <td className="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
-        <div className="flex items-center justify-center space-x-3">
+        <div className="flex items-center justify-start space-x-3 ml-1">
           <button
             onClick={() => {
               console.log("🗑️ Delete clicked for bundle:", bundle.id);
@@ -55,8 +55,8 @@ export const BundleRow: React.FC<BundleRowProps> = ({
             <Image
               src="/delete.svg"
               alt="Delete"
-              width={24}
-              height={24}
+              width={19}
+              height={19}
               className="inline-block"
             />
           </button>
@@ -71,8 +71,8 @@ export const BundleRow: React.FC<BundleRowProps> = ({
             <Image
               src="/edit.svg"
               alt="Edit"
-              width={24}
-              height={24}
+              width={19}
+              height={19}
               className="inline-block"
             />
           </button>

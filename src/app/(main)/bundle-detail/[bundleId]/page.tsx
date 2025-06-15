@@ -8,7 +8,7 @@ import { useAuth } from "@/app/context/authContext";
 import { useCustomToast } from "@/components/ui/CustomToast";
 import { getBangkokISOString } from "@/lib/bangkokTime";
 
-import BundleTrailerVideo from "@/components/bundleCard/BundleTrailerVideo";
+import BundleImage from "@/components/bundleCard/BundleImage ";
 import BundleDetailSection from "@/components/bundleCard/BundleDetailSection";
 import BundleCoursesSection from "@/components/bundleCard/BundleCoursesSection";
 import BundleSidebar from "@/components/bundleCard/BundleSidebar";
@@ -181,7 +181,10 @@ const BundleDetailPage: React.FC = () => {
 
         <div className="grid md:grid-cols-3 gap-8 mb-12">
           <div className="md:col-span-2">
-            <BundleTrailerVideo url={bundle?.video_trailer_url} />
+            <BundleImage
+              imageUrl={bundle?.image_url}
+              bundleName={bundle?.name}
+            />
             <BundleDetailSection detail={bundle?.description} />
             <BundleCoursesSection
               courses={bundleCourses}

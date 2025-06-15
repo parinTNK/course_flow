@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useEditBundleForm } from "@/app/admin/hooks/useEditBundleForm";
 import { BundleBasicFields } from "@/app/admin/components/BundleBasicFields";
-import { BundleCourseSelection } from "@/app/admin/components/BundleCourseSelection";
+import { EditBundleCourseSelection } from "@/app/admin/components/EditBundleCourseSelection ";
 import { useCustomToast } from "@/components/ui/CustomToast";
 import ConfirmationModal from "@/app/admin/components/ConfirmationModal";
 
@@ -134,12 +134,6 @@ const EditBundlePage = () => {
 
   return (
     <div className="bg-gray-100 flex-1 pb-10">
-      {/* Debug info - ลบออกในโปรดักชัน */}
-      <div className="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded mb-4">
-        <strong>Debug Info:</strong> Bundle ID = {bundleId}, Params ={" "}
-        {JSON.stringify(params)}
-      </div>
-
       {/* Header */}
       <div className="bg-white px-8 py-6 rounded-lg shadow-sm mb-6">
         <div className="flex justify-between items-center">
@@ -160,14 +154,14 @@ const EditBundlePage = () => {
             <button
               onClick={handleCancel}
               disabled={loading}
-              className="px-6 py-2 border border-orange-500 text-orange-500 hover:bg-orange-50 rounded-md font-medium transition-colors duration-200 disabled:opacity-50"
+              className="px-6 py-2 border border-orange-500 text-orange-500 hover:bg-orange-50 rounded-md font-medium transition-colors duration-200 disabled:opacity-50 cursor-pointer"
             >
               Cancel
             </button>
             <button
               onClick={handleSubmit}
               disabled={loading || !hasSelectedCourses}
-              className="px-6 py-2 bg-blue-600 text-white hover:bg-blue-700 rounded-md font-medium transition-colors duration-200 disabled:opacity-50"
+              className="px-6 py-2 bg-blue-600 text-white hover:bg-blue-700 rounded-md font-medium transition-colors duration-200 disabled:opacity-50 cursor-pointer"
             >
               {loading ? "Updating..." : "Update"}
             </button>
@@ -185,7 +179,7 @@ const EditBundlePage = () => {
           />
 
           {/* Course Selection */}
-          <BundleCourseSelection
+          <EditBundleCourseSelection
             availableCourses={availableCourses}
             selectedCourses={selectedCourses}
             coursesLoading={coursesLoading}
@@ -210,23 +204,12 @@ const EditBundlePage = () => {
             </div>
             <button
               onClick={handleDeleteBundle}
-              className="px-4 py-2 bg-red-600 text-white hover:bg-red-700 rounded-md font-medium transition-colors duration-200"
+              className="px-4 py-2 bg-red-600 text-white hover:bg-red-700 rounded-md font-medium transition-colors duration-200 cursor-pointer"
             >
               Delete Bundle
             </button>
           </div>
         </div>
-      </div>
-
-      {/* Bottom Actions */}
-      <div className="mt-6 flex justify-end">
-        <button
-          onClick={handleSubmit}
-          disabled={loading || !hasSelectedCourses}
-          className="px-8 py-2 bg-blue-600 text-white hover:bg-blue-700 rounded-md font-medium transition-colors duration-200 disabled:opacity-50"
-        >
-          {loading ? "Updating Bundle..." : "Update Bundle"}
-        </button>
       </div>
 
       {/* Delete Confirmation Modal */}

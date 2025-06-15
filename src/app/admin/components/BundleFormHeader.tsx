@@ -15,14 +15,14 @@ export const BundleFormHeader: React.FC<BundleFormHeaderProps> = ({
   hasSelectedCourses,
 }) => {
   return (
-    <div className="bg-white px-8 py-6 rounded-lg shadow-sm mb-6">
+    <div className="bg-white px-8 py-6 shadow-sm mb-6">
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-semibold text-gray-800">Add Bundle</h1>
           <p className="text-gray-600 mt-1">Create a new bundle package</p>
         </div>
         <div className="flex items-center space-x-4">
-          <ButtonT variant="ghost" onClick={onCancel} disabled={loading}>
+          <ButtonT variant="Secondary" onClick={onCancel} disabled={loading}>
             Cancel
           </ButtonT>
           <ButtonT
