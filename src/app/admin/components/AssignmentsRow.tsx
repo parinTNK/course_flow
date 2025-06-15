@@ -48,14 +48,14 @@ const AssignmentRow: React.FC<AssignmentRowProps> = ({
       <td className="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
         <button
           onClick={() => onDelete(assignment.id)}
-          className="text-blue-600 hover:text-blue-800 mr-3 transition"
+          className="text-blue-600 hover:text-blue-800 mr-3 transition cursor-pointer"
           aria-label="Delete assignment"
         >
           <Image src="/delete.svg" alt="Delete" width={18} height={18} />
         </button>
         <button
           onClick={() => onEdit(assignment.id)}
-          className="text-blue-600 hover:text-blue-800 transition"
+          className="text-blue-600 hover:text-blue-800 transition cursor-pointer"
           aria-label="Edit assignment"
         >
           <Image src="/edit.svg" alt="Edit" width={18} height={18} />
