@@ -1,4 +1,5 @@
 import React from "react";
+import TooltipCell from "./TooltipCell";
 import Image from "next/image";
 import { FiImage } from "react-icons/fi";
 import { Course } from "../types";
@@ -46,9 +47,11 @@ const CourseRow: React.FC<CourseRowProps> = ({
           )}
         </div>
       </td>
-      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-        {course.name || course.course_name}
-      </td>
+      <TooltipCell
+        text={course.name || course.course_name}
+        maxWidth="max-w-[240px]"
+        className="font-medium text-gray-900"
+      />
       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
         {course.lessons_count ?? "N/A"} Lessons
       </td>
@@ -75,7 +78,7 @@ const CourseRow: React.FC<CourseRowProps> = ({
       <td className="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
         <button
           onClick={() => onDelete(course.id)}
-          className="text-blue-600 hover:text-blue-800 mr-3 transition"
+          className="text-blue-600 hover:text-blue-800 mr-3 transition cursor-pointer"
           aria-label="Delete course"
         >
           <Image
@@ -88,7 +91,7 @@ const CourseRow: React.FC<CourseRowProps> = ({
         </button>
         <button
           onClick={() => onEdit(course.id)}
-          className="text-blue-600 hover:text-blue-800  transition"
+          className="text-blue-600 hover:text-blue-800  transition cursor-pointer"
           aria-label="Edit course"
         >
           <Image

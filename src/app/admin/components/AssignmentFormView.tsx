@@ -2,6 +2,7 @@ import React from "react";
 import { ButtonT } from "@/components/ui/ButtonT";
 import { Label } from "@/components/ui/label";
 import { IoIosArrowBack } from "react-icons/io";
+import { ComboboxSelect } from "./ComboboxSelect";
 import { 
   Tooltip, 
   TooltipContent, 
@@ -110,18 +111,12 @@ export default function AssignmentFormView({
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
             <Label className="block font-medium text-[16px] mb-2">Course</Label>
-            <select
+            <ComboboxSelect
+              items={courses.map((c) => ({ id: c.id, label: c.name }))}
               value={formData.courseId}
-              onChange={(e) => handleSelect("courseId", e.target.value)}
-              className="w-full border p-2 rounded-md text-[16px]"
-            >
-              <option value="">Place Holder</option>
-              {courses.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
+              onChange={(val) => handleSelect("courseId", val)}
+              placeholder="Select course"
+            />
             {errors.courseId && (
               <p className="text-red-500 text-sm mt-1">{errors.courseId}</p>
             )}
@@ -132,19 +127,13 @@ export default function AssignmentFormView({
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
             <Label className="text-[16px] mb-2">Lesson</Label>
-            <select
+            <ComboboxSelect
+              items={lessons.map((l) => ({ id: l.id, label: l.title }))}
               value={formData.lessonId}
-              onChange={(e) => handleSelect("lessonId", e.target.value)}
-              className="w-full border p-2 rounded-md text-[16px]"
+              onChange={(val) => handleSelect("lessonId", val)}
+              placeholder="Select lesson"
               disabled={!formData.courseId}
-            >
-              <option value="">Place Holder</option>
-              {lessons.map((l) => (
-                <option key={l.id} value={l.id}>
-                  {l.title}
-                </option>
-              ))}
-            </select>
+            />
             {errors.lessonId && (
               <p className="text-red-500 text-sm mt-1">{errors.lessonId}</p>
             )}
@@ -152,19 +141,13 @@ export default function AssignmentFormView({
 
           <div>
             <Label className="text-[16px] mb-2">Sub-lesson</Label>
-            <select
+            <ComboboxSelect
+              items={subLessons.map((s) => ({ id: s.id, label: s.title }))}
               value={formData.subLessonId}
-              onChange={(e) => handleSelect("subLessonId", e.target.value)}
-              className="w-full border p-2 rounded-md text-[16px]"
+              onChange={(val) => handleSelect("subLessonId", val)}
+              placeholder="Select sub-lesson"
               disabled={!formData.lessonId}
-            >
-              <option value="">Place Holder</option>
-              {subLessons.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.title}
-                </option>
-              ))}
-            </select>
+            />
             {errors.subLessonId && (
               <p className="text-red-500 text-sm mt-1">
                 {errors.subLessonId}
@@ -220,7 +203,7 @@ export default function AssignmentFormView({
           <div className="flex justify-end mt-6">
             <button
               type="button"
-              className="text-[#2F5FAC] text-[16px] font-bold hover:text-blue-500"
+              className="text-[#2F5FAC] text-[16px] font-bold hover:text-blue-500 cursor-pointer"
               onClick={onDelete}
             >
               Delete Assignment

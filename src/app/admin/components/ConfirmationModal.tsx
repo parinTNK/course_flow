@@ -77,7 +77,7 @@ export default function ConfirmationModal({
           <h3 className="text-xl font-medium text-gray-900">{title}</h3>
           <button 
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-500 focus:outline-none"
+            className="text-gray-400 hover:text-gray-500 focus:outline-none cursor-pointer"
           >
             <span className="text-2xl">&times;</span>
           </button>
@@ -95,14 +95,14 @@ export default function ConfirmationModal({
         <div className="pb-6 px-6 border-gray-200 flex justify-end space-x-3">
           <button
             onClick={onConfirm}
-            className={`px-4 py-2 rounded-md font-medium transition-colors duration-200 ${confirmButtonClass}`}
+            className={`px-4 py-2 rounded-md font-medium transition-colors duration-200 cursor-pointer ${confirmButtonClass}`}
           >
             {confirmText}
           </button>
           <button
             onClick={onClose}
             style={{backgroundColor: '#2563eb'}}
-            className={`px-4 py-2 rounded-md font-medium transition-colors duration-200 bg-blue-600 text-white hover:bg-blue-700 ${cancelButtonClass}`}
+            className={`px-4 py-2 rounded-md font-medium transition-colors duration-200 bg-blue-600 text-white hover:bg-blue-700 cursor-pointer ${cancelButtonClass}`}
           >
             {cancelText}
           </button>
