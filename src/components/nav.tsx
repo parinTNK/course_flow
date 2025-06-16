@@ -56,7 +56,6 @@ const NavBar: React.FC<NavBarProps> = ({ navigate }) => {
     { icon: BookText, label: "My Courses", href: "/my-courses" },
     { icon: ClipboardCheck, label: "My Assignments", href: "/my-assignments" },
     { icon: Star, label: "My Wishlist", href: "/wishlist" },
-    { icon: Package, label: "My Bundle", href: "/my-bundles" },
   ];
 
   const handleLogout = async () => {
@@ -91,12 +90,6 @@ const NavBar: React.FC<NavBarProps> = ({ navigate }) => {
             onClick={() => handleNav("/our-courses")}
           >
             Our Courses
-          </a>
-          <a
-            className="font-semibold text-[#1A1A66] hover:text-[#0033CC] transition cursor-pointer"
-            onClick={() => handleNav("/course-bundle")}
-          >
-            Bundle
           </a>
 
           {!user ? (

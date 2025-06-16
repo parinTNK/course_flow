@@ -41,7 +41,7 @@ const Footer: React.FC<NavBarProps> = ({ navigate }) => {
           </span>
           <span
             className="text-[#C0C9E3] text-base hover:text-white transition cursor-pointer"
-            onClick={() => handleFoot("/our-courses")}
+            onClick={() => handleFoot("/course-bundle")}
           >
             Bundle Package
           </span>
