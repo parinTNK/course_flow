@@ -8,7 +8,7 @@ type Props = {
 export default function CourseAttachment({ attachmentUrl, courseName }: Props) {
   return (
     <div className="my-12">
-      <h2 className="text-2xl font-bold mb-4">Attach File</h2>
+      <h2 className="text-xl sm:text-2xl font-bold mb-4">Attach File</h2>
 
       {attachmentUrl ? (
         <a

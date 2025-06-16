@@ -115,7 +115,7 @@ export default function AssignmentFormView({
               items={courses.map((c) => ({ id: c.id, label: c.name }))}
               value={formData.courseId}
               onChange={(val) => handleSelect("courseId", val)}
-              placeholder="Select course"
+              placeholder="Place Holder"
             />
             {errors.courseId && (
               <p className="text-red-500 text-sm mt-1">{errors.courseId}</p>
@@ -131,7 +131,7 @@ export default function AssignmentFormView({
               items={lessons.map((l) => ({ id: l.id, label: l.title }))}
               value={formData.lessonId}
               onChange={(val) => handleSelect("lessonId", val)}
-              placeholder="Select lesson"
+              placeholder="Place Holder"
               disabled={!formData.courseId}
             />
             {errors.lessonId && (
@@ -145,7 +145,7 @@ export default function AssignmentFormView({
               items={subLessons.map((s) => ({ id: s.id, label: s.title }))}
               value={formData.subLessonId}
               onChange={(val) => handleSelect("subLessonId", val)}
-              placeholder="Select sub-lesson"
+              placeholder="Place Holder"
               disabled={!formData.lessonId}
             />
             {errors.subLessonId && (
