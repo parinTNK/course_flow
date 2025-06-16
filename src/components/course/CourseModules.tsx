@@ -20,7 +20,7 @@ export default function CourseModules({ modules }: Props) {
           >
             <Accordion.Header asChild>
               <Accordion.Trigger className="w-full p-4 flex justify-between items-center text-left hover:bg-gray-50 transition cursor-pointer">
-                <span className="flex items-start text-[18px] sm:text-xl">
+                <span className="flex items-start text-base sm:text-xl">
                   <span className="text-gray-500 mr-4">
                     {String(module.order_no + 1).padStart(2, "0")}
                   </span>

@@ -38,14 +38,14 @@ export default function CourseSidebar({
         {courseName || "Course Name"}
       </h1>
 
-      <div className="text-gray-600 text-[12px] sm:text-base break-words mb-2">
+      <div className="text-gray-600 text-sm sm:text-base break-words mb-2">
         <p className={isExpanded ? "" : "line-clamp-2"}>
           {summary || "No summary available."}
         </p>
         {summary && summary.length > 80 && (
           <button
             onClick={toggleSummary}
-            className="text-blue-500 text-xs sm:text-sm mt-1 cursor-pointer"
+            className="text-blue-500 text-sm sm:text-base mt-1 cursor-pointer"
           >
             {isExpanded ? "Read less" : "Read more"}
           </button>
