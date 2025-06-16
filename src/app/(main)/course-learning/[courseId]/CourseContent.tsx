@@ -293,7 +293,7 @@ export default function CourseContent() {
 
       <main className="flex-1 w-full md:p-6 md:max-w-[calc(100%-280px)]">
         <div id="lesson-section">
-          <h1 className="text-2xl font-bold mb-6">
+          <h1 className="text-2xl sm:text-4xl font-bold mb-6">
             {currentLesson?.title || lessons[0]?.sub_lessons[0]?.title}
           </h1>
           <LessonVideoPlayer />

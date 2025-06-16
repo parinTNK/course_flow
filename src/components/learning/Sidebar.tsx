@@ -257,8 +257,8 @@ export default function Sidebar({ setLessons: setParentLessons, scrollToVideo, i
           <Accordion.Item key={lesson.id} value={lesson.id} className="border-b pb-2">
             <Accordion.Header>
               <Accordion.Trigger className="flex justify-between items-center w-full py-2 px-2 hover:bg-gray-100 rounded text-left font-medium cursor-pointer">
-                <div className="flex items-center space-x-2">
-                  <span className="text-sm text-gray-500 ">
+                <div className="flex items-start space-x-2">
+                  <span className="text-gray-500 ">
                     {String(index + 1).padStart(2, "0")}
                   </span>
                   <span>{lesson.title}</span>
