@@ -1,4 +1,6 @@
-import React from "react";
+"use client";
+
+import React, { useState } from "react";
 import Link from "next/link";
 import { ButtonT } from "@/components/ui/ButtonT";
 
@@ -25,15 +27,32 @@ export default function CourseSidebar({
   onSubscribeClick,
   onWishlistClick,
 }: Props) {
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  const toggleSummary = () => setIsExpanded((prev) => !prev);
+
   return (
     <div className="sticky top-30 p-6 border rounded-lg bg-white z-10">
-      <span className="text-orange-500">Course</span>
-      <h1 className="text-2xl font-bold mb-2">{courseName || "Course Name"}</h1>
-      <p className="text-gray-600 mb-4 line-clamp-2 break-words">
-        {summary || "No summary available."}
-      </p>
+      <span className="text-orange-500 text-sm">Course</span>
+      <h1 className="text-xl sm:text-2xl font-bold mb-2">
+        {courseName || "Course Name"}
+      </h1>
 
-      <p className="text-2xl font-bold mb-6">
+      <div className="text-gray-600 text-sm sm:text-base break-words mb-2">
+        <p className={isExpanded ? "" : "line-clamp-2"}>
+          {summary || "No summary available."}
+        </p>
+        {summary && summary.length > 80 && (
+          <button
+            onClick={toggleSummary}
+            className="text-blue-500 text-sm sm:text-base mt-1 cursor-pointer"
+          >
+            {isExpanded ? "Read less" : "Read more"}
+          </button>
+        )}
+      </div>
+
+      <p className="text-xl sm:text-2xl font-bold mb-6">
         {typeof price === "number"
           ? `THB ${price.toLocaleString()}`
           : "Loading..."}
@@ -52,7 +71,9 @@ export default function CourseSidebar({
               variant="Secondary"
               className="w-full mb-3"
               onClick={onWishlistClick}
-              aria-label={isWishlisted ? "Remove from wishlist" : "Add to wishlist"}
+              aria-label={
+                isWishlisted ? "Remove from wishlist" : "Add to wishlist"
+              }
             >
               {isWishlisted ? "Remove from Wishlist" : "Add to Wishlist"}
             </ButtonT>

@@ -3,7 +3,6 @@ import { useRouter } from "next/navigation";
 import { useCustomToast } from "@/components/ui/CustomToast";
 import { supabase } from "@/lib/supabaseClient";
 import { getBangkokISOString } from "@/lib/bangkokTime";
-import { escape } from "querystring";
 
 interface AssignmentFormData {
   description: string;
@@ -63,8 +62,15 @@ export function useAssignmentForm(mode: "create" | "edit" = "create", assignment
     fetchSubLessons();
   }, [formData.lessonId]);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleInputChange = (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
     const { name, value } = e.target;
+
+    setErrors((prev) => ({
+      ...prev,
+      [name]: "",
+    }));
 
     if (name === "description" && value.length >= 300) {
       setErrors((prev) => ({
@@ -77,7 +83,6 @@ export function useAssignmentForm(mode: "create" | "edit" = "create", assignment
         solution: "You've reached the 500 character limit.",
       }));
     } else {
-
       setErrors((prev) => ({
         ...prev,
         [name]: prev[name] === "You've reached the 300 character limit." ||
@@ -91,6 +96,11 @@ export function useAssignmentForm(mode: "create" | "edit" = "create", assignment
   };
 
   const handleSelect = (field: keyof AssignmentFormData, value: string) => {
+    setErrors((prev) => ({
+      ...prev,
+      [field]: "",
+    }));
+    
     if (field === "courseId") {
       setFormData((prev) => ({
         ...prev,

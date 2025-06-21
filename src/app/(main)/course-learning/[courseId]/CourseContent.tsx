@@ -270,13 +270,13 @@ export default function CourseContent() {
   };
 
   if (loading || (!isAutoResumeComplete && lessons.length > 0)) {
-    const loadingMessage = !isAutoResumeComplete && lessons.length > 0 
-      ? "Loading your progress..." 
-      : "Loading course...";
+    // const loadingMessage = !isAutoResumeComplete && lessons.length > 0 
+    //   ? "Loading your progress..." 
+    //   : "Loading course...";
     return (
       <div className="flex flex-col justify-center items-center min-h-screen">
         <LoadingSpinner />
-        <p className="mt-4 text-gray-600">{loadingMessage}</p>
+        {/* <p className="mt-4 text-gray-600">{loadingMessage}</p> */}
       </div>
     );
   }
@@ -293,7 +293,7 @@ export default function CourseContent() {
 
       <main className="flex-1 w-full md:p-6 md:max-w-[calc(100%-280px)]">
         <div id="lesson-section">
-          <h1 className="text-2xl font-bold mb-6">
+          <h1 className="text-2xl sm:text-4xl font-bold mb-6">
             {currentLesson?.title || lessons[0]?.sub_lessons[0]?.title}
           </h1>
           <LessonVideoPlayer />
@@ -308,7 +308,7 @@ export default function CourseContent() {
             onClick={handlePrev}
             disabled={isFirstSubLesson()}
           >
-            <div className="flex items-center justify-center">
+            <div className="flex items-center justify-center cursor-pointer">
               <svg
                 className="w-5 h-5 mr-2"
                 fill="none"

@@ -37,7 +37,7 @@ const AssignmentsTable: React.FC<AssignmentsTableProps> = ({
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-300">
             <tr>
-              {["Detail", "Course", "Lesson", "Sub-lesson", "Created at", "Action"].map(
+              {["Detail", "Course", "Lesson", "Sub-lesson", "Updated at", "Action"].map(
                 (header, idx) => (
                   <th
                     key={idx}

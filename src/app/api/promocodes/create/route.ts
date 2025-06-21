@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabaseClient';
 import { NextRequest } from 'next/server';
+import { getBangkokISOString } from "@/lib/bangkokTime";
 
 export async function POST(request: NextRequest) {
   try {
@@ -13,7 +14,6 @@ export async function POST(request: NextRequest) {
       course_ids = [],
     } = body;
 
-    // 0. Validate ว่า code ห้ามซ้ำ
     const { data: existingCodes, error: checkError } = await supabase
       .from('promo_codes')
       .select('id')
@@ -30,7 +30,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 1. Insert promo code
     const { data: promoCode, error: promoError } = await supabase
       .from('promo_codes')
       .insert([
@@ -40,8 +39,8 @@ export async function POST(request: NextRequest) {
           discount_type,
           discount_value,
           is_all_courses,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
+          created_at: getBangkokISOString(),
+          updated_at: getBangkokISOString(),
         },
       ])
       .select()
@@ -51,7 +50,6 @@ export async function POST(request: NextRequest) {
       return Response.json({ error: promoError.message }, { status: 500 });
     }
 
-    // 2. ถ้าไม่ใช่ all courses ให้ insert ลง promo_code_courses
     if (!is_all_courses && Array.isArray(course_ids) && course_ids.length > 0) {
       const promo_code_id = promoCode.id;
       const rows = course_ids.map((course_id: string) => ({
@@ -64,7 +62,6 @@ export async function POST(request: NextRequest) {
         .insert(rows);
 
       if (courseError) {
-        // ลบ promo code ที่เพิ่ง insert ไป (rollback แบบง่าย)
         await supabase.from('promo_codes').delete().eq('id', promo_code_id);
         return Response.json(
           { error: courseError.message },

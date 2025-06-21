@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
       query = query.ilike('code', `%${search}%`);
     }
 
-    query = query.order('created_at', { ascending: true }).order('id', { ascending: true }).range(from, to);
+    query = query.order('updated_at', { ascending: false }).order('id', { ascending: false }).range(from, to);
 
 
     const { data, error, count } = await query;

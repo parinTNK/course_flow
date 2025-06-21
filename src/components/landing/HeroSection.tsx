@@ -3,6 +3,7 @@ import React from "react";
 import Image from "next/image";
 import { ButtonT } from "../ui/ButtonT";
 
+
 function HeroSection() {
   return (
     <section className="relative bg-[#EAF1FF] w-full max-h-[700px] overflow-hidden mt-[40px] md:mt-[88px]">
@@ -29,8 +30,8 @@ function HeroSection() {
       {/* Foreground Content */}
       <div className="relative z-10 max-w-[1111px] mx-[16px]  md:mx-[160px] py-[80px] flex flex-col md:flex-row items-center justify-between gap-[48px]">
         {/* Left Text Content */}
-        <div className="text-left max-w-[643px]">
-          <h1 className="text-[36px] md:text-[66px] font-medium text-[#1A1A1A] leading-tight">
+        <div className="text-left max-w-[643px] ">
+          <h1 className="text-[36px] md:text-[66px] font-medium text-[#1A1A1A] leading-tight animate-fade-right animate-once animate-ease-in-out">
             Best Virtual <br className="hidden sm:block" />
             Classroom&nbsp;Software
           </h1>
@@ -57,14 +58,16 @@ function HeroSection() {
             sm:w-[380px] sm:h-[380px]
             md:w-[452px] md:h-[448px]
             transition-all duration-700 ease-in-out
+            
+
           "
         >
           <Image
-            src="/img/Hero.png"
+            src="/img/49663577_9292940.png"
             alt="Virtual Classroom Illustration"
             width={452}
             height={448}
-            className="w-full h-full object-contain"
+            className="w-full h-full object-contain animate-fade-left animate-once animate-ease-in-out"
             priority
           />
         </div>

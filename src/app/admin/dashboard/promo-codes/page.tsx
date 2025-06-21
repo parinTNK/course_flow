@@ -48,7 +48,7 @@ export default function PromoCodesPage() {
           />
           <ButtonT
             onClick={handleAddPromoCode}
-            className="w-[250px] flex justify-center items-center gap-3 bg-blue-600 text-white"
+            className="w-[250px] flex justify-center items-center gap-3 text-white"
           >
             <FiPlus size={20} />
             <span>Add Promo code</span>

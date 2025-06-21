@@ -90,8 +90,8 @@ const CourseDetailPage: React.FC = () => {
   return (
     <div className="min-h-screen flex flex-col">
       <main className="flex-grow container mx-auto mt-20 px-4 py-8">
-        <Link href="/our-courses" className="text-blue-600 mb-6 inline-flex items-center">
-          <img src="/Left-Arrow.svg" alt="Back Button" className="mr-1" />
+        <Link href="/our-courses" className="text-[#2F5FAC] font-bold mb-6 inline-flex items-center">
+          <img src="/Left-Arrow.svg" alt="Back Button" className="mr-3" />
           <span>Back</span>
         </Link>
 
